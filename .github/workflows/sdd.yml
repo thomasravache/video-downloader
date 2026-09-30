@@ -1,0 +1,36 @@
+# SDD — bloqueia o merge de PR sem spec aprovada, gates, TDD (red antes do green) ou escopo.
+# Torne o job "sdd" obrigatório na proteção da branch principal (branch protection / rulesets).
+name: sdd
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+# Menor privilégio: o job só lê o repositório.
+permissions:
+  contents: read
+
+concurrency:
+  group: sdd-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sdd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # histórico completo: verify/pr-check comparam com a branch alvo
+          persist-credentials: false
+
+      - name: Specs e ADRs válidos (G0)
+        run: python3 tools/sdd/spec_graph.py validate --exclude-drafts
+
+      # Título/corpo do PR entram por variável de ambiente, nunca interpolados no script (evita script injection).
+      - name: PR ligado a specs aprovadas, gates G0–G4, TDD e escopo
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: python3 tools/sdd/spec_graph.py pr-check --base "origin/${BASE_REF}"
