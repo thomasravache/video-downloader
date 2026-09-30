@@ -71,7 +71,7 @@ Gatilhos: pull_request (main), push (main)
 Checks obrigatórios no ruleset da main:
   ci / quality · ci / build (public) · ci / build (local) · ci / test · ci / arch
   ci / e2e (public) · ci / e2e (local) · ci / security · codeql / analyze · sdd / sdd
-Artefatos: extension-public.zip, extension-local.zip, playwright-report, coverage-lcov
+Artefatos: extension-public, extension-local (saída de .output/chrome-mv3-<flavor>), playwright-report-<flavor> (só em falha); coverage-lcov passa a ser artefato da SPEC-0003 (ver Emendas)
 Falha de qualquer check → PR não pode ser mergeado.
 ```
 
@@ -149,10 +149,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm exec vitest run tests/tooling tests/harness tests/ci` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯) — 5bb3d63 | 2026-09-30 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 196 ms); test exit 0 (Duration  5.23s (tests 92%, import 4%, transform 3%)); lint exit 0 (✔ Finished in 127 ms) — 7f68699 | 2026-09-30 |
+| G3 Arquitetura | N/A | sem arch_test até SPEC-0003 (dependency-cruiser); esta spec só adiciona workflows e configs, sem código de src/ | 2026-09-30 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a7b7ce87: APPROVED @ 7f68699 (4 minor, 0 blocker/major; SHAs e sha256 do gitleaks verificados) — 7f68699 | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
@@ -193,3 +193,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (texto) | 2026-09-30 | artefatos reais: `extension-<flavor>` e `playwright-report-<flavor>` (nome único por matriz); `coverage-lcov` transferido para a SPEC-0003 | `upload-artifact` v4+ rejeita nomes repetidos em matriz; não há script de cobertura até a SPEC-0003 | SPEC-0003 | pendente de ratificação do Thomas no H2 da onda 2 |

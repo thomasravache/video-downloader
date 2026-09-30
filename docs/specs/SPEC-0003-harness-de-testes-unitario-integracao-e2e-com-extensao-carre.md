@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0002]
 consumes_contract: []
 contract_version: 1
-touches: [package.json, pnpm-lock.yaml, tests/tooling/stubs.test.ts, vitest.config.ts, vitest.workspace.ts, playwright.config.ts, .dependency-cruiser.cjs, tests/support/**, tests/harness/**, e2e/support/**, e2e/fixtures/**, e2e/harness.spec.ts]
+touches: [package.json, pnpm-lock.yaml, tests/tooling/stubs.test.ts, entrypoints/background.ts, tsconfig.json, eslint.config.js, vitest.config.ts, vitest.workspace.ts, playwright.config.ts, .dependency-cruiser.cjs, tests/support/**, tests/harness/**, e2e/support/**, e2e/fixtures/**, e2e/harness.spec.ts]
 adrs: [ADR-0010, ADR-0002, ADR-0001]
 external: []
 size: M
@@ -92,7 +92,7 @@ Fixture Playwright (e2e/support/extension.ts):
 | Unitário roda | `pnpm test` com teste-exemplo | exit 0, teste listado com tag | UT-01 |
 | Integração com fake do browser | `pnpm test:integration` | mensagem `ping` → `pong` no background real | IT-01 |
 | Rede isolada | E2E tenta abrir host externo | requisição abortada, teste falha se tentar | IT-02 |
-| E2E com extensão carregada | `pnpm test:e2e` | service worker responde `ping`; popup abre | IT-03 |
+| E2E com extensão carregada | `pnpm test:e2e` | o service worker responde ao `ping` enviado por uma página da extensão (popup); popup abre | IT-03 |
 | Violação de fronteira | `src/core` importa `src/providers` | `pnpm arch` exit ≠ 0 com a regra violada | IT-04 |
 | Ciclo | dois módulos se importam | `pnpm arch` exit ≠ 0 | IT-04 |
 
@@ -106,7 +106,7 @@ Fixture Playwright (e2e/support/extension.ts):
 ### 7.3 Testes de Integração
 - **IT-01** — Com o fake de `browser.*` do WXT e o background real, enviar `{type:'ping'}` retorna `{type:'pong', version}`.
 - **IT-02** — No contexto Playwright da fixture, `page.goto('https://example.com')` é abortado e `page.goto(fixturesUrl)` carrega.
-- **IT-03** — Com a extensão `public` carregada em Chromium, `serviceWorker.evaluate` responde ao `ping` e `openPopup()` renderiza o título i18n.
+- **IT-03** — Com a extensão `public` carregada em Chromium, o `ping` enviado de uma página da extensão (o popup aberto por `openPopup()`) recebe `pong` do service worker localizado por `serviceWorker`, e o popup renderiza o título i18n. (Emenda: o service worker não recebe o próprio `runtime.sendMessage` no Chromium real.)
 - **IT-04** — Com arquivos temporários violando cada regra do ADR-0001 (core→providers, provider→provider, popup→providers, core→`chrome`, ciclo), `pnpm arch` falha citando a regra; sem eles, passa.
 
 ### 7.4 Testes de Contrato
@@ -167,7 +167,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
-| G1 Red | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm exec vitest run tests/tooling tests/harness tests/ci` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯) — d1213ff | 2026-09-30 |
 | G2 Green | PENDING | | |
 | G3 Arquitetura | PENDING | | |
 | G4 Review | PENDING | | |
@@ -179,6 +179,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-09-30 | G2 | spec | IT-03 exige que serviceWorker.evaluate receba ping enviado pelo próprio service worker; no Chromium real o SW não recebe o próprio runtime.sendMessage (lastError: Receiving end does not exist) | Probe no SW do build public falhou; o mesmo ping enviado da página popup devolve {type:'pong'}; Implementer não alterou o teste | Architect + Thomas (emenda do plano de testes) | Emenda 1 (teste) — IT-03 passa a enviar o ping do popup; ratificação no H2 | 2026-09-30 |
 
 ## 14. Relatório de Entrega
 
@@ -212,3 +213,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `tests/tooling/stubs.test.ts`; objetivo de remover o stub test da SPEC-0002 | implementar `pnpm test` invalida o UT-03 da SPEC-0002 (stub) — sem isso a suíte quebra | SPEC-0002 (UT-03 aposentado; Verificação histórica preservada) | pendente de ratificação do Thomas no H2 da onda 2 |
+| 1 (teste) | 2026-09-30 | IT-03: o ping parte do popup (página da extensão), não do próprio service worker; `touches` inclui `entrypoints/background.ts` (listener retorna `true` para o fake do WXT aguardar a resposta), `tsconfig.json` (include de e2e/configs) e `eslint.config.js` (dependency-cruiser) | no Chromium real o service worker não recebe o próprio `runtime.sendMessage` (provado por probe); ajustes de config necessários para lint/typecheck verdes | SPEC-0005 (background.ts) | pendente de ratificação do Thomas no H2 da onda 2 |
