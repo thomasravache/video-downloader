@@ -15,7 +15,7 @@ test_integration: "pnpm test:integration"
 # E2E da jornada do usuário. Exemplos: "npx playwright test" | "npx cypress run" | "maestro test flows/"
 test_e2e: "pnpm test:e2e"
 # Subconjunto rápido rodado após cada deploy (G6).
-smoke_test: ""
+smoke_test: "pnpm test:e2e"
 lint: "pnpm lint && pnpm format:check && pnpm typecheck"
 # G2 — cobertura das linhas alteradas (ex: diff-cover, coverlet + reportgenerator). Opcional.
 coverage: "pnpm coverage"
@@ -33,8 +33,8 @@ security_scan: "pnpm audit --audit-level=high && gitleaks detect --source . --co
 # Como conferir o pipeline da branch/PR. Exemplo: "gh pr checks --watch"
 ci: "gh pr checks --watch"
 # Como o deploy acontece (preferencialmente pelo pipeline). Exemplos: "merge em main → pipeline" | "gh workflow run deploy.yml -f env=staging"
-deploy_staging: ""
-deploy_production: ""
+deploy_staging: "git tag vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N  # .github/workflows/release.yml: GitHub prerelease + Web Store STAGED_PUBLISH"
+deploy_production: "git tag vX.Y.Z && git push origin vX.Y.Z  # release.yml: GitHub Release + Web Store DEFAULT_PUBLISH (aprovação no environment webstore)"
 staging_url: ""
 production_url: ""
 
