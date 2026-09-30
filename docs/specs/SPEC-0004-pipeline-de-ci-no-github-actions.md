@@ -156,7 +156,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 182 ms); test exit 0 (Duration  18.75s (tests 98%, import 1%)); test_integration exit 0 (Duration  136ms (transform 59%, setup 24%, import 6%, tests 6%, worker 5%)); test_e2e exit 0 (3 passed (4.1s)); arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)); security_scan exit 0 ([90m6:13PM[0m [32mINF[0m [1mno leaks found[0m) — 6e656d2 | 2026-09-30 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-09-30 |
 | G6 Deploy | N/A | sem deploy nesta spec; release e deploy em SPEC-0006 | 2026-09-30 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — e34273b | 2026-09-30 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
