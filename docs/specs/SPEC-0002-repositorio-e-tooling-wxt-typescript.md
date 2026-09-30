@@ -4,7 +4,7 @@ title: Repositório e tooling (WXT + TypeScript)
 tier: full
 type: foundation
 user_facing: false
-status: approved
+status: in-progress
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: []
@@ -167,10 +167,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm exec vitest run tests/tooling` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/14]⎯) — afa083d | 2026-09-30 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 169 ms); test exit 0 (Duration  5.04s (tests 95%, import 3%, transform 1%)); lint exit 0 (✔ Finished in 158 ms) — d15a314 | 2026-09-30 |
+| G3 Arquitetura | N/A | sem arch_test até SPEC-0003 (harness com dependency-cruiser); src/core é placeholder sem chrome.* | 2026-09-30 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent adc33f43: APPROVED @ d15a314 (6 minor, 0 blocker/major) — d15a314 | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
