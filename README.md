@@ -40,16 +40,20 @@ O flavor é definido pela variável `FLAVOR` (`public` | `local`) e exposto como
 
 ## Scripts
 
-| Script                                                 | O que faz                                             |
-| ------------------------------------------------------ | ----------------------------------------------------- |
-| `pnpm dev`                                             | Desenvolvimento (flavor local) com recarga automática |
-| `pnpm build` / `build:public` / `build:local`          | Build de produção dos flavors                         |
-| `pnpm lint`                                            | ESLint (typescript-eslint strict)                     |
-| `pnpm format:check`                                    | Prettier em modo verificação                          |
-| `pnpm typecheck`                                       | `tsc --noEmit` (strict)                               |
-| `pnpm test` / `test:integration` / `test:e2e` / `arch` | Stubs que falham até a SPEC-0003                      |
+| Script                                        | O que faz                                             |
+| --------------------------------------------- | ----------------------------------------------------- |
+| `pnpm dev`                                    | Desenvolvimento (flavor local) com recarga automática |
+| `pnpm build` / `build:public` / `build:local` | Build de produção dos flavors                         |
+| `pnpm lint`                                   | ESLint (typescript-eslint strict)                     |
+| `pnpm format:check`                           | Prettier em modo verificação                          |
+| `pnpm typecheck`                              | `tsc --noEmit` (strict)                               |
+| `pnpm test`                                   | Testes unitários e de tooling (Vitest)                |
+| `pnpm test:integration`                       | Testes de integração (Vitest + fake do browser)       |
+| `pnpm test:e2e [--flavor public\|local]`      | E2E com a extensão carregada (Playwright)             |
+| `pnpm arch`                                   | Regras de arquitetura (dependency-cruiser)            |
+| `pnpm coverage`                               | Cobertura (Vitest + lcov)                             |
 
-Testes de tooling: `pnpm exec vitest run tests/tooling`.
+A CI (GitHub Actions) roda qualidade, build dos dois flavors, testes, arquitetura, E2E, varredura de segredos e CodeQL em todo PR.
 
 ## Fluxo de trabalho (SDD)
 

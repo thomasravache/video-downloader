@@ -140,28 +140,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Vitest (unitário e integração)**
-- [ ] Red: escrever UT-01, IT-01 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, IT-01 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Regras de arquitetura**
-- [ ] Red: escrever IT-04 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-04 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Fixture E2E com extensão carregada**
-- [ ] Red: escrever IT-02, IT-03 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-02, IT-03 com a tag `SPEC-0003:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy: N/A — G6 = N/A apontando SPEC-0006
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Deploy: N/A — G6 = N/A apontando SPEC-0006
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
@@ -172,8 +172,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — e8a5367 | 2026-09-30 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a33ee94f (2ª rodada): APPROVED @ e8a5367 (0 blocker/major, 4 minor; NFR 20s aceito com condição de dividir projeto tooling) — e8a5367 | 2026-09-30 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 220 ms); test exit 0 (Duration  19.15s (tests 98%, import 1%)); test_integration exit 0 (Duration  131ms (transform 58%, setup 23%, import 7%, worker 6%, tests 6%)); test_e2e exit 0 (3 passed (5.2s)); arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)); security_scan exit 0 ([90m6:12PM[0m [32mINF[0m [1mno leaks found[0m) — e97c193 | 2026-09-30 |
-| H2 Integração aprovada | PENDING | | |
-| G6 Deploy | PENDING | | |
+| H2 Integração aprovada | PASS | aprovado por thomas | 2026-09-30 |
+| G6 Deploy | N/A | sem deploy nesta spec; release e deploy em SPEC-0006 | 2026-09-30 |
 | G7 Pronto & Docs | PENDING | | |
 
 ## 13. Registro de Impedimentos
@@ -184,34 +184,44 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+Harness de testes em quatro níveis: projetos Vitest `unit` e `integration` (com `WxtVitest` e `fakeBrowser`), E2E com Playwright e a extensão carregada em Chromium persistente (fixtures `context`, `extensionId`, `serviceWorker`, `openPopup`, `fixturesUrl`, `flavor`, rede isolada em 127.0.0.1, servidor de fixtures, MP4 de 2 s reproduzível), regras de arquitetura com dependency-cruiser (`no-core-to-providers`, `no-core-to-entrypoints`, `no-provider-to-provider`, `no-provider-to-ui`, `no-popup-to-providers`, `no-core-browser-api`, `no-circular`, `not-to-unresolvable`) e ESLint `no-restricted-globals` para `chrome`/`browser` em `src/core`, cobertura (`pnpm coverage`, lcov) e os scripts reais `test`, `test:integration`, `test:e2e [--flavor]`, `arch`.
 
 ### Como foi feito
+TDD com agentes distintos (Test-writer, Implementer, Reviewer; duas rodadas de revisão). Desvios e emendas ratificadas pelo Thomas no H2 da onda 2: (1) remoção do stub test da SPEC-0002; (2) IT-03 envia o ping do popup (o service worker não recebe o próprio `runtime.sendMessage`, provado por probe) e `touches` passou a incluir `entrypoints/background.ts` (listener devolve `true` só para o fake do WXT aguardar a resposta; SPEC-0005 deve revisitar), `tsconfig.json` e `eslint.config.js`; (3) IT-04 ampliado após a revisão (`#imports`, `@wxt-dev/browser`, imports não resolvidos, globais) e NFR da suíte unitária de 10 s para 20 s (medido 16–19 s). Workaround de fixture: `page.goto` aguarda o commit da página de erro após navegação abortada (corrida Chromium 153/Playwright 1.63, sem issue upstream verificada). `vitest.config.ts` define `FLAVOR=public` por padrão nos testes.
 
 ### Prova de Correção
+N/A — type foundation.
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | `specTag` devolve `SPEC-0003:UT-01` (projeto unit roda) | PASS | `tests/harness/spec-tag.test.ts`; `pnpm test` 27/27 em e97c193; CI https://github.com/thomasravache/video-downloader/actions/runs/36777550378 |
+| IT-01 | ping → pong no background real com fake do browser | PASS | `tests/harness/background-ping.integration.test.ts`; `pnpm test:integration` 1/1; CI https://github.com/thomasravache/video-downloader/actions/runs/36777550378 |
+| IT-02 | host externo abortado; fixturesUrl carrega | PASS | `e2e/harness.spec.ts`; `pnpm test:e2e` 3/3 local e CI https://github.com/thomasravache/video-downloader/actions/runs/36777550378 (e2e public e local) |
+| IT-03 | popup envia ping e o service worker responde; título i18n | PASS | `e2e/harness.spec.ts` (flavor public); CI https://github.com/thomasravache/video-downloader/actions/runs/36777550378 (e2e public) |
+| IT-04 | cada regra de arquitetura falha nomeando a regra; árvore limpa passa | PASS | `tests/harness/arch.test.ts` e `arch-gaps.test.ts`; `pnpm arch` exit 0; CI https://github.com/thomasravache/video-downloader/actions/runs/36777550378 |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6) — N/A: nada é publicado; release em SPEC-0006
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
+N/A — nenhum artefato publicado.
 
 ### Pendências
+Separar os testes de tooling/arquitetura em um projeto Vitest `tooling` (primeira tarefa da próxima spec, ou antes se a suíte passar de 20 s). Cobrir `self.chrome`/`self.browser` no override ESLint e documentar que aliases `#…` fora de `src/core` ficam a cargo do tsc/WXT. O `local` Playwright pula o IT-03 por `grepInvert` de título; preferir `test.skip` interno e um smoke do flavor local na SPEC-0005.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
-| 1 (escopo) | 2026-09-30 | `touches` inclui `tests/tooling/stubs.test.ts`; objetivo de remover o stub test da SPEC-0002 | implementar `pnpm test` invalida o UT-03 da SPEC-0002 (stub) — sem isso a suíte quebra | SPEC-0002 (UT-03 aposentado; Verificação histórica preservada) | pendente de ratificação do Thomas no H2 da onda 2 |
-| 1 (teste) | 2026-09-30 | IT-03: o ping parte do popup (página da extensão), não do próprio service worker; `touches` inclui `entrypoints/background.ts` (listener retorna `true` para o fake do WXT aguardar a resposta), `tsconfig.json` (include de e2e/configs) e `eslint.config.js` (dependency-cruiser) | no Chromium real o service worker não recebe o próprio `runtime.sendMessage` (provado por probe); ajustes de config necessários para lint/typecheck verdes | SPEC-0005 (background.ts) | pendente de ratificação do Thomas no H2 da onda 2 |
-| 1 (revisão) | 2026-09-30 | IT-04 cobre também core→entrypoints, provider→entrypoints, core→`#imports`, import não resolvido e o global `chrome` no core (ESLint); NFR da suíte unitária passa de 10 s para 20 s (medido ~16 s) | achados major/minor do Reviewer (G4): `#imports` e `@wxt-dev/browser` escapavam da regra; globais não são vistos pelo dependency-cruiser; tooling/arch por shell somam ~10,5 s | SPEC-0002 (tempo de `pnpm test`) | pendente de ratificação do Thomas no H2 da onda 2 |
+| 1 (escopo) | 2026-09-30 | `touches` inclui `tests/tooling/stubs.test.ts`; objetivo de remover o stub test da SPEC-0002 | implementar `pnpm test` invalida o UT-03 da SPEC-0002 (stub) — sem isso a suíte quebra | SPEC-0002 (UT-03 aposentado; Verificação histórica preservada) | thomas (H2 da onda 2, 2026-09-30) |
+| 1 (teste) | 2026-09-30 | IT-03: o ping parte do popup (página da extensão), não do próprio service worker; `touches` inclui `entrypoints/background.ts` (listener retorna `true` para o fake do WXT aguardar a resposta), `tsconfig.json` (include de e2e/configs) e `eslint.config.js` (dependency-cruiser) | no Chromium real o service worker não recebe o próprio `runtime.sendMessage` (provado por probe); ajustes de config necessários para lint/typecheck verdes | SPEC-0005 (background.ts) | thomas (H2 da onda 2, 2026-09-30) |
+| 1 (revisão) | 2026-09-30 | IT-04 cobre também core→entrypoints, provider→entrypoints, core→`#imports`, import não resolvido e o global `chrome` no core (ESLint); NFR da suíte unitária passa de 10 s para 20 s (medido ~16 s) | achados major/minor do Reviewer (G4): `#imports` e `@wxt-dev/browser` escapavam da regra; globais não são vistos pelo dependency-cruiser; tooling/arch por shell somam ~10,5 s | SPEC-0002 (tempo de `pnpm test`) | thomas (H2 da onda 2, 2026-09-30) |

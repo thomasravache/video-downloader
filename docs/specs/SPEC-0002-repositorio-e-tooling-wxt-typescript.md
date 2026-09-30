@@ -222,4 +222,4 @@ SPEC-0007 (lite): falha quando `FLAVOR` e o modo divergem e tipagem de `import.m
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
-| 1 (teste) | 2026-09-30 | UT-03 passa a verificar que todos os scripts do Contrato existem, em vez do stub com exit 1 | a SPEC-0003 substituiu os stubs pelos scripts reais; o teste original ficou sem objeto, e `pr-check` exige um teste com a tag no código | SPEC-0003 | pendente de ratificação do Thomas no H2 da onda 2 |
+| 1 (teste) | 2026-09-30 | UT-03 passa a verificar que todos os scripts do Contrato existem, em vez do stub com exit 1 | a SPEC-0003 substituiu os stubs pelos scripts reais; o teste original ficou sem objeto, e `pr-check` exige um teste com a tag no código | SPEC-0003 | thomas (H2 da onda 2, 2026-09-30) |
