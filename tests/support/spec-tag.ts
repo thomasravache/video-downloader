@@ -1,3 +1,4 @@
-export function specTag(_specId: string, _testId: string): string {
-  throw new Error('NotImplemented');
+/** Compõe a tag de rastreabilidade usada nos nomes de teste: `SPEC-0005:UT-01`. */
+export function specTag(specId: string, testId: string): string {
+  return `${specId}:${testId}`;
 }
