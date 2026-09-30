@@ -153,7 +153,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 196 ms); test exit 0 (Duration  5.23s (tests 92%, import 4%, transform 3%)); lint exit 0 (✔ Finished in 127 ms) — 7f68699 | 2026-09-30 |
 | G3 Arquitetura | N/A | sem arch_test até SPEC-0003 (dependency-cruiser); esta spec só adiciona workflows e configs, sem código de src/ | 2026-09-30 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a7b7ce87: APPROVED @ 7f68699 (4 minor, 0 blocker/major; SHAs e sha256 do gitleaks verificados) — 7f68699 | 2026-09-30 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 182 ms); test exit 0 (Duration  18.75s (tests 98%, import 1%)); test_integration exit 0 (Duration  136ms (transform 59%, setup 24%, import 6%, tests 6%, worker 5%)); test_e2e exit 0 (3 passed (4.1s)); arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)); security_scan exit 0 ([90m6:13PM[0m [32mINF[0m [1mno leaks found[0m) — 6e656d2 | 2026-09-30 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
