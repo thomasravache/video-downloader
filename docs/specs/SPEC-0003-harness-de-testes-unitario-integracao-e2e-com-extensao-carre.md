@@ -57,7 +57,7 @@ Monta os quatro níveis de teste definidos no ADR-0002 e as regras de fronteira 
 **ADRs:** ADR-0010, ADR-0002, ADR-0001.
 
 ## 5. Requisitos Não-Funcionais
-- **Desempenho e escala:** suíte unitária < 10 s e E2E-exemplo < 60 s localmente — medido pela saída dos runners.
+- **Desempenho e escala:** suíte unitária < 15 s (inclui os testes de tooling da SPEC-0002 e de arquitetura que executam build/lint/arch por shell; revisar se passar de 20 s) e E2E-exemplo < 60 s localmente — medido pela saída dos runners.
 - **Segurança:** servidor de fixtures escuta só em `127.0.0.1`; E2E nunca acessa hosts externos (Playwright com `route` bloqueando fora de localhost) — verificado por IT-02.
 - **Privacidade e dados pessoais:** N/A — fixtures sintéticas.
 - **Disponibilidade e resiliência:** teste instável vai para quarentena (ADR-0002, 7 dias) — Playwright com `retries: 0`.
@@ -107,7 +107,7 @@ Fixture Playwright (e2e/support/extension.ts):
 - **IT-01** — Com o fake de `browser.*` do WXT e o background real, enviar `{type:'ping'}` retorna `{type:'pong', version}`.
 - **IT-02** — No contexto Playwright da fixture, `page.goto('https://example.com')` é abortado e `page.goto(fixturesUrl)` carrega.
 - **IT-03** — Com a extensão `public` carregada em Chromium, o `ping` enviado de uma página da extensão (o popup aberto por `openPopup()`) recebe `pong` do service worker localizado por `serviceWorker`, e o popup renderiza o título i18n. (Emenda: o service worker não recebe o próprio `runtime.sendMessage` no Chromium real.)
-- **IT-04** — Com arquivos temporários violando cada regra do ADR-0001 (core→providers, provider→provider, popup→providers, core→`chrome`, ciclo), `pnpm arch` falha citando a regra; sem eles, passa.
+- **IT-04** — Com arquivos temporários violando cada regra do ADR-0001 (core→providers, core→entrypoints, provider→provider, provider→entrypoints, popup→providers, core→`wxt/browser`, core→`#imports`, import não resolvido, ciclo), `pnpm arch` falha citando a regra; sem eles, passa. Um arquivo de `src/core` que usa o global `chrome.*` ou `browser.*` faz `pnpm lint` falhar (`no-restricted-globals`), pois o dependency-cruiser não enxerga globais.
 
 ### 7.4 Testes de Contrato
 - N/A — não há contrato versionado entre specs; os comandos são verificados por IT-01..IT-04.
@@ -168,9 +168,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
 | G1 Red | PASS | verify G1: PASS; `pnpm exec vitest run tests/tooling tests/harness tests/ci` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯) — d1213ff | 2026-09-30 |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 166 ms); test exit 0 (Duration  10.46s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 125 ms); coverage exit 0 (}) — a858988 | 2026-09-30 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — a858988 | 2026-09-30 |
+| G4 Review | FAIL | reviewer-agent a98ff58d: CHANGES_REQUESTED @ a858988 — 2 major (#imports e imports não resolvidos escapam das regras de arch; NFR <10s estourado: 10.4-11s) + 6 minor | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
@@ -214,3 +214,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `tests/tooling/stubs.test.ts`; objetivo de remover o stub test da SPEC-0002 | implementar `pnpm test` invalida o UT-03 da SPEC-0002 (stub) — sem isso a suíte quebra | SPEC-0002 (UT-03 aposentado; Verificação histórica preservada) | pendente de ratificação do Thomas no H2 da onda 2 |
 | 1 (teste) | 2026-09-30 | IT-03: o ping parte do popup (página da extensão), não do próprio service worker; `touches` inclui `entrypoints/background.ts` (listener retorna `true` para o fake do WXT aguardar a resposta), `tsconfig.json` (include de e2e/configs) e `eslint.config.js` (dependency-cruiser) | no Chromium real o service worker não recebe o próprio `runtime.sendMessage` (provado por probe); ajustes de config necessários para lint/typecheck verdes | SPEC-0005 (background.ts) | pendente de ratificação do Thomas no H2 da onda 2 |
+| 1 (revisão) | 2026-09-30 | IT-04 cobre também core→entrypoints, provider→entrypoints, core→`#imports`, import não resolvido e o global `chrome` no core (ESLint); NFR da suíte unitária passa de 10 s para 15 s | achados major/minor do Reviewer (G4): `#imports` e `@wxt-dev/browser` escapavam da regra; globais não são vistos pelo dependency-cruiser; tooling/arch por shell somam ~10,5 s | SPEC-0002 (tempo de `pnpm test`) | pendente de ratificação do Thomas no H2 da onda 2 |
