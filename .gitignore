@@ -1,0 +1,12 @@
+node_modules/
+.output/
+.wxt/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+*.pem
+*.crx
+*.zip
+.DS_Store
