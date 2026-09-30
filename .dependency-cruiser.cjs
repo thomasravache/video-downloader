@@ -6,7 +6,11 @@
 
 /** Módulos que dão acesso a APIs de extensão/navegador (proibidos no core). */
 const BROWSER_API_MODULES =
-  '(^|/)node_modules/(wxt/(dist/)?(browser|testing|utils/(storage|content-script|inject-script))|webextension-polyfill|@webext-core|@types/chrome|@types/webextension-polyfill)(/|\\.|$)';
+  '(^|/)node_modules/(wxt/(dist/)?(browser|testing|utils/(storage|content-script|inject-script))|@wxt-dev/browser|webextension-polyfill|@webext-core|@types/chrome|@types/webextension-polyfill)(/|\\.|$)';
+
+/** Especificadores de módulo (não resolvidos pelo cruiser) que dão acesso a APIs de extensão. */
+const BROWSER_API_SPECIFIERS =
+  '^(#|wxt/(browser|testing)|@wxt-dev/browser|webextension-polyfill|@webext-core/|@types/(chrome|webextension-polyfill))(/|$)';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -51,7 +55,17 @@ module.exports = {
       comment: 'ADR-0001: o core é puro; APIs de navegador ficam em adaptadores.',
       severity: 'error',
       from: { path: '^src/core/' },
-      to: { path: BROWSER_API_MODULES },
+      to: { path: `${BROWSER_API_MODULES}|${BROWSER_API_SPECIFIERS}` },
+    },
+    {
+      name: 'not-to-unresolvable',
+      comment:
+        'Imports não resolvidos não podem escapar das regras de fronteira. Exceção documentada: ' +
+        'aliases virtuais do WXT (#imports, #build, ...), que resolvem para .wxt (excluído); no ' +
+        'core eles são proibidos por no-core-browser-api.',
+      severity: 'error',
+      from: { path: '^(src|entrypoints)/' },
+      to: { couldNotResolve: true, pathNot: '^#[a-z]' },
     },
     {
       name: 'no-circular',
