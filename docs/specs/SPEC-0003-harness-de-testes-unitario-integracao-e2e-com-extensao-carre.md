@@ -171,7 +171,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 174 ms); test exit 0 (Duration  17.14s (tests 99%, import 1%)); lint exit 0 (✔ Finished in 135 ms); coverage exit 0 (================================================================================) — e8a5367 | 2026-09-30 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — e8a5367 | 2026-09-30 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a33ee94f (2ª rodada): APPROVED @ e8a5367 (0 blocker/major, 4 minor; NFR 20s aceito com condição de dividir projeto tooling) — e8a5367 | 2026-09-30 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 220 ms); test exit 0 (Duration  19.15s (tests 98%, import 1%)); test_integration exit 0 (Duration  131ms (transform 58%, setup 23%, import 7%, worker 6%, tests 6%)); test_e2e exit 0 (3 passed (5.2s)); arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)); security_scan exit 0 ([90m6:12PM[0m [32mINF[0m [1mno leaks found[0m) — e97c193 | 2026-09-30 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
