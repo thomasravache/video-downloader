@@ -92,6 +92,7 @@ scripts/release/webstore.ts:
 |---|---|---|---|
 | Versão coerente | tag `v0.1.0`, package `0.1.0` | segue | UT-01 |
 | Versão divergente | tag `v0.1.1`, package `0.1.0` | falha `VERSION_MISMATCH` | UT-01 |
+| Diretório de provider sem manifesto / nenhum manifesto / id por token / `.map` e caminho de provider no bundle público | provider sem `provider.json`; zero manifestos; id colado em outra palavra; `.map` no zip | falha fechada (`INVALID_PROVIDER_MANIFEST`, `NO_PROVIDERS_FOUND`, `FORBIDDEN_PROVIDER_IN_PUBLIC`) e sem falso positivo por id parcial | IT-01, CT-01 |
 | Provider proibido no public | provider-fixture `local` injetado | falha `FORBIDDEN_PROVIDER_IN_PUBLIC` | CT-01, IT-01 |
 | Build limpo | só `generic` | guard passa; zips gerados e anexados à Release | IT-01, IT-02 |
 | rc vs estável | `-rc.1` / sem sufixo | `STAGED_PUBLISH` / `DEFAULT_PUBLISH`; Release prerelease ou não | UT-02 |
@@ -109,10 +110,11 @@ scripts/release/webstore.ts:
 
 ### 7.3 Testes de Integração
 - **IT-01** — Com `pnpm build` real e `PROVIDERS_EXTRA_DIR` apontando para um provider-fixture `flavors:[local]`, o `flavor-guard` sobre `.output/chrome-mv3-public` falha com `FORBIDDEN_PROVIDER_IN_PUBLIC:<id>`; sem o fixture, passa.
+  Endurecimento (Emenda 2): (c) diretório de provider sem `provider.json` → `INVALID_PROVIDER_MANIFEST` (falha fechada); (d) `providersDir` configurado (ex.: `src/providers` existente) sem nenhum manifesto → `NO_PROVIDERS_FOUND`; (e) o id só conta como vazamento quando aparece como token inteiro (sem letras, dígitos, `_` ou `-` colados), e o manifesto exige `id` com `^[a-z][a-z0-9-]{2,}$`; (f) o bundle público com arquivo `.map` ou com o caminho `src/providers/<diretório de provider que não inclui public>` → `FORBIDDEN_PROVIDER_IN_PUBLIC:<id>`.
 - **IT-02** — Com uma tag `v0.0.0-rc.1` num fork/branch de teste no GitHub, o workflow gera a Release prerelease com os dois zips e o job `webstore` fica aguardando aprovação (evidência: link da execução).
 
 ### 7.4 Testes de Contrato
-- **CT-01** — Consome SPEC-0005@1: o `flavor-guard` lê `provider.json` com o schema do contrato (`id`, `flavors`) e usa `PROVIDERS_EXTRA_DIR` conforme definido; se o schema mudar (campo renomeado), o teste falha.
+- **CT-01** — Consome SPEC-0005@1: o `flavor-guard` lê `provider.json` com o schema do contrato (`id`, `flavors`) e usa `PROVIDERS_EXTRA_DIR` conforme definido; se o schema mudar (campo renomeado), o teste falha. O `id` inválido por formato (curto demais, maiúsculas, espaços) também é rejeitado (Emenda 2).
 
 ### 7.5 Testes E2E
 - N/A — user_facing: false (o smoke da release executa o E2E de SPEC-0005 contra os zips).
@@ -171,9 +173,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/71]⎯) — 127ef64 | 2026-09-30 |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 166 ms); test exit 0 (Duration  17.99s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 128 ms); coverage exit 0 (================================================================================) — 6663870 | 2026-09-30 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — 6663870 | 2026-09-30 |
+| G4 Review | FAIL | reviewer-agent ab7e7390: CHANGES_REQUESTED @ 6663870 — 1 major (runbook: rollback não funciona) + 7 minor (flavor-guard fail-open e match frouxo, smoke sem asserção de não-rebuild, redact inconsistente, docs vs manifest, fetch redundante, re-run do webstore) | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
@@ -217,3 +219,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `tsconfig.json` (incluir `scripts/`) e `vitest.config.ts` (incluir `tests/release/**`); scripts executados com Node 24 nativo em vez de `tsx` | o harness da SPEC-0003 só enxerga os diretórios que já existiam; evita uma dependência fora dos ADRs | SPEC-0005 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
 | 1 (API) | 2026-09-30 | cliente da Chrome Web Store passa da API v1.1 para a v2 (`publisherId`, `uploadState SUCCEEDED/IN_PROGRESS/FAILED`, `publishType STAGED_PUBLISH/DEFAULT_PUBLISH`; rc = staged, estável = default); novo secret `CWS_PUBLISHER_ID`; `touches` inclui `tests/fixtures/providers/release-*/**` | a documentação oficial (developer.chrome.com/docs/webstore/api, consultada em 2026-09-30) declara a v2 vigente e a v1 arquivada desde out/2025; `trustedTesters` não existe na v2 | ADR-0004 (texto do staging) | pendente de ratificação do Thomas no H2 da onda 3 |
+| 2 (revisão) | 2026-09-30 | flavor-guard falha fechado (diretório sem manifesto, zero manifestos), id por token inteiro com formato mínimo, e rejeita `.map` e caminhos `src/providers/<local>` no bundle público; correção do procedimento de rollback no runbook; asserção de não-rebuild no smoke | achados do Reviewer (G4): o guard é a única barreira do ADR-0011 e falhava aberto; o rollback descrito não funcionava | nenhuma | pendente de ratificação do Thomas no H2 da onda 3 |
