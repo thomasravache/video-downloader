@@ -4,7 +4,7 @@ title: Harness de testes (unitário, integração, E2E com extensão carregada, 
 tier: full
 type: foundation
 user_facing: false
-status: in-progress
+status: implemented
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0002]
@@ -174,7 +174,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 220 ms); test exit 0 (Duration  19.15s (tests 98%, import 1%)); test_integration exit 0 (Duration  131ms (transform 58%, setup 23%, import 7%, worker 6%, tests 6%)); test_e2e exit 0 (3 passed (5.2s)); arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)); security_scan exit 0 ([90m6:12PM[0m [32mINF[0m [1mno leaks found[0m) — e97c193 | 2026-09-30 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-09-30 |
 | G6 Deploy | N/A | sem deploy nesta spec; release e deploy em SPEC-0006 | 2026-09-30 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 8c3d702 | 2026-09-30 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |

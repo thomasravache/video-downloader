@@ -4,7 +4,7 @@ title: Pipeline de CI no GitHub Actions
 tier: full
 type: foundation
 user_facing: false
-status: in-progress
+status: implemented
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0002]
