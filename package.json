@@ -25,10 +25,11 @@
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "typecheck": "FLAVOR=public wxt prepare && tsc --noEmit",
-    "test": "node -e \"console.error('test: definido em SPEC-0003'); process.exit(1)\"",
-    "test:integration": "node -e \"console.error('test:integration: definido em SPEC-0003'); process.exit(1)\"",
-    "test:e2e": "node -e \"console.error('test:e2e: definido em SPEC-0003'); process.exit(1)\"",
-    "arch": "node -e \"console.error('arch: definido em SPEC-0003'); process.exit(1)\""
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration --passWithNoTests",
+    "test:e2e": "node e2e/support/run.ts",
+    "arch": "depcruise src entrypoints --config .dependency-cruiser.cjs",
+    "coverage": "vitest run --coverage"
   },
   "engines": {
     "node": ">=24"
