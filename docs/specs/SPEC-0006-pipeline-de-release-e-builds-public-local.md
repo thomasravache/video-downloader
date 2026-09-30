@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0004]
 consumes_contract: [SPEC-0005@1]
 contract_version: 1
-touches: [.github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
+touches: [tsconfig.json, vitest.config.ts, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
 adrs: [ADR-0010, ADR-0011, ADR-0004, ADR-0006]
 external: []
 size: M
@@ -45,7 +45,7 @@ Uma tag SemVer (`vX.Y.Z` ou `vX.Y.Z-rc.N`) dispara o workflow de release: valida
 ## 4. Decisão Arquitetural
 **Contexto:** Projeto novo; ADR-0004 (entrega), ADR-0011 (flavors), ADR-0006 (segredos).
 
-**Decisão:** GitHub Actions por tag + GitHub Releases para o `local` + Chrome Web Store API para o `public`; scripts em TypeScript executados com `tsx`, testados por Vitest.
+**Decisão:** GitHub Actions por tag + GitHub Releases para o `local` + Chrome Web Store API para o `public`; scripts em TypeScript executados pelo próprio Node 24 (remoção nativa de tipos, sem `tsx` nem nova dependência), testados por Vitest.
 
 **Justificativa:** mesma plataforma do CI, publicação reproduzível e segredos só no environment protegido.
 
@@ -214,3 +214,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-09-30 | `touches` inclui `tsconfig.json` (incluir `scripts/`) e `vitest.config.ts` (incluir `tests/release/**`); scripts executados com Node 24 nativo em vez de `tsx` | o harness da SPEC-0003 só enxerga os diretórios que já existiam; evita uma dependência fora dos ADRs | SPEC-0005 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |

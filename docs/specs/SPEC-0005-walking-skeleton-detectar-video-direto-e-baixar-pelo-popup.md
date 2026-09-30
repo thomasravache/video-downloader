@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0003, SPEC-0004]
 consumes_contract: []
 contract_version: 1
-touches: [wxt.config.ts, src/core/**, src/providers/generic/**, src/providers/build/**, entrypoints/**, public/_locales/**, tests/unit/**, tests/integration/**, tests/fixtures/providers/**, e2e/journeys/**, e2e/fixtures/pages/**]
+touches: [package.json, pnpm-lock.yaml, .dependency-cruiser.cjs, e2e/support/**, wxt.config.ts, src/core/**, src/providers/generic/**, src/providers/build/**, entrypoints/**, public/_locales/**, tests/unit/**, tests/integration/**, tests/fixtures/providers/**, e2e/journeys/**, e2e/fixtures/pages/**]
 adrs: [ADR-0010, ADR-0011, ADR-0007, ADR-0006, ADR-0009]
 external: []
 size: M
@@ -254,3 +254,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-09-30 | `touches` inclui `package.json`/`pnpm-lock.yaml` (única dependência nova: `@axe-core/playwright`, já exigida no §7.6), `.dependency-cruiser.cjs` (o módulo virtual `virtual:providers` precisa de exceção em `not-to-unresolvable`, sem afrouxar as regras do ADR-0001) e `e2e/support/**` | necessidades descobertas ao planejar a onda 3 contra o harness real da SPEC-0003 | SPEC-0006 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
