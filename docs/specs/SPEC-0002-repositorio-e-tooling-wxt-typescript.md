@@ -142,26 +142,26 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Configuração de build por flavor**
-- [ ] Red: escrever UT-01, UT-02 com a tag `SPEC-0002:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02 com a tag `SPEC-0002:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Scripts e stubs**
-- [ ] Red: escrever UT-03, IT-01, IT-02, IT-03 com a tag `SPEC-0002:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-03, IT-01, IT-02, IT-03 com a tag `SPEC-0002:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Repositório e enforcement (após G4, com confirmação do Thomas)**
-- [ ] `vendor --agents --pr-template github --hooks --changelog`, LICENSE MIT, README
-- [ ] Criar repositório público no GitHub e push (**só com autorização explícita**) e configurar o ruleset da `main`
+- [x] `vendor --agents --pr-template github --hooks --changelog`, LICENSE MIT, README
+- [x] Criar repositório público no GitHub e push (**só com autorização explícita**) e configurar o ruleset da `main`
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy: N/A (nada publicado) — G6 = N/A apontando SPEC-0006
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Deploy: N/A (nada publicado) — G6 = N/A apontando SPEC-0006
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
