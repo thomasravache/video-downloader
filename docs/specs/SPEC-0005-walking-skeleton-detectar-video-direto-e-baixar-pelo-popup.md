@@ -4,7 +4,7 @@ title: "Walking skeleton: detectar vídeo direto e baixar pelo popup"
 tier: full
 type: foundation
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0003, SPEC-0004]

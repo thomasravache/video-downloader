@@ -4,7 +4,7 @@ title: Pipeline de release e builds public/local
 tier: full
 type: foundation
 user_facing: false
-status: approved
+status: in-progress
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0004]
