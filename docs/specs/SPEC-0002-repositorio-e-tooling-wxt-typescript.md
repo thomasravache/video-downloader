@@ -95,7 +95,7 @@ manifest.json gerado:
 | Modo inválido | `wxt build --mode foo` | build falha com "FLAVOR inválido" | UT-02 |
 | Lint/tipos com erro | arquivo com `any` implícito | `lint`/`typecheck` exit ≠ 0 | IT-03 |
 | Arquivos sensíveis | `.env`, `.output`, `*.pem` | ignorados pelo git | IT-02 |
-| Stubs de teste | `pnpm test` antes de SPEC-0003 | exit 1 com mensagem clara | UT-03 |
+| Scripts do contrato | `package.json` | todo script do Contrato existe (`test`, `test:integration`, `test:e2e`, `arch`, `build*`, `lint`, `format:check`, `typecheck`); antes da SPEC-0003 os quatro primeiros eram stubs com exit 1 citando SPEC-0003 | UT-03 |
 
 ## 7. Artefato B — Plano de Testes (TDD)
 ### 7.1 Testes de Caracterização
@@ -104,7 +104,7 @@ manifest.json gerado:
 ### 7.2 Testes Unitários
 - **UT-01** — Dado o modo `public` ou `local`, quando a função de configuração do manifesto é chamada, então retorna `manifest_version: 3`, `default_locale: pt_BR` e o FLAVOR correspondente.
 - **UT-02** — Dado um modo diferente de `public`/`local`, quando a configuração é resolvida, então lança erro "FLAVOR inválido".
-- **UT-03** — Dado que SPEC-0003 não foi implementada, quando o script stub de teste roda, então sai com código 1 e mensagem citando SPEC-0003.
+- **UT-03** — Dado o `package.json`, quando os scripts são listados, então existem todos os scripts do Contrato. (Emenda: na SPEC-0002 original verificava que o stub saía com código 1 citando SPEC-0003; a SPEC-0003 substituiu os stubs pelos scripts reais.)
 
 ### 7.3 Testes de Integração
 - **IT-01** — Rodando `pnpm build` de verdade, os dois diretórios de saída existem, o `manifest.json` de cada um é MV3 válido e `_locales/pt_BR` e `_locales/en` contêm `extName`.
@@ -196,7 +196,7 @@ N/A — type foundation.
 |---|---|---|---|
 | UT-01 | build por flavor devolve MV3/pt_BR/FLAVOR | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/flavor.test.ts` |
 | UT-02 | modo inválido lança "FLAVOR inválido" | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/flavor.test.ts` |
-| UT-03 | stub `pnpm test` sai 1 citando SPEC-0003 | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/stubs.test.ts` |
+| UT-03 | todos os scripts do Contrato existem (antes: stub sai 1 citando SPEC-0003; ver Emendas) | PASS | original: vitest 14/14 em d15a314/cfea88b (`stubs.test.ts`); após emenda: `tests/tooling/scripts.test.ts` verde na onda 2 |
 | IT-01 | `pnpm build` gera os dois outputs com locales | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/build.test.ts` |
 | IT-02 | arquivos sensíveis ignorados pelo git | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/gitignore.test.ts` |
 | IT-03 | typecheck/lint falham só com violação | PASS | vitest 14/14 passando em d15a314 (G2) e cfea88b (G5), `tests/tooling/lint-typecheck.test.ts` |
@@ -222,3 +222,4 @@ SPEC-0007 (lite): falha quando `FLAVOR` e o modo divergem e tipagem de `import.m
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (teste) | 2026-09-30 | UT-03 passa a verificar que todos os scripts do Contrato existem, em vez do stub com exit 1 | a SPEC-0003 substituiu os stubs pelos scripts reais; o teste original ficou sem objeto, e `pr-check` exige um teste com a tag no código | SPEC-0003 | pendente de ratificação do Thomas no H2 da onda 2 |
