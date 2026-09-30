@@ -4,7 +4,7 @@ title: Repositório e tooling (WXT + TypeScript)
 tier: full
 type: foundation
 user_facing: false
-status: in-progress
+status: implemented
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: []
@@ -174,7 +174,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 200 ms); test exit 0 (Duration  5.60s (tests 96%, import 3%, transform 1%)) — cfea88b | 2026-09-30 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-09-30 |
 | G6 Deploy | N/A | nada é publicado nesta spec; deploy/release entregues por SPEC-0006 | 2026-09-30 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 03e656c | 2026-09-30 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
