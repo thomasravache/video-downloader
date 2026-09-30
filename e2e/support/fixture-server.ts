@@ -22,7 +22,13 @@ export interface FixtureServer {
 /** Servidor estático de e2e/fixtures/, escutando APENAS em 127.0.0.1 (porta efêmera). */
 export async function startFixtureServer(): Promise<FixtureServer> {
   const server: Server = createServer((req, res) => {
-    const pathname = decodeURIComponent(new URL(req.url ?? '/', `http://${HOST}`).pathname);
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(new URL(req.url ?? '/', `http://${HOST}`).pathname);
+    } catch {
+      res.writeHead(400).end('bad request');
+      return;
+    }
     const relative = normalize(pathname === '/' ? '/index.html' : pathname);
     const file = join(FIXTURES_DIR, relative);
     if (!file.startsWith(FIXTURES_DIR) || !existsSync(file) || !statSync(file).isFile()) {
