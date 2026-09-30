@@ -10,7 +10,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text-summary', 'lcov'],
       reportsDirectory: 'coverage',
-      include: ['src/**', 'entrypoints/**'],
+      include: ['src/**/*.ts', 'entrypoints/**/*.ts'],
     },
     projects: [
       {
