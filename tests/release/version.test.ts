@@ -9,10 +9,10 @@
  *  - cli.ts     : `node scripts/release/cli.ts verify-version <tag>` lê ./package.json#version;
  *                 exit 0 se coerente, exit != 0 com `VERSION_MISMATCH` na saída caso contrário.
  *  - redact.ts  : `redact(text, secrets[])`, `formatError(error, secrets[])` (UT-03).
- *  - webstore.ts: `publishTargetFor(version)`, `upload`, `publish`, `releaseToStore` (UT-02).
+ *  - webstore.ts: `publishTypeFor(version)`, `upload`, `publish`, `releaseToStore` (UT-02).
  *  - flavor-guard.ts: `checkFlavorGuard({ distDir, providersDir })` síncrono (IT-01, CT-01);
  *                 cli.ts `flavor-guard <distDir>` usa `src/providers` (se existir) + `PROVIDERS_EXTRA_DIR`.
- *  - cli.ts `webstore <zip> <tag>` lê CWS_CLIENT_ID/CWS_CLIENT_SECRET/CWS_REFRESH_TOKEN/CWS_EXTENSION_ID.
+ *  - cli.ts `webstore <zip> <tag>` lê CWS_CLIENT_ID/CWS_CLIENT_SECRET/CWS_REFRESH_TOKEN/CWS_PUBLISHER_ID/CWS_EXTENSION_ID.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

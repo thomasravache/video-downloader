@@ -44,7 +44,7 @@ export function runNode(args: string[], env: Record<string, string> = {}, timeou
   return { code: r.status, out: `${r.stdout}\n${r.stderr}` };
 }
 
-// ---- Dublê da Chrome Web Store API (fetch injetável) -----------------------------------------
+// ---- Dublê da Chrome Web Store API v2 (fetch injetável) --------------------------------------
 
 export const ACCESS_TOKEN = 'ya29.FAKE-ACCESS-TOKEN';
 
@@ -52,6 +52,7 @@ export const CREDS = {
   clientId: 'fake-client-id.apps.googleusercontent.com',
   clientSecret: 'GOCSPX-fake-client-secret',
   refreshToken: '1//0g-fake-refresh-token/with+chars',
+  publisherId: 'fake-publisher-id',
   extensionId: 'abcdefghijklmnopabcdefghijklmnop',
 };
 
@@ -59,8 +60,9 @@ export interface Reply {
   status?: number;
   json: unknown;
 }
+export type CallKind = 'token' | 'upload' | 'status' | 'publish';
 export interface Call {
-  kind: 'token' | 'upload' | 'publish';
+  kind: CallKind;
   url: URL;
   method: string;
   headers: Headers;
@@ -70,22 +72,53 @@ export interface Call {
 export interface FakeCws {
   fetch: typeof fetch;
   calls: Call[];
-  of(kind: Call['kind']): Call[];
+  of(kind: CallKind): Call[];
 }
 
-/** Roteia por URL: oauth2.googleapis.com → token; `/upload/chromewebstore/` → upload; `/publish` → publish. */
-export function fakeCws(routes: { token?: Reply; upload?: Reply; publish?: Reply }): FakeCws {
+type Route = Reply | Reply[];
+
+/**
+ * Roteia por URL: oauth2.googleapis.com → token; `/upload/v2/...:upload` → upload;
+ * `...:fetchStatus` → status; `...:publish` → publish. Uma rota pode ser uma lista de respostas,
+ * consumidas em ordem (a última se repete).
+ */
+export function fakeCws(routes: {
+  token?: Route;
+  upload?: Route;
+  status?: Route;
+  publish?: Route;
+}): FakeCws {
   const calls: Call[] = [];
-  const replies: Record<Call['kind'], Reply> = {
-    token: routes.token ?? {
-      json: { access_token: ACCESS_TOKEN, expires_in: 3599, token_type: 'Bearer' },
-    },
-    upload: routes.upload ?? {
-      json: { kind: 'chromewebstore#item', id: CREDS.extensionId, uploadState: 'SUCCESS' },
-    },
-    publish: routes.publish ?? {
-      json: { kind: 'chromewebstore#item', item_id: CREDS.extensionId, status: ['OK'] },
-    },
+  const replies: Record<CallKind, Reply[]> = {
+    token: [].concat(
+      (routes.token ?? {
+        json: { access_token: ACCESS_TOKEN, expires_in: 3599, token_type: 'Bearer' },
+      }) as never,
+    ),
+    upload: [].concat(
+      (routes.upload ?? {
+        json: {
+          name: `publishers/${CREDS.publisherId}/items/${CREDS.extensionId}`,
+          uploadState: 'SUCCEEDED',
+          crxVersion: '0.1.0',
+          itemId: CREDS.extensionId,
+        },
+      }) as never,
+    ),
+    status: [].concat(
+      (routes.status ?? {
+        json: { itemId: CREDS.extensionId, lastAsyncUploadState: 'SUCCEEDED' },
+      }) as never,
+    ),
+    publish: [].concat(
+      (routes.publish ?? {
+        json: {
+          name: `publishers/${CREDS.publisherId}/items/${CREDS.extensionId}`,
+          itemId: CREDS.extensionId,
+          state: 'PENDING_REVIEW',
+        },
+      }) as never,
+    ),
   };
   const fakeFetch = async (
     input: string | URL | Request,
@@ -93,11 +126,15 @@ export function fakeCws(routes: { token?: Reply; upload?: Reply; publish?: Reply
   ): Promise<Response> => {
     const req = new Request(input, init);
     const url = new URL(req.url);
-    let kind: Call['kind'];
+    let kind: CallKind;
     if (url.hostname === 'oauth2.googleapis.com') kind = 'token';
-    else if (url.pathname.includes('/upload/chromewebstore/')) kind = 'upload';
-    else if (url.pathname.endsWith('/publish')) kind = 'publish';
+    else if (url.hostname !== 'chromewebstore.googleapis.com')
+      throw new Error(`fakeCws: unexpected host ${req.method} ${req.url}`);
+    else if (url.pathname.endsWith(':upload')) kind = 'upload';
+    else if (url.pathname.endsWith(':fetchStatus')) kind = 'status';
+    else if (url.pathname.endsWith(':publish')) kind = 'publish';
     else throw new Error(`fakeCws: unexpected request ${req.method} ${req.url}`);
+    const seen = calls.filter((c) => c.kind === kind).length;
     calls.push({
       kind,
       url,
@@ -105,11 +142,24 @@ export function fakeCws(routes: { token?: Reply; upload?: Reply; publish?: Reply
       headers: req.headers,
       body: new Uint8Array(await req.arrayBuffer()),
     });
-    const reply = replies[kind];
+    const list = replies[kind];
+    const reply = list[Math.min(seen, list.length - 1)] as Reply;
     return new Response(JSON.stringify(reply.json), {
       status: reply.status ?? 200,
       headers: { 'content-type': 'application/json' },
     });
   };
   return { fetch: fakeFetch, calls, of: (k) => calls.filter((c) => c.kind === k) };
+}
+
+/** Relógio falso: `sleep` avança `now` sem esperar de verdade. */
+export function fakeClock() {
+  let t = 0;
+  return {
+    now: () => t,
+    sleep: (ms: number) => {
+      t += ms;
+      return Promise.resolve();
+    },
+  };
 }
