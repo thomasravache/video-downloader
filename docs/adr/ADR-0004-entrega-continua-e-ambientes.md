@@ -36,7 +36,7 @@ Sem caminho automatizado até produção, o produto fica 'pronto' sem nunca cheg
 **Regras (verificáveis):**
 - Um único pipeline leva do commit à produção; nada é publicado fora dele.
 - A branch principal está sempre em estado publicável.
-- Staging é atualizado automaticamente a cada merge: build de pré-release (`local` como artefato do workflow) com E2E contra os zips gerados; a listagem **não listada** da loja recebe a release candidata por tag `vX.Y.Z-rc.N`.
+- Staging é atualizado automaticamente a cada merge: build de pré-release (`local` como artefato do workflow) com E2E contra os zips gerados; a release candidata (tag `vX.Y.Z-rc.N`) é submetida à loja com `publishType=STAGED_PUBLISH` (API v2: aprovada na revisão e mantida em staging, sem publicar) e os zips vão para uma GitHub Release prerelease. (Nota 2026-09-30: a v1.1 com `trustedTesters` foi arquivada; ver SPEC-0006 Emenda 1.)
 - Produção exige confirmação humana por release; estratégia (direta, flag, canário, blue-green) definida por spec.
 - Rollback em um passo, ensaiado: republicar o código da tag anterior com versão maior (`X.Y.Z+1`), pois a loja não aceita downgrade; preferências em `chrome.storage` compatíveis com a versão anterior.
 - Métricas DORA acompanhadas: frequência de deploy, tempo de entrega, taxa de falha, tempo de recuperação.
