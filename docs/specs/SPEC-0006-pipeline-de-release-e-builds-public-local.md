@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0004]
 consumes_contract: [SPEC-0005@1]
 contract_version: 1
-touches: [tsconfig.json, vitest.config.ts, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
+touches: [tsconfig.json, vitest.config.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
 adrs: [ADR-0010, ADR-0011, ADR-0004, ADR-0006]
 external: []
 size: M
@@ -28,7 +28,7 @@ Uma tag SemVer (`vX.Y.Z` ou `vX.Y.Z-rc.N`) dispara o workflow de release: valida
 
 **Objetivos (dentro do escopo):**
 - `release.yml` por tag, com jobs `verify-version`, `build`, `flavor-guard`, `smoke`, `github-release`, `webstore` (environment `webstore` com aprovação obrigatória do Thomas).
-- `scripts/release/`: checagem de versão, inspeção de bundle (`flavor-guard`), cliente mínimo da Chrome Web Store API (upload + publish, com `publishTarget` `trustedTesters`/`default`).
+- `scripts/release/`: checagem de versão, inspeção de bundle (`flavor-guard`), cliente mínimo da Chrome Web Store API **v2** (upload + publish, com `publishType` `STAGED_PUBLISH` para rc e `DEFAULT_PUBLISH` para estável).
 - Política de privacidade (`docs/privacy-policy.md`, pt-BR/en) e textos/capturas da listagem (`docs/store-listing/`), com a declaração de uso para conteúdo que o usuário tem direito de baixar e sem DRM.
 - Runbook de release e rollback (`docs/runbook.md`).
 - `deploy_staging`, `deploy_production` e `smoke_test` no sdd-config.
@@ -40,7 +40,7 @@ Uma tag SemVer (`vX.Y.Z` ou `vX.Y.Z-rc.N`) dispara o workflow de release: valida
 ## 3. Dependências
 - **Implementações necessárias:** SPEC-0004 — CI e ruleset (a release só roda a partir de commit verde na `main`).
 - **Contratos consumidos:** SPEC-0005@1 — `ProviderManifest` (`provider.json` com `flavors`) e `PROVIDERS_EXTRA_DIR` para o `flavor-guard`.
-- **Pré-requisitos externos:** conta de desenvolvedor da Chrome Web Store (Thomas vai criar); item criado na loja (primeiro upload manual exigido pela loja, se ainda for o caso); credenciais OAuth (`CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_EXTENSION_ID`) como secrets do environment `webstore`.
+- **Pré-requisitos externos:** conta de desenvolvedor da Chrome Web Store (Thomas vai criar); item criado na loja (primeiro upload manual exigido pela loja, se ainda for o caso); credenciais OAuth (`CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_PUBLISHER_ID`, `CWS_EXTENSION_ID`; API v2 exige o `publisherId`, e o escopo `https://www.googleapis.com/auth/chromewebstore`) como secrets do environment `webstore`.
 
 ## 4. Decisão Arquitetural
 **Contexto:** Projeto novo; ADR-0004 (entrega), ADR-0011 (flavors), ADR-0006 (segredos).
@@ -75,12 +75,12 @@ Gatilho: push de tag v<semver>
   smoke          : pnpm test:e2e contra os zips gerados (os dois flavors)
   github-release : cria Release (prerelease se -rc.N) com extension-{public,local}-X.Y.Z.zip
   webstore       : (aprovação no environment) upload do zip public;
-                   rc → publishTarget=trustedTesters (staging); estável → publishTarget=default (produção)
+                   rc → publishType=STAGED_PUBLISH (aprovado na revisão e mantido em staging, sem ir ao público); estável → publishType=DEFAULT_PUBLISH (publica ao aprovar)
                    erros da API → falha com código/mensagem da API, sem expor segredos
 
 scripts/release/webstore.ts:
-  upload(zip, creds)  → { uploadState: 'SUCCESS' | 'FAILURE', itemError?: [...] }
-  publish(target)     → { status: string[] }
+  upload(zip, creds)  → POST https://chromewebstore.googleapis.com/upload/v2/publishers/{publisherId}/items/{itemId}:upload (corpo = zip; Bearer) → { uploadState: 'SUCCEEDED' | 'IN_PROGRESS' | 'FAILED', crxVersion } ; IN_PROGRESS → consulta `:fetchStatus` (GET v2/publishers/{p}/items/{i}:fetchStatus, campo lastAsyncUploadState) até SUCCEEDED/FAILED ou timeout
+  publish(type, creds) → POST https://chromewebstore.googleapis.com/v2/publishers/{p}/items/{i}:publish com { publishType: 'STAGED_PUBLISH' | 'DEFAULT_PUBLISH' } → { state: 'PENDING_REVIEW' | 'STAGED' | 'PUBLISHED' | 'PUBLISHED_TO_TESTERS' | ... } (REJECTED/CANCELLED → falha)
 ```
 
 **Design:** N/A — sem interface.
@@ -94,7 +94,7 @@ scripts/release/webstore.ts:
 | Versão divergente | tag `v0.1.1`, package `0.1.0` | falha `VERSION_MISMATCH` | UT-01 |
 | Provider proibido no public | provider-fixture `local` injetado | falha `FORBIDDEN_PROVIDER_IN_PUBLIC` | CT-01, IT-01 |
 | Build limpo | só `generic` | guard passa; zips gerados e anexados à Release | IT-01, IT-02 |
-| rc vs estável | `-rc.1` / sem sufixo | `trustedTesters` / `default`; Release prerelease ou não | UT-02 |
+| rc vs estável | `-rc.1` / sem sufixo | `STAGED_PUBLISH` / `DEFAULT_PUBLISH`; Release prerelease ou não | UT-02 |
 | API da loja falha | resposta `FAILURE` / 4xx | job falha com mensagem da API | UT-02 |
 | Segredo em log | erro contendo refresh token | valor mascarado na saída | UT-03 |
 
@@ -104,7 +104,7 @@ scripts/release/webstore.ts:
 
 ### 7.2 Testes Unitários
 - **UT-01** — Dado pares (tag, versão do package.json), quando `verifyVersion` é chamado, então aceita iguais (inclusive `-rc.N`) e falha com `VERSION_MISMATCH` nos demais.
-- **UT-02** — Dado respostas simuladas da Chrome Web Store API (sucesso, `FAILURE` com `itemError`, 401, versão já enviada), quando `upload`/`publish` rodam, então escolhem `trustedTesters` para rc e `default` para estável e falham com a mensagem da API nos erros.
+- **UT-02** — Dado respostas simuladas da Chrome Web Store API v2 (upload `SUCCEEDED`, `FAILED`, `IN_PROGRESS` seguido de `fetchStatus`, 401, versão já enviada; publish `PENDING_REVIEW`/`STAGED`/`PUBLISHED`/`REJECTED`), quando `upload`/`publish` rodam, então escolhem `STAGED_PUBLISH` para rc e `DEFAULT_PUBLISH` para estável e falham com a mensagem da API nos erros.
 - **UT-03** — Dado um erro cuja mensagem contém o valor do refresh token, quando o logger de release formata a saída, então o valor aparece como `***`.
 
 ### 7.3 Testes de Integração
@@ -125,7 +125,7 @@ scripts/release/webstore.ts:
 **Ambiente de execução:** UT/IT-01 local e no CI; IT-02 no GitHub Actions do repositório.
 
 ## 8. Plano de Rollout
-- **Estratégia:** `v0.1.0-rc.1` → testadores confiáveis/não listada (staging, G6) → confirmação humana → `v0.1.0` na listagem pública (produção).
+- **Estratégia:** `v0.1.0-rc.1` → submissão `STAGED_PUBLISH` (staging, G6: revisão aprovada, nada público) + zips do rc na GitHub Release prerelease para o Thomas testar instalando sem empacotar → confirmação humana → `v0.1.0` com `DEFAULT_PUBLISH` (produção).
 - **Dados/schema:** N/A
 - **Compatibilidade:** versão da loja sempre crescente; `version_name` exibe o SemVer com sufixo rc.
 - **Observabilidade:** notificação de falha do workflow; status da revisão acompanhado no Developer Dashboard; runbook em `docs/runbook.md`.
@@ -182,6 +182,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-09-30 | G1 | spec | Contrato da Chrome Web Store API baseado na v1.1 (publishTarget trustedTesters, uploadState FAILURE, sem publisherId); a API vigente é a v2 (docs oficiais: v1 arquivada desde out/2025): upload POST /upload/v2/publishers/{p}/items/{i}:upload com uploadState SUCCEEDED\|IN_PROGRESS\|FAILED; publish com publishType DEFAULT_PUBLISH\|STAGED_PUBLISH; exige publisherId | Consulta à documentação oficial e ao discovery document v2 (2026-09-30) | Architect (emenda; ratificação do Thomas no H2) | Emenda 1 (API) — cliente Web Store v2; ratificação no H2 da onda 3 | 2026-09-30 |
 
 ## 14. Relatório de Entrega
 
@@ -215,3 +216,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `tsconfig.json` (incluir `scripts/`) e `vitest.config.ts` (incluir `tests/release/**`); scripts executados com Node 24 nativo em vez de `tsx` | o harness da SPEC-0003 só enxerga os diretórios que já existiam; evita uma dependência fora dos ADRs | SPEC-0005 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
+| 1 (API) | 2026-09-30 | cliente da Chrome Web Store passa da API v1.1 para a v2 (`publisherId`, `uploadState SUCCEEDED/IN_PROGRESS/FAILED`, `publishType STAGED_PUBLISH/DEFAULT_PUBLISH`; rc = staged, estável = default); novo secret `CWS_PUBLISHER_ID`; `touches` inclui `tests/fixtures/providers/release-*/**` | a documentação oficial (developer.chrome.com/docs/webstore/api, consultada em 2026-09-30) declara a v2 vigente e a v1 arquivada desde out/2025; `trustedTesters` não existe na v2 | ADR-0004 (texto do staging) | pendente de ratificação do Thomas no H2 da onda 3 |
