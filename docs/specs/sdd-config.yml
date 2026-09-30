@@ -11,7 +11,7 @@ max_parallel: 3
 build: "pnpm build"
 # Suíte completa. Exemplos: "dotnet test" | "npm test" | "pytest" | "go test ./..."
 # Interino (SPEC-0002): só os testes de tooling; SPEC-0003 troca por "pnpm test"
-test: "pnpm exec vitest run tests/tooling"
+test: "pnpm exec vitest run tests/tooling tests/harness tests/ci"
 test_integration: ""
 # E2E da jornada do usuário. Exemplos: "npx playwright test" | "npx cypress run" | "maestro test flows/"
 test_e2e: ""
