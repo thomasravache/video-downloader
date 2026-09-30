@@ -10,7 +10,7 @@ const BROWSER_API_MODULES =
 
 /** Especificadores de módulo (não resolvidos pelo cruiser) que dão acesso a APIs de extensão. */
 const BROWSER_API_SPECIFIERS =
-  '^(#|wxt/(browser|testing)|@wxt-dev/browser|webextension-polyfill|@webext-core/|@types/(chrome|webextension-polyfill))(/|$)';
+  '^(#[a-z-]+|wxt/(browser|testing)|@wxt-dev/browser|webextension-polyfill|@webext-core/|@types/(chrome|webextension-polyfill))(/|$)';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
