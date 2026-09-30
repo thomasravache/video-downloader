@@ -31,7 +31,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js'],
+    files: ['eslint.config.js', '.dependency-cruiser.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },
 );
