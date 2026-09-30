@@ -5,8 +5,8 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 3 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 4, implemented 1
-- Impedimentos: **0 aberto(s)**, 0 resolvido(s)
+- Specs: proposed 1, approved 2, in-progress 2, implemented 1
+- Impedimentos: **0 aberto(s)**, 1 resolvido(s)
 
 ## Cobertura de Pilares
 
@@ -35,17 +35,17 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
+**Em andamento:** SPEC-0003, SPEC-0004  
 **Paradas por impedimento:** —  
-**Próximo lote:** SPEC-0003, SPEC-0004
+**Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0003 | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full/M | approved | ✅ pronta |  |
-| 1 | SPEC-0004 | Pipeline de CI no GitHub Actions | full/S | approved | ✅ pronta |  |
-| 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
+| 1 | SPEC-0003 | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full/M | in-progress | 🔄 em andamento |  |
+| 1 | SPEC-0004 | Pipeline de CI no GitHub Actions | full/S | in-progress | 🔄 em andamento |  |
 | 2 | SPEC-0005 | Walking skeleton: detectar vídeo direto e baixar pelo popup | full/M | approved | ⛔ aguarda implementação de SPEC-0003; aguarda implementação de SPEC-0004 |  |
 | 2 | SPEC-0006 | Pipeline de release e builds public/local | full/M | approved | ⛔ aguarda implementação de SPEC-0004 |  |
+| 3 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0003; saiu da onda 2: arquivos em comum com SPEC-0005 |
 
 ## Épicos
 
@@ -61,8 +61,8 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 flowchart LR
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
-    S0003["SPEC-0003<br/>Harness de testes (unitário, integração…"]:::approved
-    S0004["SPEC-0004<br/>Pipeline de CI no GitHub Actions"]:::approved
+    S0003["SPEC-0003<br/>Harness de testes (unitário, integração…"]:::inprogress
+    S0004["SPEC-0004<br/>Pipeline de CI no GitHub Actions"]:::inprogress
     S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::approved
     S0006["SPEC-0006<br/>Pipeline de release e builds public/loc…"]:::approved
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
@@ -87,8 +87,8 @@ flowchart LR
 |---|---|---|---|---|---|---|---|---|
 | [SPEC-0001](SPEC-0001-fundacao-da-extensao-de-download-de-videos.md) | Fundação da extensão de download de vídeos | epic | foundation | approved | 2026-09-30 | — | — | — |
 | [SPEC-0002](SPEC-0002-repositorio-e-tooling-wxt-typescript.md) | Repositório e tooling (WXT + TypeScript) | full | foundation | implemented | 2026-09-30 | SPEC-0001 | — | — |
-| [SPEC-0003](SPEC-0003-harness-de-testes-unitario-integracao-e2e-com-extensao-carre.md) | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
-| [SPEC-0004](SPEC-0004-pipeline-de-ci-no-github-actions.md) | Pipeline de CI no GitHub Actions | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
+| [SPEC-0003](SPEC-0003-harness-de-testes-unitario-integracao-e2e-com-extensao-carre.md) | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full | foundation | in-progress | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
+| [SPEC-0004](SPEC-0004-pipeline-de-ci-no-github-actions.md) | Pipeline de CI no GitHub Actions | full | foundation | in-progress | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
 | [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
 | [SPEC-0006](SPEC-0006-pipeline-de-release-e-builds-public-local.md) | Pipeline de release e builds public/local | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0004 | SPEC-0005@1 |
 | [SPEC-0007](SPEC-0007-endurecer-selecao-de-flavor-e-tipar-flavor.md) | Endurecer seleção de flavor e tipar FLAVOR | lite | fix | proposed | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
