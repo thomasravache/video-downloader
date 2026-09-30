@@ -63,6 +63,7 @@ Versões verificadas no registro npm em 2026-09-30 (`npm view`):
 - vite 8.3.1 (2026-09-24); @crxjs/vite-plugin 3.0.0 (2026-09-24) — ativo.
 - plasmo 0.90.5 — última atualização 2025-05-17 (sem manutenção há ~16 meses → penalizado).
 - typescript 7.0.2 (2026-09-30); vitest 5.0.3 (2026-09-30); @playwright/test 1.63.0 (2026-09-30).
+- **Nota 2026-09-30 (SPEC-0002):** TypeScript fixado em 6.0.3 (não 7.0.2) porque o typescript-eslint 8.71.0 só aceita `typescript >=4.8.4 <6.1.0`; reavaliar quando ele suportar 7. O Vite 8 rejeita o modo chamado `local`, então o build local usa `FLAVOR=local wxt build --mode flavor-local` (o build usa `--mode public|flavor-local` + variável `FLAVOR`). Node LTS vigente: 24 (nodejs.org, 2026-09-30).
 - Node.js local 26.3.1; CI usará a LTS ativa (confirmar em SPEC-0002).
 - Chrome Web Store Program Policies — https://developer.chrome.com/docs/webstore/program-policies/policies (consultado 2026-09-30): MV3, permissões mínimas, política de privacidade obrigatória se houver dados do usuário.
 - Blazor.BrowserExtension — não verificado em detalhe (descartado pelos direcionadores de tamanho e contexto).
