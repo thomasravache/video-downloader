@@ -8,3 +8,6 @@ pnpm-lock.yaml
 docs/
 tools/
 tests/tooling/
+.github/pull_request_template.md
+AGENTS.md
+CHANGELOG.md
