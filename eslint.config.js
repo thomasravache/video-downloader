@@ -31,7 +31,42 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js'],
+    // ADR-0001: o core é puro. Globais de extensão não são imports, então o dependency-cruiser
+    // não os vê; aqui os proibimos (testes e demais diretórios não são afetados).
+    files: ['src/core/**'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'chrome', message: 'ADR-0001: o core não pode usar APIs de extensão (chrome).' },
+        { name: 'browser', message: 'ADR-0001: o core não pode usar APIs de extensão (browser).' },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'globalThis',
+          property: 'chrome',
+          message: 'ADR-0001: sem APIs de extensão no core.',
+        },
+        {
+          object: 'globalThis',
+          property: 'browser',
+          message: 'ADR-0001: sem APIs de extensão no core.',
+        },
+        {
+          object: 'window',
+          property: 'chrome',
+          message: 'ADR-0001: sem APIs de extensão no core.',
+        },
+        {
+          object: 'window',
+          property: 'browser',
+          message: 'ADR-0001: sem APIs de extensão no core.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['eslint.config.js', '.dependency-cruiser.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },
 );
