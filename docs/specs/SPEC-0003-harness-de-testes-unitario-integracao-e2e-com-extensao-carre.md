@@ -4,13 +4,13 @@ title: Harness de testes (unitário, integração, E2E com extensão carregada, 
 tier: full
 type: foundation
 user_facing: false
-status: approved
+status: in-progress
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0002]
 consumes_contract: []
 contract_version: 1
-touches: [package.json, pnpm-lock.yaml, vitest.config.ts, vitest.workspace.ts, playwright.config.ts, .dependency-cruiser.cjs, tests/support/**, tests/harness/**, e2e/support/**, e2e/fixtures/**, e2e/harness.spec.ts]
+touches: [package.json, pnpm-lock.yaml, tests/tooling/stubs.test.ts, vitest.config.ts, vitest.workspace.ts, playwright.config.ts, .dependency-cruiser.cjs, tests/support/**, tests/harness/**, e2e/support/**, e2e/fixtures/**, e2e/harness.spec.ts]
 adrs: [ADR-0010, ADR-0002, ADR-0001]
 external: []
 size: M
@@ -32,6 +32,7 @@ Monta os quatro níveis de teste definidos no ADR-0002 e as regras de fronteira 
 - dependency-cruiser com as regras do ADR-0001 e do ADR-0011 (core ↛ providers/entrypoints/chrome; providers ↛ providers/UI; popup ↛ providers; sem ciclos).
 - Cobertura de linhas alteradas (`@vitest/coverage-v8` + relatório lcov) para o G2.
 - Atualizar os comandos reais em `docs/specs/sdd-config.yml` (feito pelo Architect ao registrar o G2).
+- Remover os stubs `test`, `test:integration`, `test:e2e`, `arch` do package.json e o teste `tests/tooling/stubs.test.ts` (UT-03 da SPEC-0002), que deixa de ter objeto: não sobra script stub (ver Emendas).
 
 **Não-objetivos (fora do escopo):**
 - Rodar no CI (SPEC-0004).
@@ -210,3 +211,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-09-30 | `touches` inclui `tests/tooling/stubs.test.ts`; objetivo de remover o stub test da SPEC-0002 | implementar `pnpm test` invalida o UT-03 da SPEC-0002 (stub) — sem isso a suíte quebra | SPEC-0002 (UT-03 aposentado; Verificação histórica preservada) | pendente de ratificação do Thomas no H2 da onda 2 |
