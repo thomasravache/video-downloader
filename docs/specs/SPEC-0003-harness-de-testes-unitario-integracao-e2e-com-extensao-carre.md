@@ -168,9 +168,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
 | G1 Red | PASS | verify G1: PASS; `pnpm exec vitest run tests/tooling tests/harness tests/ci` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯) — d1213ff | 2026-09-30 |
-| G2 Green | PASS | build exit 0 (✔ Finished in 166 ms); test exit 0 (Duration  10.46s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 125 ms); coverage exit 0 (}) — a858988 | 2026-09-30 |
-| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — a858988 | 2026-09-30 |
-| G4 Review | FAIL | reviewer-agent a98ff58d: CHANGES_REQUESTED @ a858988 — 2 major (#imports e imports não resolvidos escapam das regras de arch; NFR <10s estourado: 10.4-11s) + 6 minor | 2026-09-30 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 174 ms); test exit 0 (Duration  17.14s (tests 99%, import 1%)); lint exit 0 (✔ Finished in 135 ms); coverage exit 0 (================================================================================) — e8a5367 | 2026-09-30 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — e8a5367 | 2026-09-30 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a33ee94f (2ª rodada): APPROVED @ e8a5367 (0 blocker/major, 4 minor; NFR 20s aceito com condição de dividir projeto tooling) — e8a5367 | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
