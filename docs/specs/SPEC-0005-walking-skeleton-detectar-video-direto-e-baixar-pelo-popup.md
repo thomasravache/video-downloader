@@ -92,7 +92,7 @@ export const providers: Provider[];   // só os com FLAVOR ∈ flavors; ordem: e
 
 // Mensagens popup → background (validadas; sender.id deve ser a própria extensão)
 { type: 'detect', tabId }                 → { ok: true, candidates: VideoCandidate[] }
-                                          | { ok: false, error: 'RESTRICTED_PAGE' }      // chrome://, Web Store, PDF viewer
+                                          | { ok: false, error: 'RESTRICTED_PAGE' }      // chrome://, Web Store, PDF viewer — sem `tabs`/host permission `tab.url` é indefinido: a restrição é detectada pelo erro do `executeScript`
 { type: 'download', candidateId }         → { ok: true, downloadId: number }
                                           | { ok: false, error: 'CANDIDATE_NOT_FOUND' | 'PROTECTED' | 'UNSUPPORTED' }
                                           | { ok: false, error: 'DOWNLOAD_FAILED', reason: string }
@@ -102,6 +102,8 @@ mensagem inválida ou de outra origem       → { ok: false, error: 'INVALID_MES
 // Nome do arquivo: sanitize(title ?? último segmento da URL) + extensão pelo mimeType/URL;
 // sem / \ : * ? " < > |, máx. 120 caracteres; fallback "video-<data>.mp4"
 ```
+
+**Alvo do popup:** o popup lê `?tabId=<n>` da própria URL quando presente e usa a aba ativa (`tabs.query`) caso contrário; os testes E2E abrem `popup.html?tabId=<n>`. Elementos da UI expõem `data-testid`: `candidate-list`, `candidate-item`, `download-button`, `badge-drm`, `badge-unsupported`, `empty-state`, `restricted-state`, `copy-diagnostics`.
 
 **Design:** popup 360 px: cabeçalho com nome da extensão; lista de cartões (título, badge `MP4`/`WebM`, tamanho, botão **Baixar**); badges **Protegido (DRM)** e **Ainda não suportado** sem botão; estado vazio "Nenhum vídeo encontrado nesta página"; estado restrito "O Chrome não permite extensões nesta página"; rodapé com "Copiar diagnóstico". Protótipo detalhado fica a cargo do implementador dentro destas regras (revisto no G4).
 
@@ -151,12 +153,14 @@ mensagem inválida ou de outra origem       → { ok: false, error: 'INVALID_MES
 - **CT-01** — O contrato `ProviderManifest`/`virtual:providers` v1 consumido por SPEC-0006: construindo com `PROVIDERS_EXTRA_DIR` apontando para um provider-fixture `flavors:[local]`, o bundle `public` não contém o identificador do fixture e o `local` contém; o schema de `provider.json` rejeita `flavors` vazio ou com valor desconhecido.
 
 ### 7.5 Testes E2E
+<!-- Emenda 1 (teste): o Playwright não consegue conceder `activeTab` (só a invocação real do usuário concede). Os E2E e o IT-06 rodam contra uma CÓPIA do build em que o harness (`e2e/support/**`) acrescenta `host_permissions: ["http://127.0.0.1/*"]` ao manifest; o build distribuído e o IT-04 continuam sem `host_permissions`. -->
 - **E2E-01** — Usuário abre a página-fixture com MP4, abre o popup, vê o vídeo listado com título e badge MP4, clica em Baixar e o arquivo com o nome esperado aparece no diretório de downloads com o tamanho do fixture (builds public e local) [jornada: baixar-video-direto].
 - **E2E-02** — Usuário abre página-fixture com vídeo que usa EME (Clear Key de teste, sem conteúdo real) e o popup mostra "Protegido (DRM)" sem botão de download.
 - **E2E-03** — Usuário abre página sem vídeo e o popup mostra "Nenhum vídeo encontrado nesta página".
 - **E2E-04** — Usuário abre o popup em `chrome://extensions` e vê "O Chrome não permite extensões nesta página".
 
 ### 7.6 Outros
+- Verificação manual no G6 (não automatizável): com o build `local` e o `public` instalados sem empacotar, clicar no ícone da extensão numa página com `<video src=*.mp4>` mostra o vídeo e baixa o arquivo — prova o grant de `activeTab` que os E2E não cobrem. Resultado e data registrados no Relatório de Entrega.
 - Acessibilidade: axe-core (`@axe-core/playwright`) no popup durante E2E-01 e E2E-02 — zero violações serious/critical; navegação só por teclado até o botão Baixar.
 - Desempenho: tempo entre abrir o popup e a lista renderizada < 500 ms, medido no E2E-01.
 
@@ -222,6 +226,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-09-30 | G1 | decisão | E2E-01/02/03 e IT-06 não são automatizáveis com o manifesto da spec (sem host_permissions): activeTab só é concedido por invocação real do usuário; popup como aba com ?tabId= e chrome.action.openPopup() via SW não recebem o grant (probe no Chromium real) | popup como aba com ?tabId=; chrome.action.openPopup() pelo service worker; executeScript pelo SW antes/depois; nenhum obtém o grant | Thomas (decisão sobre como provar a jornada) + Architect (emenda) | Decisão do Thomas (2026-09-30): cópia de teste com host 127.0.0.1 só nos E2E; Emenda 1 (teste) na SPEC-0005 | 2026-09-30 |
 
 ## 14. Relatório de Entrega
 
@@ -255,3 +260,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `package.json`/`pnpm-lock.yaml` (única dependência nova: `@axe-core/playwright`, já exigida no §7.6), `.dependency-cruiser.cjs` (o módulo virtual `virtual:providers` precisa de exceção em `not-to-unresolvable`, sem afrouxar as regras do ADR-0001) e `e2e/support/**` | necessidades descobertas ao planejar a onda 3 contra o harness real da SPEC-0003 | SPEC-0006 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
+| 1 (teste) | 2026-09-30 | E2E e IT-06 rodam contra cópia do build com `host_permissions` para `http://127.0.0.1/*` adicionada só pelo harness; popup aceita `?tabId=<n>`; `data-testid` fixados; `activeTab` verificado manualmente no G6 | `activeTab` só é concedido por clique real do usuário; probe no Chromium real provou que `?tabId=` e `action.openPopup()` não obtêm o grant | SPEC-0006 (nenhuma) | thomas (escolha da opção 1 no chat, 2026-09-30) |
