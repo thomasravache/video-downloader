@@ -171,7 +171,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 169 ms); test exit 0 (Duration  5.04s (tests 95%, import 3%, transform 1%)); lint exit 0 (✔ Finished in 158 ms) — d15a314 | 2026-09-30 |
 | G3 Arquitetura | N/A | sem arch_test até SPEC-0003 (harness com dependency-cruiser); src/core é placeholder sem chrome.* | 2026-09-30 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent adc33f43: APPROVED @ d15a314 (6 minor, 0 blocker/major) — d15a314 | 2026-09-30 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 200 ms); test exit 0 (Duration  5.60s (tests 96%, import 3%, transform 1%)) — cfea88b | 2026-09-30 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |

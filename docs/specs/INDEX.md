@@ -5,7 +5,7 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 0 aviso(s)**
-- Specs: approved 5
+- Specs: approved 4, in-progress 1
 - Impedimentos: **0 aberto(s)**, 0 resolvido(s)
 
 ## Cobertura de Pilares
@@ -35,13 +35,13 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
+**Em andamento:** SPEC-0002  
 **Paradas por impedimento:** —  
-**Próximo lote:** SPEC-0002
+**Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0002 | Repositório e tooling (WXT + TypeScript) | full/S | approved | ✅ pronta |  |
+| 1 | SPEC-0002 | Repositório e tooling (WXT + TypeScript) | full/S | in-progress | 🔄 em andamento |  |
 | 2 | SPEC-0003 | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full/M | approved | ⛔ aguarda implementação de SPEC-0002 |  |
 | 2 | SPEC-0004 | Pipeline de CI no GitHub Actions | full/S | approved | ⛔ aguarda implementação de SPEC-0002 |  |
 | 3 | SPEC-0005 | Walking skeleton: detectar vídeo direto e baixar pelo popup | full/M | approved | ⛔ aguarda implementação de SPEC-0003; aguarda implementação de SPEC-0004 |  |
@@ -60,7 +60,7 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 ```mermaid
 flowchart LR
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
-    S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::approved
+    S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::inprogress
     S0003["SPEC-0003<br/>Harness de testes (unitário, integração…"]:::approved
     S0004["SPEC-0004<br/>Pipeline de CI no GitHub Actions"]:::approved
     S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::approved
@@ -84,7 +84,7 @@ flowchart LR
 | ID | Título | Tier | Tipo | Status | Criada | Épico | Depende de | Consome contrato |
 |---|---|---|---|---|---|---|---|---|
 | [SPEC-0001](SPEC-0001-fundacao-da-extensao-de-download-de-videos.md) | Fundação da extensão de download de vídeos | epic | foundation | approved | 2026-09-30 | — | — | — |
-| [SPEC-0002](SPEC-0002-repositorio-e-tooling-wxt-typescript.md) | Repositório e tooling (WXT + TypeScript) | full | foundation | approved | 2026-09-30 | SPEC-0001 | — | — |
+| [SPEC-0002](SPEC-0002-repositorio-e-tooling-wxt-typescript.md) | Repositório e tooling (WXT + TypeScript) | full | foundation | in-progress | 2026-09-30 | SPEC-0001 | — | — |
 | [SPEC-0003](SPEC-0003-harness-de-testes-unitario-integracao-e2e-com-extensao-carre.md) | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
 | [SPEC-0004](SPEC-0004-pipeline-de-ci-no-github-actions.md) | Pipeline de CI no GitHub Actions | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
 | [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | approved | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
