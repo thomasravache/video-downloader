@@ -5,8 +5,29 @@
   "type": "module",
   "packageManager": "pnpm@10.23.0",
   "devDependencies": {
-    "typescript": "7.0.2",
+    "@types/node": "24.19.0",
+    "eslint": "10.11.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
     "vitest": "5.0.3",
     "wxt": "0.21.4"
+  },
+  "scripts": {
+    "postinstall": "FLAVOR=public wxt prepare",
+    "dev": "FLAVOR=local wxt --mode flavor-local",
+    "build": "pnpm build:public && pnpm build:local",
+    "build:public": "FLAVOR=public wxt build --mode public",
+    "build:local": "FLAVOR=local wxt build --mode flavor-local",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "typecheck": "FLAVOR=public wxt prepare && tsc --noEmit",
+    "test": "node -e \"console.error('test: definido em SPEC-0003'); process.exit(1)\"",
+    "test:integration": "node -e \"console.error('test:integration: definido em SPEC-0003'); process.exit(1)\"",
+    "test:e2e": "node -e \"console.error('test:e2e: definido em SPEC-0003'); process.exit(1)\"",
+    "arch": "node -e \"console.error('arch: definido em SPEC-0003'); process.exit(1)\""
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

@@ -4,9 +4,7 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
-.env
-.env.*
-*.pem
-*.crx
-*.zip
-.DS_Store
+pnpm-lock.yaml
+docs/
+tools/
+tests/tooling/
