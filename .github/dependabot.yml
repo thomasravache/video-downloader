@@ -6,7 +6,7 @@ updates:
       interval: weekly
     # O pr-check do SDD exige spec no PR; atualização de dependência não muda comportamento.
     commit-message:
-      prefix: "build(deps) [no-spec]"
+      prefix: 'build(deps) [no-spec]'
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -16,7 +16,7 @@ updates:
       interval: weekly
     # O pr-check do SDD exige spec no PR; atualização de dependência não muda comportamento.
     commit-message:
-      prefix: "build(deps) [no-spec]"
+      prefix: 'build(deps) [no-spec]'
     groups:
       minor-and-patch:
         update-types: [minor, patch]
