@@ -5,6 +5,7 @@ import type {
   FrameSnapshot,
   DiagnosticsResponse,
   DownloadResponse,
+  ResolveHlsResponse,
   Provider,
   VideoCandidate,
 } from './contracts';
@@ -15,9 +16,16 @@ import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
 import type { NetworkResponse, NetworkStore } from './network';
-import type { DownloadPort, PermissionsPort, ScriptingPort, TabsPort } from './ports';
+import type {
+  DownloadPort,
+  PermissionsPort,
+  PlaylistFetcherPort,
+  ScriptingPort,
+  TabsPort,
+} from './ports';
 
-export type ServiceResponse = DetectResponse | DownloadResponse | DiagnosticsResponse;
+export type ServiceResponse =
+  DetectResponse | DownloadResponse | DiagnosticsResponse | ResolveHlsResponse;
 
 export interface ServiceDeps {
   extensionId: string;
@@ -31,6 +39,8 @@ export interface ServiceDeps {
   store?: CandidateStore;
   /** Repositório de candidatos vistos na rede (SPEC-0010); sem ele, só o DOM conta. */
   network?: NetworkStore;
+  /** Busca de playlists HLS (SPEC-0011). */
+  playlists?: PlaylistFetcherPort;
 }
 
 export interface Service {
@@ -234,6 +244,8 @@ export function createService(deps: ServiceDeps): Service {
           return download(valid.candidateId, correlationId);
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
+        case 'resolveHls':
+          throw new Error('NotImplemented');
       }
     },
     async onNetworkResponse(response) {
