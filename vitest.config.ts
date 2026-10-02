@@ -28,6 +28,9 @@ export default defineConfig({
           exclude: ['**/*.integration.test.ts', '**/node_modules/**'],
           // Testes de arquitetura/tooling mutam a árvore e rodam lint/typecheck: nunca em paralelo.
           fileParallelism: false,
+          // Vários testes executam pnpm lint/arch/build/typecheck via shell; runners de CI são mais lentos.
+          testTimeout: 60_000,
+          hookTimeout: 60_000,
         },
       },
       {
