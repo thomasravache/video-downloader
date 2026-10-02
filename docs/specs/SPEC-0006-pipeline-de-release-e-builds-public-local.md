@@ -4,13 +4,13 @@ title: Pipeline de release e builds public/local
 tier: full
 type: foundation
 user_facing: false
-status: approved
+status: in-progress
 created: 2026-09-30
 parent: SPEC-0001
 depends_on: [SPEC-0004]
 consumes_contract: [SPEC-0005@1]
 contract_version: 1
-touches: [.github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
+touches: [package.json, CHANGELOG.md, tsconfig.json, vitest.config.ts, tests/harness/arch.test.ts, tests/harness/arch-gaps.test.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
 adrs: [ADR-0010, ADR-0011, ADR-0004, ADR-0006]
 external: []
 size: M
@@ -28,7 +28,7 @@ Uma tag SemVer (`vX.Y.Z` ou `vX.Y.Z-rc.N`) dispara o workflow de release: valida
 
 **Objetivos (dentro do escopo):**
 - `release.yml` por tag, com jobs `verify-version`, `build`, `flavor-guard`, `smoke`, `github-release`, `webstore` (environment `webstore` com aprovação obrigatória do Thomas).
-- `scripts/release/`: checagem de versão, inspeção de bundle (`flavor-guard`), cliente mínimo da Chrome Web Store API (upload + publish, com `publishTarget` `trustedTesters`/`default`).
+- `scripts/release/`: checagem de versão, inspeção de bundle (`flavor-guard`), cliente mínimo da Chrome Web Store API **v2** (upload + publish, com `publishType` `STAGED_PUBLISH` para rc e `DEFAULT_PUBLISH` para estável).
 - Política de privacidade (`docs/privacy-policy.md`, pt-BR/en) e textos/capturas da listagem (`docs/store-listing/`), com a declaração de uso para conteúdo que o usuário tem direito de baixar e sem DRM.
 - Runbook de release e rollback (`docs/runbook.md`).
 - `deploy_staging`, `deploy_production` e `smoke_test` no sdd-config.
@@ -40,12 +40,12 @@ Uma tag SemVer (`vX.Y.Z` ou `vX.Y.Z-rc.N`) dispara o workflow de release: valida
 ## 3. Dependências
 - **Implementações necessárias:** SPEC-0004 — CI e ruleset (a release só roda a partir de commit verde na `main`).
 - **Contratos consumidos:** SPEC-0005@1 — `ProviderManifest` (`provider.json` com `flavors`) e `PROVIDERS_EXTRA_DIR` para o `flavor-guard`.
-- **Pré-requisitos externos:** conta de desenvolvedor da Chrome Web Store (Thomas vai criar); item criado na loja (primeiro upload manual exigido pela loja, se ainda for o caso); credenciais OAuth (`CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_EXTENSION_ID`) como secrets do environment `webstore`.
+- **Pré-requisitos externos:** conta de desenvolvedor da Chrome Web Store (Thomas vai criar); item criado na loja (primeiro upload manual exigido pela loja, se ainda for o caso); credenciais OAuth (`CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `CWS_PUBLISHER_ID`, `CWS_EXTENSION_ID`; API v2 exige o `publisherId`, e o escopo `https://www.googleapis.com/auth/chromewebstore`) como secrets do environment `webstore`.
 
 ## 4. Decisão Arquitetural
 **Contexto:** Projeto novo; ADR-0004 (entrega), ADR-0011 (flavors), ADR-0006 (segredos).
 
-**Decisão:** GitHub Actions por tag + GitHub Releases para o `local` + Chrome Web Store API para o `public`; scripts em TypeScript executados com `tsx`, testados por Vitest.
+**Decisão:** GitHub Actions por tag + GitHub Releases para o `local` + Chrome Web Store API para o `public`; scripts em TypeScript executados pelo próprio Node 24 (remoção nativa de tipos, sem `tsx` nem nova dependência), testados por Vitest.
 
 **Justificativa:** mesma plataforma do CI, publicação reproduzível e segredos só no environment protegido.
 
@@ -75,12 +75,12 @@ Gatilho: push de tag v<semver>
   smoke          : pnpm test:e2e contra os zips gerados (os dois flavors)
   github-release : cria Release (prerelease se -rc.N) com extension-{public,local}-X.Y.Z.zip
   webstore       : (aprovação no environment) upload do zip public;
-                   rc → publishTarget=trustedTesters (staging); estável → publishTarget=default (produção)
+                   rc → publishType=STAGED_PUBLISH (aprovado na revisão e mantido em staging, sem ir ao público); estável → publishType=DEFAULT_PUBLISH (publica ao aprovar)
                    erros da API → falha com código/mensagem da API, sem expor segredos
 
 scripts/release/webstore.ts:
-  upload(zip, creds)  → { uploadState: 'SUCCESS' | 'FAILURE', itemError?: [...] }
-  publish(target)     → { status: string[] }
+  upload(zip, creds)  → POST https://chromewebstore.googleapis.com/upload/v2/publishers/{publisherId}/items/{itemId}:upload (corpo = zip; Bearer) → { uploadState: 'SUCCEEDED' | 'IN_PROGRESS' | 'FAILED', crxVersion } ; IN_PROGRESS → consulta `:fetchStatus` (GET v2/publishers/{p}/items/{i}:fetchStatus, campo lastAsyncUploadState) até SUCCEEDED/FAILED ou timeout
+  publish(type, creds) → POST https://chromewebstore.googleapis.com/v2/publishers/{p}/items/{i}:publish com { publishType: 'STAGED_PUBLISH' | 'DEFAULT_PUBLISH' } → { state: 'PENDING_REVIEW' | 'STAGED' | 'PUBLISHED' | 'PUBLISHED_TO_TESTERS' | ... } (REJECTED/CANCELLED → falha)
 ```
 
 **Design:** N/A — sem interface.
@@ -92,9 +92,10 @@ scripts/release/webstore.ts:
 |---|---|---|---|
 | Versão coerente | tag `v0.1.0`, package `0.1.0` | segue | UT-01 |
 | Versão divergente | tag `v0.1.1`, package `0.1.0` | falha `VERSION_MISMATCH` | UT-01 |
+| Diretório de provider sem manifesto / nenhum manifesto / id por token / `.map` e caminho de provider no bundle público | provider sem `provider.json`; zero manifestos; id colado em outra palavra; `.map` no zip | falha fechada (`INVALID_PROVIDER_MANIFEST`, `NO_PROVIDERS_FOUND`, `FORBIDDEN_PROVIDER_IN_PUBLIC`) e sem falso positivo por id parcial | IT-01, CT-01 |
 | Provider proibido no public | provider-fixture `local` injetado | falha `FORBIDDEN_PROVIDER_IN_PUBLIC` | CT-01, IT-01 |
 | Build limpo | só `generic` | guard passa; zips gerados e anexados à Release | IT-01, IT-02 |
-| rc vs estável | `-rc.1` / sem sufixo | `trustedTesters` / `default`; Release prerelease ou não | UT-02 |
+| rc vs estável | `-rc.1` / sem sufixo | `STAGED_PUBLISH` / `DEFAULT_PUBLISH`; Release prerelease ou não | UT-02 |
 | API da loja falha | resposta `FAILURE` / 4xx | job falha com mensagem da API | UT-02 |
 | Segredo em log | erro contendo refresh token | valor mascarado na saída | UT-03 |
 
@@ -104,15 +105,16 @@ scripts/release/webstore.ts:
 
 ### 7.2 Testes Unitários
 - **UT-01** — Dado pares (tag, versão do package.json), quando `verifyVersion` é chamado, então aceita iguais (inclusive `-rc.N`) e falha com `VERSION_MISMATCH` nos demais.
-- **UT-02** — Dado respostas simuladas da Chrome Web Store API (sucesso, `FAILURE` com `itemError`, 401, versão já enviada), quando `upload`/`publish` rodam, então escolhem `trustedTesters` para rc e `default` para estável e falham com a mensagem da API nos erros.
+- **UT-02** — Dado respostas simuladas da Chrome Web Store API v2 (upload `SUCCEEDED`, `FAILED`, `IN_PROGRESS` seguido de `fetchStatus`, 401, versão já enviada; publish `PENDING_REVIEW`/`STAGED`/`PUBLISHED`/`REJECTED`), quando `upload`/`publish` rodam, então escolhem `STAGED_PUBLISH` para rc e `DEFAULT_PUBLISH` para estável e falham com a mensagem da API nos erros.
 - **UT-03** — Dado um erro cuja mensagem contém o valor do refresh token, quando o logger de release formata a saída, então o valor aparece como `***`.
 
 ### 7.3 Testes de Integração
 - **IT-01** — Com `pnpm build` real e `PROVIDERS_EXTRA_DIR` apontando para um provider-fixture `flavors:[local]`, o `flavor-guard` sobre `.output/chrome-mv3-public` falha com `FORBIDDEN_PROVIDER_IN_PUBLIC:<id>`; sem o fixture, passa.
+  Endurecimento (Emenda 2; Emenda 4 acrescenta o diretório reservado `build`): (c) diretório de provider sem `provider.json` → `INVALID_PROVIDER_MANIFEST` (falha fechada); (d) `providersDir` configurado (ex.: `src/providers` existente) sem nenhum manifesto → `NO_PROVIDERS_FOUND`; (e) o id só conta como vazamento quando aparece como token inteiro (sem letras, dígitos, `_` ou `-` colados), e o manifesto exige `id` com `^[a-z][a-z0-9-]{2,}$`; (f) o bundle público com arquivo `.map` ou com o caminho `src/providers/<diretório de provider que não inclui public>` → `FORBIDDEN_PROVIDER_IN_PUBLIC:<id>`.
 - **IT-02** — Com uma tag `v0.0.0-rc.1` num fork/branch de teste no GitHub, o workflow gera a Release prerelease com os dois zips e o job `webstore` fica aguardando aprovação (evidência: link da execução).
 
 ### 7.4 Testes de Contrato
-- **CT-01** — Consome SPEC-0005@1: o `flavor-guard` lê `provider.json` com o schema do contrato (`id`, `flavors`) e usa `PROVIDERS_EXTRA_DIR` conforme definido; se o schema mudar (campo renomeado), o teste falha.
+- **CT-01** — Consome SPEC-0005@1: o `flavor-guard` lê `provider.json` com o schema do contrato (`id`, `flavors`) e usa `PROVIDERS_EXTRA_DIR` conforme definido; se o schema mudar (campo renomeado), o teste falha. O `id` inválido por formato (curto demais, maiúsculas, espaços) também é rejeitado (Emenda 2).
 
 ### 7.5 Testes E2E
 - N/A — user_facing: false (o smoke da release executa o E2E de SPEC-0005 contra os zips).
@@ -125,7 +127,7 @@ scripts/release/webstore.ts:
 **Ambiente de execução:** UT/IT-01 local e no CI; IT-02 no GitHub Actions do repositório.
 
 ## 8. Plano de Rollout
-- **Estratégia:** `v0.1.0-rc.1` → testadores confiáveis/não listada (staging, G6) → confirmação humana → `v0.1.0` na listagem pública (produção).
+- **Estratégia:** `v0.1.0-rc.1` → submissão `STAGED_PUBLISH` (staging, G6: revisão aprovada, nada público) + zips do rc na GitHub Release prerelease para o Thomas testar instalando sem empacotar → confirmação humana → `v0.1.0` com `DEFAULT_PUBLISH` (produção).
 - **Dados/schema:** N/A
 - **Compatibilidade:** versão da loja sempre crescente; `version_name` exibe o SemVer com sufixo rc.
 - **Observabilidade:** notificação de falha do workflow; status da revisão acompanhado no Developer Dashboard; runbook em `docs/runbook.md`.
@@ -170,18 +172,22 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
-| G5 Integração & CI | PENDING | | |
-| H2 Integração aprovada | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/71]⎯) — 127ef64 | 2026-09-30 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 175 ms); test exit 0 (Duration  21.10s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 149 ms); coverage exit 0 (================================================================================) — efed85d | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — efed85d | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent ae497dd9 (2ª rodada): APPROVED @ efed85d (0 blocker/major, 3 minor; achados da 1ª rodada todos corrigidos; API v2 conferida) — efed85d | 2026-10-02 |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 208 ms); test exit 0 (Duration  24.62s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.66s (tests 85%, transform 11%, setup 2%, import 2%)); test_e2e exit 0 (23 passed (21.2s)); arch_test exit 0 (✔ no dependency violations found (20 modules, 33 dependencies cruised)); security_scan exit 0 ([90m12:06PM[0m [32mINF[0m [1mno leaks found[0m) — d901b57 | 2026-10-02 |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-09-30 | G1 | spec | Contrato da Chrome Web Store API baseado na v1.1 (publishTarget trustedTesters, uploadState FAILURE, sem publisherId); a API vigente é a v2 (docs oficiais: v1 arquivada desde out/2025): upload POST /upload/v2/publishers/{p}/items/{i}:upload com uploadState SUCCEEDED\|IN_PROGRESS\|FAILED; publish com publishType DEFAULT_PUBLISH\|STAGED_PUBLISH; exige publisherId | Consulta à documentação oficial e ao discovery document v2 (2026-09-30) | Architect (emenda; ratificação do Thomas no H2) | Emenda 1 (API) — cliente Web Store v2; ratificação no H2 da onda 3 | 2026-09-30 |
+| IMP-02 | 2026-10-02 | G2 | trabalho | TEST_DEFECT: providersWithFixture() em tests/release/flavor-guard.test.ts cria not-a-provider/readme.txt (subdiretório sem provider.json) e espera que seja ignorado, contradizendo a Emenda 2 (falha fechada: INVALID_PROVIDER_MANIFEST) e os testes de endurecimento | Implementer implementou o endurecimento (patch no scratchpad) e passa todos os testes novos; só os 4 testes antigos que usam o helper falham | Test-writer (remover not-a-provider/readme.txt do helper) | SPEC-0006: teste conflitante corrigido (6db2b98) e endurecimento aplicado (6d06dc5) | 2026-10-02 |
+| IMP-03 | 2026-10-02 | G2 | spec | pnpm test deixa src/providers/ vazio (tests/harness/arch*.test.ts criam src/providers/__arch_tmp__-* e removem só as subpastas); a 2ª execução e o pnpm coverage falham no flavor-guard endurecido (NO_PROVIDERS_FOUND/diretório vazio). Suíte não idempotente | Reproduzido: 1ª execução passa, 2ª falha; rmdir src/providers manual restaura | Architect (emenda de escopo) + Test-writer (limpeza nos testes de arquitetura) | Emenda 3 (escopo) — limpeza do diretório-pai nos testes de arquitetura | 2026-10-02 |
+| IMP-04 | 2026-10-02 | G5 | spec | Integração com SPEC-0005: (1) o flavor-guard trata src/providers/build/ (plugin Vite da SPEC-0005) como provider sem manifesto e falha com INVALID_PROVIDER_MANIFEST, enquanto o registro da SPEC-0005 já reserva o nome build; (2) o fixture tests/fixtures/providers/release-local-only exporta 'provider' nomeado e o registro importa o default export (contrato Provider da SPEC-0005), quebrando o CT-01 da SPEC-0005 quando os dois fixtures coexistem | Reproduzido na árvore integrada: 3 falhas em tests/release e 1 em tests/integration/build-artifacts.test.ts | Architect (emenda) + Test-writer + Implementer | Emenda 4 (integração); guard ignora build/ (f4212a0) e fixture com default export (58fb700) | 2026-10-02 |
 
 ## 14. Relatório de Entrega
 
@@ -214,3 +220,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-09-30 | `touches` inclui `tsconfig.json` (incluir `scripts/`) e `vitest.config.ts` (incluir `tests/release/**`); scripts executados com Node 24 nativo em vez de `tsx` | o harness da SPEC-0003 só enxerga os diretórios que já existiam; evita uma dependência fora dos ADRs | SPEC-0005 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
+| 1 (API) | 2026-09-30 | cliente da Chrome Web Store passa da API v1.1 para a v2 (`publisherId`, `uploadState SUCCEEDED/IN_PROGRESS/FAILED`, `publishType STAGED_PUBLISH/DEFAULT_PUBLISH`; rc = staged, estável = default); novo secret `CWS_PUBLISHER_ID`; `touches` inclui `tests/fixtures/providers/release-*/**` | a documentação oficial (developer.chrome.com/docs/webstore/api, consultada em 2026-09-30) declara a v2 vigente e a v1 arquivada desde out/2025; `trustedTesters` não existe na v2 | ADR-0004 (texto do staging) | pendente de ratificação do Thomas no H2 da onda 3 |
+| 2 (revisão) | 2026-09-30 | flavor-guard falha fechado (diretório sem manifesto, zero manifestos), id por token inteiro com formato mínimo, e rejeita `.map` e caminhos `src/providers/<local>` no bundle público; correção do procedimento de rollback no runbook; asserção de não-rebuild no smoke | achados do Reviewer (G4): o guard é a única barreira do ADR-0011 e falhava aberto; o rollback descrito não funcionava | nenhuma | pendente de ratificação do Thomas no H2 da onda 3 |
+| 3 (escopo) | 2026-10-02 | `touches` inclui `tests/harness/arch.test.ts` e `arch-gaps.test.ts` (SPEC-0003) para que a limpeza dos testes de arquitetura remova também o diretório-pai (`src/providers/`) que eles criam | `pnpm test` deixava `src/providers/` vazio e o flavor-guard (falha fechada) quebrava na 2ª execução e no `pnpm coverage`; defeito de poluição de teste | SPEC-0003 (testes, sem mudança de comportamento) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 4 (integração) | 2026-10-02 | `src/providers/build/` é diretório reservado (código de build da SPEC-0005, não um provider): o flavor-guard o ignora, como o registro já faz; todo fixture de provider exporta `export default` um `Provider` (contrato SPEC-0005@1) | a integração das ondas 3 mostrou que o guard endurecido recusava `build/` e que o fixture da SPEC-0006 não seguia o contrato de default export | SPEC-0005 (nenhuma: já reserva `build`) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 5 (escopo) | 2026-10-02 | `touches` inclui `package.json` (apenas o campo `version`) e `CHANGELOG.md` | o runbook da própria spec manda que cada release comece com o bump de `version` e a entrada do changelog; o `pr-check` barrou o commit `chore(release): prepare v0.1.0-rc.1` por estar fora dos `touches` | nenhuma | thomas (pediu a tag rc no chat, 2026-10-02; escopo de preparação da release) |

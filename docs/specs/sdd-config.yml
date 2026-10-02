@@ -10,32 +10,31 @@ max_parallel: 3
 # Exemplos: "dotnet build" | "npm run build" | "./gradlew build" | "go build ./..."
 build: "pnpm build"
 # Suíte completa. Exemplos: "dotnet test" | "npm test" | "pytest" | "go test ./..."
-# Interino (SPEC-0002): só os testes de tooling; SPEC-0003 troca por "pnpm test"
-test: "pnpm exec vitest run tests/tooling"
-test_integration: ""
+test: "pnpm test"
+test_integration: "pnpm test:integration"
 # E2E da jornada do usuário. Exemplos: "npx playwright test" | "npx cypress run" | "maestro test flows/"
-test_e2e: ""
+test_e2e: "pnpm test:e2e"
 # Subconjunto rápido rodado após cada deploy (G6).
-smoke_test: ""
+smoke_test: "pnpm test:e2e"
 lint: "pnpm lint && pnpm format:check && pnpm typecheck"
 # G2 — cobertura das linhas alteradas (ex: diff-cover, coverlet + reportgenerator). Opcional.
-coverage: ""
+coverage: "pnpm coverage"
 coverage_min_changed_lines: 80
 # Opcional: mutation testing em código de domínio crítico (Stryker, PIT, mutmut).
 mutation: ""
 
 # --- Arquitetura e segurança (G3, G5) ---
 # Exemplos: "dotnet test --filter Category=Architecture" | "npx depcruise src" | "lint-imports"
-arch_test: ""
+arch_test: "pnpm arch"
 # Auditoria de dependências + segredos. Exemplos: "npm audit --audit-level=high" | "dotnet list package --vulnerable" | "gitleaks detect"
-security_scan: ""
+security_scan: "pnpm audit --audit-level=high && gitleaks detect --source . --config .gitleaks.toml --no-banner"
 
 # --- CI/CD e ambientes (G5, G6) ---
 # Como conferir o pipeline da branch/PR. Exemplo: "gh pr checks --watch"
-ci: ""
+ci: "gh pr checks --watch"
 # Como o deploy acontece (preferencialmente pelo pipeline). Exemplos: "merge em main → pipeline" | "gh workflow run deploy.yml -f env=staging"
-deploy_staging: ""
-deploy_production: ""
+deploy_staging: "git tag vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N  # .github/workflows/release.yml: GitHub prerelease + Web Store STAGED_PUBLISH"
+deploy_production: "git tag vX.Y.Z && git push origin vX.Y.Z  # release.yml: GitHub Release + Web Store DEFAULT_PUBLISH (aprovação no environment webstore)"
 staging_url: ""
 production_url: ""
 
@@ -115,9 +114,11 @@ h1_policy: chat
 # per-wave: o humano aprova cada onda integrada (gate SPEC-X H2 --by <nome>).
 # auto-on-green: o humano autorizou, uma vez, considerar H2 aprovado quando G5 = PASS (gate SPEC-X H2 --run).
 # Deploy em PRODUÇÃO nunca é coberto por esta política: sempre confirmação explícita por release.
-h2_policy: per-wave
-h2_policy_approved_by: ""
-h2_policy_approved_at: ""
+# 2026-10-02: Thomas autorizou no chat mergear PRs à medida que a CI ficar verde e seguir a opção recomendada nas dúvidas.
+# Não cobre: tags de release (rc ou estável), publicação na Web Store, H1 de specs novas.
+h2_policy: auto-on-green
+h2_policy_approved_by: thomas
+h2_policy_approved_at: 2026-10-02
 
 # --- Pull requests ---
 # Título gerado por `spec_graph.py pr` (Conventional Commits). Campos: {conv} {type} {title} {id} {scope}

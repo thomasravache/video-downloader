@@ -1,0 +1,84 @@
+{
+  "extName": {
+    "message": "Video Downloader"
+  },
+  "extDescription": {
+    "message": "Detecta e baixa vídeos sem DRM das páginas que você visita."
+  },
+  "popupSearching": {
+    "message": "Procurando vídeos…",
+    "description": "Estado de carregamento do popup"
+  },
+  "popupEmpty": {
+    "message": "Nenhum vídeo encontrado nesta página",
+    "description": "Estado vazio"
+  },
+  "popupRestricted": {
+    "message": "O Chrome não permite extensões nesta página",
+    "description": "Página restrita (chrome://, Web Store, visualizador de PDF)"
+  },
+  "popupDetectFailed": {
+    "message": "Não foi possível procurar vídeos nesta aba. Tente novamente.",
+    "description": "Erro inesperado na detecção"
+  },
+  "listLabel": {
+    "message": "Vídeos detectados",
+    "description": "Nome acessível da lista de vídeos"
+  },
+  "badgeDrm": {
+    "message": "Protegido (DRM)",
+    "description": "Selo de vídeo com DRM; sem botão de download"
+  },
+  "badgeUnsupported": {
+    "message": "Ainda não suportado",
+    "description": "Selo de vídeo por stream (blob:/MediaSource)"
+  },
+  "buttonDownload": {
+    "message": "Baixar",
+    "description": "Botão de download"
+  },
+  "buttonDownloadNamed": {
+    "message": "Baixar $TITLE$",
+    "description": "Nome acessível do botão de download",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Aula 1"
+      }
+    }
+  },
+  "statusDownloadStarted": {
+    "message": "Download iniciado"
+  },
+  "statusDownloadFailed": {
+    "message": "Falha ao baixar: $REASON$",
+    "placeholders": {
+      "reason": {
+        "content": "$1",
+        "example": "NETWORK_FAILED"
+      }
+    }
+  },
+  "errorCandidateNotFound": {
+    "message": "Vídeo não encontrado. Reabra o popup e tente de novo."
+  },
+  "errorProtected": {
+    "message": "Este vídeo é protegido por DRM e não pode ser baixado."
+  },
+  "errorUnsupported": {
+    "message": "Este tipo de vídeo ainda não é suportado."
+  },
+  "errorGeneric": {
+    "message": "Não foi possível iniciar o download."
+  },
+  "buttonCopyDiagnostics": {
+    "message": "Copiar diagnóstico",
+    "description": "Copia o log local para a área de transferência"
+  },
+  "statusDiagnosticsCopied": {
+    "message": "Diagnóstico copiado"
+  },
+  "statusDiagnosticsFailed": {
+    "message": "Não foi possível copiar o diagnóstico"
+  }
+}

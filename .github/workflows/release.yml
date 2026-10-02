@@ -1,0 +1,196 @@
+# Release por tag (SPEC-0006): vX.Y.Z ou vX.Y.Z-rc.N. Nada é publicado fora deste pipeline (ADR-0004).
+# Actions fixadas por SHA de 40 hex; a versão fica no comentário ao fim da linha.
+name: release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  verify-version:
+    name: verify-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ github.ref_name }}
+      TAG_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Conferir a versão da tag com o package.json
+        run: node scripts/release/cli.ts verify-version "$TAG"
+      - name: Conferir que o commit da tag está na main
+        run: |
+          if ! git merge-base --is-ancestor "$TAG_SHA" origin/main; then
+            echo "::error::O commit da tag $TAG não é alcançável a partir de origin/main"
+            exit 1
+          fi
+
+  build:
+    name: build
+    needs: verify-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Empacotar os dois flavors (manifest na raiz do zip)
+        run: |
+          version="${TAG#v}"
+          mkdir -p release
+          for flavor in public local; do
+            (cd ".output/chrome-mv3-${flavor}" && zip -qr "${GITHUB_WORKSPACE}/release/extension-${flavor}-${version}.zip" .)
+          done
+          ls -l release
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-zips
+          path: release/*.zip
+          if-no-files-found: error
+
+  flavor-guard:
+    name: flavor-guard
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-zips
+          path: release
+      - name: Verificar que o zip public não contém providers sem o flavor public
+        run: |
+          version="${TAG#v}"
+          mkdir -p "${RUNNER_TEMP}/public"
+          unzip -q "release/extension-public-${version}.zip" -d "${RUNNER_TEMP}/public"
+          node scripts/release/cli.ts flavor-guard "${RUNNER_TEMP}/public"
+
+  smoke:
+    name: smoke
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-zips
+          path: release
+      - name: Restaurar os builds a partir dos zips gerados
+        run: |
+          version="${TAG#v}"
+          for flavor in public local; do
+            mkdir -p ".output/chrome-mv3-${flavor}"
+            unzip -q "release/extension-${flavor}-${version}.zip" -d ".output/chrome-mv3-${flavor}"
+          done
+          # O harness só recompila se a saída for mais velha que as fontes; a restauração marca como atual.
+          find .output -exec touch {} +
+          # Impressão digital (caminho, mtime e tamanho) para provar, depois do E2E, que nada foi recompilado.
+          find .output -type f -printf '%p %T@ %s\n' | sort | sha256sum > "${RUNNER_TEMP}/output.sha"
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Garantir que o E2E não recompilou os builds
+        run: |
+          find .output -type f -printf '%p %T@ %s\n' | sort | sha256sum > "${RUNNER_TEMP}/output.after.sha"
+          if ! cmp -s "${RUNNER_TEMP}/output.sha" "${RUNNER_TEMP}/output.after.sha"; then
+            echo "::error::O .output mudou durante o E2E: houve recompilação, o smoke não testou os zips da release"
+            exit 1
+          fi
+
+  github-release:
+    name: github-release
+    needs: [verify-version, build, flavor-guard, smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-zips
+          path: release
+      - name: Criar a GitHub Release com os dois zips
+        run: |
+          version="${TAG#v}"
+          flags=()
+          if [[ "$version" =~ -rc\.[0-9]+$ ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" --verify-tag --generate-notes "${flags[@]}" \
+            "release/extension-public-${version}.zip" \
+            "release/extension-local-${version}.zip"
+
+  webstore:
+    name: webstore
+    needs: [verify-version, build, flavor-guard, smoke, github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: webstore
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-zips
+          path: release
+      - name: Enviar o zip public à Chrome Web Store (rc = staged, estável = publicação)
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: node scripts/release/cli.ts webstore "release/extension-public-${TAG#v}.zip" "$TAG"

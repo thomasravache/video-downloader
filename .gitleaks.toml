@@ -1,0 +1,4 @@
+title = "video-downloader gitleaks"
+
+[extend]
+useDefault = true

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vídeo com EME</title>
+  </head>
+  <body>
+    <h1>Vídeo com Clear Key (EME de teste, sem conteúdo protegido real)</h1>
+    <video id="player" src="../sample.mp4" controls muted preload="metadata"></video>
+    <script>
+      // Só configura MediaKeys com o sistema de teste org.w3.clearkey: video.mediaKeys fica não nulo.
+      (async () => {
+        const access = await navigator.requestMediaKeySystemAccess('org.w3.clearkey', [
+          {
+            initDataTypes: ['keyids', 'webm'],
+            videoCapabilities: [{ contentType: 'video/webm; codecs="vp8"' }],
+          },
+        ]);
+        const keys = await access.createMediaKeys();
+        await document.getElementById('player').setMediaKeys(keys);
+        window.__drmReady = document.getElementById('player').mediaKeys !== null;
+      })().catch((error) => {
+        window.__drmError = String(error);
+      });
+    </script>
+  </body>
+</html>
