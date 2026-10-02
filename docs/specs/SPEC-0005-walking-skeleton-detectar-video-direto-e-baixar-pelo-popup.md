@@ -187,28 +187,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Núcleo (contratos, classificação, nome, agregação)**
-- [ ] Red: escrever UT-01, UT-02, UT-03, UT-04, UT-05, UT-06 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, UT-04, UT-05, UT-06 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Background, logger e manifesto**
-- [ ] Red: escrever IT-01, IT-02, IT-03, IT-04, IT-05, CT-01 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-01, IT-02, IT-03, IT-04, IT-05, CT-01 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Popup e jornada E2E**
-- [ ] Red: escrever E2E-01, E2E-02, E2E-03, E2E-04, IT-06, IT-07 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever E2E-01, E2E-02, E2E-03, E2E-04, IT-06, IT-07 com a tag `SPEC-0005:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy via pipeline (release rc de SPEC-0006) com smoke/E2E no artefato (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Deploy via pipeline (release rc de SPEC-0006) com smoke/E2E no artefato (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
@@ -231,30 +231,53 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+O walking skeleton: a extensão detecta `<video>` MP4/WebM (sem DRM) no documento principal da aba, lista no popup e baixa pelo `chrome.downloads` com nome sanitizado; vídeo com DRM aparece como "Protegido" e stream `blob:` como "Ainda não suportado", ambos sem ação de download (validado também no servidor); página restrita mostra mensagem. Inclui contratos `Provider`/`VideoCandidate`, provider `generic`, registro `virtual:providers` por flavor (public = só os que declaram `public`; local = superset), diagnóstico local com `correlationId` e URLs sem query (copiar pelo popup), UI em pt-BR e en, permissões mínimas (`activeTab, scripting, downloads, storage`, sem `host_permissions`). Medido: popup com 20 vídeos em 23–46 ms (meta < 500 ms); axe sem violações.
 
 ### Como foi feito
+TDD com agentes distintos (Test-writer, Implementer, Reviewer APPROVED sem blocker/major). Decisões e desvios: E2E rodam contra uma cópia do build com `host_permissions` só para `http://127.0.0.1/*` (Playwright não concede `activeTab`; decisão do Thomas, Emenda 1 teste) e o `activeTab` foi verificado manualmente no G6; `onMessage` responde com `return true` + `sendResponse` assíncrono (Promise não é confiável no MV3); alias do Vitest para `virtual:providers` (só sob `VITEST`); regra de arquitetura nova `no-virtual-providers-outside-background`; diagnóstico só em memória (o armazenamento em `storage.session` do ADR-0009 fica para depois). Emendas: 1 (escopo), 1 (teste), 2 (esclarecimento: local = superset).
 
 ### Prova de Correção
+N/A — type foundation.
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | classify: http(s)→downloadable, blob:→unsupported-stream, mediaKeys→drm | PASS | `tests/unit/classify.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-02 | provider generic: um candidato por URL distinta, ids estáveis | PASS | `tests/unit/generic-provider.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-03 | toFilename: sanitização, ≤120 caracteres, extensão, fallback | PASS | `tests/unit/filename.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-04 | validateMessage: schema e sender.id | PASS | `tests/unit/messages.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-05 | registro virtual:providers por flavor (public só `public`, local superset, generic por último) | PASS | `tests/unit/registry-generator.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-06 | store por aba descarta candidatos ao fechar a aba | PASS | `tests/unit/candidates.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-01 | detect e download com o background real | PASS | `tests/integration/detect-download.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-02 | PROTECTED, UNSUPPORTED, CANDIDATE_NOT_FOUND, DOWNLOAD_FAILED | PASS | `tests/integration/detect-download.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-03 | mensagem inválida/externa rejeitada sem tocar as portas | PASS | `tests/integration/message-security.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-04 | manifesto sem host_permissions/<all_urls>/CSP, só as 4 permissões, nos dois flavors | PASS | `tests/integration/build-artifacts.test.ts` (build real); `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-05 | diagnóstico com correlationId e URLs sem query | PASS | `tests/integration/diagnostics.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-06 | nenhuma requisição da extensão além do download (provado não-vazio por mutação do Reviewer) | PASS | `e2e/journeys/download-video.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-07 | aba restrita → RESTRICTED_PAGE | PASS | `e2e/journeys/restricted-page.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| CT-01 | contrato ProviderManifest/virtual:providers v1 (build real com PROVIDERS_EXTRA_DIR: id local ausente do public, presente no local) | PASS | `tests/integration/build-artifacts.test.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| E2E-01 | jornada baixar-video-direto (download, axe + teclado, duas fontes, 20 vídeos < 500 ms) | PASS | `e2e/journeys/download-video.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| E2E-02 | DRM (Clear Key) e stream blob: sem botão de download | PASS | `e2e/journeys/protected-and-empty.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| E2E-03 | página sem vídeo → estado vazio | PASS | `e2e/journeys/protected-and-empty.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| E2E-04 | página restrita → mensagem | PASS | `e2e/journeys/restricted-page.spec.ts`; `pnpm test`/`test:integration`/`test:e2e` 23 E2E nos dois flavors; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6) — staging: prerelease v0.1.0-rc.1; produção adiada até existir a conta da Web Store (ver Pendências)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma) — registradas em Pendências abaixo e propostas como specs futuras
 
 ### Deploy
+Staging: prerelease https://github.com/thomasravache/video-downloader/releases/tag/v0.1.0-rc.1 (workflow https://github.com/thomasravache/video-downloader/actions/runs/37026591561). Verificação manual do `activeTab` (spec 7.6) por Thomas em 2026-10-02: extensão local carregada sem empacotar; em um MP4 aberto direto o popup listou `flower.mp4` e o download salvou o arquivo. Produção adiada (decisão: depende da conta da Chrome Web Store).
 
 ### Pendências
+Limitações observadas e candidatas a spec: vídeo dentro de iframe de outro domínio (ex.: MDN, plataformas de curso) não é detectado, pois `activeTab` não alcança o iframe — requer permissão por site em tempo de uso (ADR-0007) no épico do detector completo; HLS/DASH sem criptografia; caminho relativo em `PROVIDERS_EXTRA_DIR` quebra o build (usar `path.resolve`); regra de arquitetura para `entrypoints/**` não importar `src/providers/<site>` direto; tratamento de erro no popup quando o service worker não responde (`try/catch`, `aria-disabled`); redação de URLs que não sejam `http(s)`/`://` nos diagnósticos; testes de `file:/javascript:/data:/ftp:` em `classify`; verificação do texto pt-BR em CI Linux (`--lang=pt-BR`, falhar se `CI` e idioma ≠ pt); limpar o alias duplicado `stripQuery`; `sourceLabel` do popup. Estas melhorias seguem como proposta (SPEC-0007 e um lote futuro) aguardando H1.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |

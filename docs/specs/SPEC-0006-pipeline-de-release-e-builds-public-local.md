@@ -145,28 +145,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Scripts de release**
-- [ ] Red: escrever UT-01, UT-02, UT-03 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Flavor guard**
-- [ ] Red: escrever IT-01, CT-01 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-01, CT-01 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Workflow de release**
-- [ ] Red: escrever IT-02 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-02 com a tag `SPEC-0006:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy via pipeline: `v0.1.0-rc.1` (staging) → confirmação do Thomas → `v0.1.0` (produção) (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Deploy via pipeline: `v0.1.0-rc.1` (staging) → confirmação do Thomas → `v0.1.0` (produção) (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
@@ -178,7 +178,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent ae497dd9 (2ª rodada): APPROVED @ efed85d (0 blocker/major, 3 minor; achados da 1ª rodada todos corrigidos; API v2 conferida) — efed85d | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 208 ms); test exit 0 (Duration  24.62s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.66s (tests 85%, transform 11%, setup 2%, import 2%)); test_e2e exit 0 (23 passed (21.2s)); arch_test exit 0 (✔ no dependency violations found (20 modules, 33 dependencies cruised)); security_scan exit 0 ([90m12:06PM[0m [32mINF[0m [1mno leaks found[0m) — d901b57 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): tag v0.1.0-rc.1 sobre d5bd8e4 (main), run release 37026591561: verify-version, build, flavor-guard, smoke e github-release success; Release prerelease com extension-public-0.1.0-rc.1.zip e extension-local-0.1.0-rc.1.zip (manifests conferidos: MV3, version 0.1.0 / version_name 0.1.0-rc.1, permissões activeTab+scripting+downloads+storage, sem host_permissions); job webstore em waiting no environment webstore (revisor: thomasravache), conforme IT-02 (SDD_REMOTE_RELEASE_TAG=v0.1.0-rc.1: 2/2 PASS). Envio real à Web Store pendente: conta de desenvolvedor e secrets CWS_* ainda não existem (pré-requisito externo, ver docs/runbook.md seção 2). Produção pendente de confirmação do Thomas | 2026-10-02 |
 | G7 Pronto & Docs | PENDING | | |
 
 ## 13. Registro de Impedimentos
@@ -192,30 +192,41 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+Pipeline de release por tag `vX.Y.Z[-rc.N]` (`.github/workflows/release.yml`): `verify-version` (tag = `package.json`, commit na `main`), `build` dos dois flavors em zips, `flavor-guard` no zip public, `smoke` E2E nos zips, `github-release` (prerelease para rc; único job com `contents: write`) e `webstore` (environment `webstore` com aprovação; API v2: rc → `STAGED_PUBLISH`, estável → `DEFAULT_PUBLISH`). Scripts em `scripts/release/` (Node 24 nativo, sem dependências), política de privacidade (pt-BR/en), textos da listagem, runbook de release e rollback. Primeira execução real: `v0.1.0-rc.1` (ver Deploy).
 
 ### Como foi feito
+TDD com agentes distintos; duas rodadas de revisão (a 1ª, CHANGES_REQUESTED: rollback do runbook não funcionava e o guard falhava aberto; a 2ª, APPROVED). Emendas: 1 (API v2 em vez da v1.1 arquivada), 2 (endurecimento do guard), 3 (limpeza dos testes de arquitetura), 4 (diretório reservado `build/` e fixtures com default export, achados da integração com a SPEC-0005), 5 (escopo: bump de `version` e CHANGELOG), mais as de escopo iniciais. O CI real encontrou o que os testes locais não viam: `gitleaks`/`actionlint` ausentes no job `test`, nomes de checks do GitHub e timeout de 5 s em testes que chamam o `lint` por shell (agora 60 s no projeto `unit`). O guard é uma rede de segurança textual e sensível a maiúsculas; a barreira real é a exclusão por flavor em tempo de build (ADR-0011).
 
 ### Prova de Correção
+N/A — type foundation.
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | verifyVersion: tag = versão do package.json (rc e estável), VERSION_MISMATCH | PASS | `tests/release/version.test.ts`; `pnpm test` 170 passando; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-02 | cliente Web Store API v2: upload/fetchStatus/publish, STAGED_PUBLISH (rc) e DEFAULT_PUBLISH (estável), erros verbatim sem vazar segredos | PASS | `tests/release/webstore.test.ts`; `pnpm test` 170 passando; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| UT-03 | redact/formatError mascaram credenciais, inclusive codificadas, stack e cause | PASS | `tests/release/redact.test.ts`; `pnpm test` 170 passando; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-01 | flavor-guard: dist fabricado e build real com PROVIDERS_EXTRA_DIR; falha fechada, id por token, `.map`, caminhos, diretório reservado `build` | PASS | `tests/release/flavor-guard*.test.ts`; `pnpm test` 170 passando; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
+| IT-02 | release real: prerelease com os dois zips; webstore aguardando aprovação | PASS | `SDD_REMOTE_RELEASE_TAG=v0.1.0-rc.1 vitest run tests/release/release-remote.test.ts` 2/2 (run https://github.com/thomasravache/video-downloader/actions/runs/37026591561) |
+| CT-01 | guard lê provider.json no schema SPEC-0005@1 (id e flavors) e PROVIDERS_EXTRA_DIR | PASS | `tests/release/flavor-guard*.test.ts`; `pnpm test` 170 passando; CI https://github.com/thomasravache/video-downloader/actions/runs/37024051877 |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6) — staging: prerelease v0.1.0-rc.1; produção adiada até existir a conta da Web Store (ver Pendências)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma) — registradas em Pendências abaixo e propostas como specs futuras
 
 ### Deploy
+Staging: tag `v0.1.0-rc.1` sobre `d5bd8e4`; workflow https://github.com/thomasravache/video-downloader/actions/runs/37026591561: `verify-version`, `build`, `flavor-guard`, `smoke` e `github-release` com sucesso; prerelease https://github.com/thomasravache/video-downloader/releases/tag/v0.1.0-rc.1 com `extension-public-0.1.0-rc.1.zip` e `extension-local-0.1.0-rc.1.zip`. O job `webstore` aguarda aprovação e **não** foi aprovado: a conta de desenvolvedor da Chrome Web Store e os secrets `CWS_*` ainda não existem (pré-requisito externo). Produção adiada para depois disso.
 
 ### Pendências
+`cli.ts` deve exigir `src/providers` e falhar com `NO_PROVIDERS_FOUND` (já feito no CLI após a integração; manter um teste que fixe isso); runbook: o rollback deve restaurar só caminhos de código-fonte, não `.github/workflows` nem `scripts/release` de uma tag antiga; fixar no workflow a versão completa nos comentários de SHA. Atenção: o `version` numérico do rc (`0.1.0`) é igual ao da estável `v0.1.0`; se o rc for enviado à loja, a estável seguinte deve ser `v0.1.1`. Primeiro envio à Web Store: criar a conta, o item, as credenciais OAuth e os secrets (runbook, seção 2), reconciliar `docs/store-listing/permissions.md` e a política de privacidade com o manifesto real, e aprovar o job `webstore`.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |

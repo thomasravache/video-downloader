@@ -38,6 +38,18 @@ pnpm build        # gera os dois flavors em .output/
 O flavor é definido pela variável `FLAVOR` (`public` | `local`) e exposto como `import.meta.env.FLAVOR`.
 (O Vite proíbe o nome de modo `local`, por isso os scripts usam `FLAVOR=... wxt --mode ...`.)
 
+## Instalar o build local (sem Web Store)
+
+1. Baixe `extension-local-<versão>.zip` em [Releases](https://github.com/thomasravache/video-downloader/releases) e descompacte.
+2. Em `chrome://extensions`, ligue **Modo do desenvolvedor** e use **Carregar sem compactação** na pasta descompactada.
+3. Abra uma página com um vídeo (MP4/WebM sem DRM) e clique no ícone da extensão.
+
+## Limitações conhecidas
+
+- Só detecta vídeos no documento principal da aba. Players dentro de iframes de outro domínio (comum em plataformas de curso) ainda não são detectados.
+- Só arquivos diretos (MP4/WebM). HLS/DASH ainda não são suportados.
+- Vídeos com DRM são identificados como protegidos e **nunca** baixados; não há e não haverá contorno de DRM.
+
 ## Scripts
 
 | Script                                        | O que faz                                             |

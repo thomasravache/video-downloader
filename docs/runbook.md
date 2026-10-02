@@ -13,7 +13,7 @@ Pipeline: `.github/workflows/release.yml` (SPEC-0006, ADR-0004). Nada é publica
    ```
 3. Acompanhe: `gh run watch` (ou aba Actions, workflow `release`).
 
-Fluxo recomendado: `v0.1.0-rc.1` (staging) -> testar -> `v0.1.0` (produção). A versão da loja é sempre crescente; o rc usa o SemVer com sufixo.
+Fluxo recomendado: `v0.1.0-rc.1` (staging) -> testar -> `v0.1.0` (produção). Atenção: o WXT gera `version` numérico sem o sufixo (`0.1.0-rc.1` vira `version: 0.1.0` e `version_name: 0.1.0-rc.1`); se o rc foi enviado à loja, a estável seguinte deve ter número maior (ex.: `v0.1.1`), pois a loja recusa a mesma `version`. A versão da loja é sempre crescente; o rc usa o SemVer com sufixo.
 
 ### O que cada job faz
 
@@ -66,7 +66,7 @@ Após instalar o zip (rc do staging ou `local`):
 A loja não aceita versão menor, e o commit de uma tag antiga já é ancestral da `main`: um PR criado a partir da tag boa carregaria só o bump de versão, e taguear o commit antigo falha com `VERSION_MISMATCH`. O rollback é, portanto, um **novo commit na `main` que restaura a árvore boa**:
 
 1. Parta da `main` atual: `git switch main && git pull && git switch -c fix/rollback-X.Y.(Z+1)`.
-2. Restaure o código bom, por uma das formas:
+2. Restaure o código bom, por uma das formas (restaure **só os caminhos de código-fonte** — `src/`, `entrypoints/`, `public/` etc. —, nunca `.github/workflows` nem `scripts/release` de uma tag antiga, para não regredir o próprio pipeline):
    - `git revert <commits-ruins>` (um `revert` por commit; use `-m 1` para merge commits); ou
    - `git checkout <tag-boa> -- .` (restaura a árvore da versão boa; remova com `git rm` o que só existe na versão ruim).
 3. Altere `version` em `package.json` para `X.Y.(Z+1)` (maior que a versão ruim já enviada) e commite.
