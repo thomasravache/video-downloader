@@ -68,6 +68,23 @@ describe('PlaylistFetcherPort real: limites de tamanho, tipo, redirecionamento e
     }
   });
 
+  it('SPEC-0011:IT-02 aceita audio/mpegurl e audio/x-mpegurl (Emenda 2); application/json continua recusado', async () => {
+    const s = await start({
+      '/a': body(PLAYLIST, 'audio/mpegurl'),
+      '/b': body(PLAYLIST, 'audio/x-mpegurl'),
+      '/c': body(PLAYLIST, 'Audio/X-MpegURL; charset=utf-8'),
+      '/j': body(PLAYLIST, 'application/json'),
+    });
+    const fetcher = createPlaylistFetcher();
+
+    for (const path of ['/a', '/b', '/c']) {
+      await expect(fetcher.fetchPlaylist(`${s.origin}${path}`), path).resolves.toBe(PLAYLIST);
+    }
+    expect(await refusal(fetcher.fetchPlaylist(`${s.origin}/j`))).toBeInstanceOf(
+      PlaylistFetchError,
+    );
+  });
+
   it('SPEC-0011:IT-02 a query da URL observada é enviada ao servidor', async () => {
     const s = await start({ '/p.m3u8': body(PLAYLIST) });
 

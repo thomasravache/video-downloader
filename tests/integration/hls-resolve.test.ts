@@ -325,3 +325,103 @@ describe('resolveHls: estado do candidato guardado (Emenda 1)', () => {
     expect(htmlAgain.hls).toBeUndefined();
   });
 });
+
+describe('resolveHls: estado, reinício e concorrência (Emenda 2)', () => {
+  const detectById = async (candidate: VideoCandidate): Promise<VideoCandidate> => {
+    bg.executeScript.mockResolvedValue([injected({ frameId: 0, snapshot: page([]) })]);
+    const response = (await bg.send({ type: 'detect', tabId: candidate.tabId })) as DetectResponse;
+    if (!response.ok) {
+      throw new Error(`detect falhou: ${JSON.stringify(response)}`);
+    }
+    const found = response.candidates.find((c) => c.id === candidate.id);
+    if (!found) {
+      throw new Error(`candidato ${candidate.id} ausente: ${JSON.stringify(response.candidates)}`);
+    }
+    return found;
+  };
+
+  it('SPEC-0011:IT-05 (a) a mesma playlist observada de novo preserva hls e protection encrypted', async () => {
+    const url = `${server.origin}/hls/enc-master.m3u8`;
+    const candidate = await observe(url);
+    const response = await resolve(candidate.id);
+    expect(response).toMatchObject({ ok: true, hls: { encrypted: true } });
+
+    await bg.network.respond({ url, tabId: candidate.tabId, headers: HLS_HEADERS });
+    const again = await detectById(candidate);
+
+    expect(again.kind).toBe('hls');
+    expect(again.protection).toBe('encrypted');
+    expect(again.support).not.toBe('downloadable');
+    expect(again.hls).toEqual((response as { hls: unknown }).hls);
+  });
+
+  it('SPEC-0011:IT-05 (b) re-resolve de playlist que deixou de ser criptografada volta protection none e encrypted false', async () => {
+    let encrypted = true;
+    await server.close();
+    server = await startPlaylistServer({
+      '/hls/flip.m3u8': (req, res) => {
+        body(media([4, 4], { key: encrypted ? '#EXT-X-KEY:METHOD=AES-128,URI="key.bin"' : '' }))(
+          req,
+          res,
+        );
+      },
+    });
+    const candidate = await observe(`${server.origin}/hls/flip.m3u8`);
+    expect(await resolve(candidate.id)).toMatchObject({ ok: true, hls: { encrypted: true } });
+    expect((await detectById(candidate)).protection).toBe('encrypted');
+
+    encrypted = false;
+    const second = await resolve(candidate.id);
+    const again = await detectById(candidate);
+
+    expect(second).toMatchObject({ ok: true, hls: { encrypted: false } });
+    expect(again.hls).toMatchObject({ encrypted: false });
+    expect(again.protection).toBe('none');
+  });
+
+  it('SPEC-0011:IT-05 (c) depois de bg.restart() e sem detect, resolveHls acha o candidato guardado no NetworkStore', async () => {
+    const candidate = await observe(`${server.origin}/hls/master.m3u8`);
+
+    bg.restart();
+    const response = await resolve(candidate.id);
+
+    expect(response).toMatchObject({ ok: true, hls: { type: 'master', segmentCount: 3 } });
+  });
+
+  it('SPEC-0011:IT-05 (d) três resolveHls simultâneos do mesmo candidato fazem uma busca por URL de playlist', async () => {
+    const candidate = await observe(`${server.origin}/hls/master.m3u8`);
+
+    const responses = await Promise.all([
+      resolve(candidate.id),
+      resolve(candidate.id),
+      resolve(candidate.id),
+    ]);
+
+    for (const response of responses) {
+      expect(response).toMatchObject({ ok: true, hls: { type: 'master' } });
+    }
+    expect([...server.requests].sort()).toEqual(['/hls/master.m3u8', '/hls/v1080.m3u8']);
+  });
+
+  it('SPEC-0011:IT-05 (e) master com mais de 50 variantes brutas: hls devolvido e guardado têm no máximo 50', async () => {
+    const lines = ['#EXTM3U'];
+    for (let i = 1; i <= 120; i++) {
+      lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${String(i * 100_000)}`, `big/v${String(i)}.m3u8`);
+    }
+    await server.close();
+    server = await startPlaylistServer({
+      '/hls/big.m3u8': body(lines.join('\n') + '\n'),
+      '/hls/big/v120.m3u8': body(media([4, 4])),
+    });
+    const candidate = await observe(`${server.origin}/hls/big.m3u8`);
+
+    const response = await resolve(candidate.id);
+    const again = await detectById(candidate);
+
+    expect(response).toMatchObject({ ok: true, hls: { type: 'master' } });
+    const returned = (response as { hls: { variants: unknown[] } }).hls.variants;
+    expect(returned.length).toBeLessThanOrEqual(50);
+    expect(again.hls?.variants.length).toBeLessThanOrEqual(50);
+    expect(again.hls?.variants.length).toBeGreaterThan(0);
+  });
+});

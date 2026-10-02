@@ -251,6 +251,108 @@ v720.m3u8
   });
 });
 
+describe('parseHlsPlaylist: regra de dúvida do METHOD (Emenda 2)', () => {
+  const encryptedOf = (keyLine: string): boolean =>
+    parseHlsPlaylist(withKey(keyLine), BASE).encrypted;
+
+  it('SPEC-0011:UT-03 METHOD=NONE escondido na URI entre aspas, com METHOD=AES-128 real, é criptografada', () => {
+    expect(encryptedOf('#EXT-X-KEY:URI="https://k/x?a,METHOD=NONE",METHOD=AES-128')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 METHOD=NONE escondido em atributo desconhecido entre aspas, com SAMPLE-AES real, é criptografada', () => {
+    expect(encryptedOf('#EXT-X-KEY:X-FOO="a,METHOD=NONE",METHOD=SAMPLE-AES')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 METHOD=NONE só dentro de atributo entre aspas e nenhum METHOD real conta como criptografada', () => {
+    expect(encryptedOf('#EXT-X-KEY:URI="https://k/x?a,METHOD=NONE"')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:URI="k.bin",X-FOO="METHOD=NONE"')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 METHOD repetido conta como criptografada, em qualquer ordem', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE,METHOD=AES-128')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:METHOD=AES-128,METHOD=NONE')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE,METHOD=NONE')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 METHOD ausente ou com valor desconhecido conta como criptografada', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=FOO')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:URI="k.bin"')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 a mesma regra vale para EXT-X-SESSION-KEY no master', () => {
+    const master = (sessionKey: string): string => `#EXTM3U
+${sessionKey}
+#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=1280x720
+v720.m3u8
+`;
+
+    expect(
+      parseHlsPlaylist(
+        master('#EXT-X-SESSION-KEY:URI="https://k/x?a,METHOD=NONE",METHOD=AES-128'),
+        BASE,
+      ).encrypted,
+    ).toBe(true);
+    expect(parseHlsPlaylist(master('#EXT-X-SESSION-KEY:METHOD=NONE'), BASE).encrypted).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 METHOD=none em minúsculas, único, conta como limpo (sem diferenciar maiúsculas)', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=none')).toBe(false);
+    expect(encryptedOf('#EXT-X-KEY:METHOD=None')).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 guarda: um único METHOD=NONE (inclusive com KEYFORMAT) continua limpo', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE')).toBe(false);
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE,KEYFORMAT="identity"')).toBe(false);
+    expect(encryptedOf('#EXT-X-KEY:KEYFORMAT="identity",METHOD=NONE')).toBe(false);
+  });
+});
+
+describe('parseHlsPlaylist: limite de variantes e esquemas (Emenda 2)', () => {
+  it('SPEC-0011:UT-06 master com 16.000 variantes devolve no máximo 50, as de maior banda, index 0..49 ordenado', () => {
+    const lines = ['#EXTM3U'];
+    for (let i = 1; i <= 16_000; i++) {
+      lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${String(i * 1000)}`, `v${String(i)}.m3u8`);
+    }
+
+    const info = parseHlsPlaylist(lines.join('\n') + '\n', BASE);
+
+    expect(info.variants.length).toBeLessThanOrEqual(50);
+    expect(info.variants).toHaveLength(50);
+    expect(info.variants.map((v) => v.index)).toEqual(Array.from({ length: 50 }, (_, i) => i));
+    expect(info.variants[0]?.bandwidth).toBe(16_000_000);
+    expect(info.variants[49]?.bandwidth).toBe(15_951_000);
+    const bandwidths = info.variants.map((v) => v.bandwidth);
+    expect(bandwidths).toEqual([...bandwidths].sort((a, b) => b - a));
+  });
+
+  it('SPEC-0011:UT-06 variantes com URL file:, javascript: e ftp: são descartadas; as http(s) ficam', () => {
+    const text = `#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=9000000
+file:///etc/passwd
+#EXT-X-STREAM-INF:BANDWIDTH=8000000
+javascript:alert(1)
+#EXT-X-STREAM-INF:BANDWIDTH=7000000
+ftp://cdn.example.test/v.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3000000
+https://cdn.example.test/hls/v-abs.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=1000000
+http://cdn.example.test/hls/v-http.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=500000
+rel.m3u8
+`;
+
+    const info = parseHlsPlaylist(text, BASE);
+
+    expect(info.variants.map((v) => v.url)).toEqual([
+      'https://cdn.example.test/hls/v-abs.m3u8',
+      'http://cdn.example.test/hls/v-http.m3u8',
+      'https://cdn.example.test/hls/rel.m3u8',
+    ]);
+    expect(info.variants.map((v) => v.index)).toEqual([0, 1, 2]);
+  });
+});
+
 describe('parseHlsPlaylist: resolução de URLs', () => {
   it('SPEC-0011:UT-04 URLs de variantes relativas, de caminho absoluto e absolutas ficam absolutas e preservam a query', () => {
     const base = 'https://cdn.example.test/a/b/master.m3u8?basetoken=zzz';
