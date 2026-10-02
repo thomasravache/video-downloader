@@ -209,7 +209,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)) — 25ac22b | 2026-10-02 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent addd12b5 (3ª rodada): APPROVED @ 25ac22b (fuzz independente de 150.000 playlists, 0 violações; lista de permissão exata; mutações detectadas; 2 minor viram obrigações da SPEC-0012) — 25ac22b | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 207 ms); test exit 0 (Duration  28.60s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.93s (tests 73%, transform 17%, import 6%, setup 3%, worker 1%)); test_e2e exit 0 (40 passed (38.4s)); arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)); security_scan exit 0 ([90m6:09PM[0m [32mINF[0m [1mno leaks found[0m) — 9f38d66 | 2026-10-02 |
-| H2 Integração aprovada | PENDING | | |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
