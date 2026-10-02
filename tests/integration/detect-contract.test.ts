@@ -23,6 +23,8 @@ function candidate(overrides: Record<string, unknown> = {}): Record<string, unkn
     support: 'downloadable',
     frameId: 5,
     frameUrl: 'https://player.example.test/embed/1',
+    kind: 'file',
+    source: 'dom',
   };
   return { ...base, ...overrides };
 }

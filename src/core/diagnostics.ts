@@ -17,6 +17,8 @@ export interface Counters {
   downloadsFailed: number;
 }
 
+export type NetworkOutcome = 'file' | 'hls' | 'dash' | 'discarded';
+
 export interface Diagnostics {
   newCorrelationId(): string;
   log(
@@ -26,6 +28,8 @@ export interface Diagnostics {
     fields?: Record<string, unknown>,
   ): LogEntry;
   count(providerId: string, counter: keyof Counters): void;
+  /** Contador local de respostas de rede por resultado (`file`/`hls`/`dash` ou `discarded`) — SPEC-0010. */
+  countNetwork(outcome: NetworkOutcome): void;
   /** Entradas do ring buffer + uma entrada final `counters` com os contadores por provider. */
   snapshot(): LogEntry[];
 }
@@ -64,6 +68,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
   const newId = options.newId ?? (() => crypto.randomUUID());
   const entries: LogEntry[] = [];
   const counters = new Map<string, Counters>();
+  const network = new Map<NetworkOutcome, number>();
 
   return {
     newCorrelationId: newId,
@@ -90,6 +95,9 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
       current[counter] += 1;
       counters.set(providerId, current);
     },
+    countNetwork(outcome) {
+      network.set(outcome, (network.get(outcome) ?? 0) + 1);
+    },
     snapshot() {
       return [
         ...entries,
@@ -99,6 +107,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
           event: 'counters',
           correlationId: newId(),
           providers: Object.fromEntries(counters),
+          ...(network.size > 0 && { network: Object.fromEntries(network) }),
         },
       ];
     },

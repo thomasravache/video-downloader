@@ -29,8 +29,9 @@ export function buildManifest(flavor: Flavor): BuildManifest {
     default_locale: 'pt_BR',
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
-    // Permissões mínimas (ADR-0007) sem CSP customizada; acesso a hosts por flavor (ADR-0012).
-    permissions: ['activeTab', 'scripting', 'downloads', 'storage'],
+    // Permissões mínimas (ADR-0007) sem CSP customizada; `webRequest` só observa (SPEC-0010) e vê
+    // apenas os hosts de cada flavor (ADR-0012).
+    permissions: ['activeTab', 'scripting', 'downloads', 'storage', 'webRequest'],
     // local: acesso amplo; public: opcional, pedido por site com gesto do usuário (popup).
     ...(flavor === 'local'
       ? { host_permissions: [...HOST_PATTERNS] }

@@ -17,6 +17,8 @@ function candidate(tabId: number, id: string): VideoCandidate {
     support: 'downloadable',
     frameId: 0,
     frameUrl: 'https://site.example.test/',
+    kind: 'file',
+    source: 'dom',
   };
 }
 

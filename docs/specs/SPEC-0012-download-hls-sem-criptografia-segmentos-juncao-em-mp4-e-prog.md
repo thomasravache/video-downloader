@@ -7,8 +7,8 @@ user_facing: true
 status: approved
 created: 2026-10-02
 parent: SPEC-0008
-depends_on: [SPEC-0011]
-consumes_contract: []
+depends_on: []
+consumes_contract: [SPEC-0011@1]
 contract_version: 1
 touches: [package.json, pnpm-lock.yaml, wxt.config.ts, .dependency-cruiser.cjs, src/core/**, entrypoints/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
 adrs: [ADR-0013, ADR-0012, ADR-0008, ADR-0006, ADR-0001]
@@ -258,3 +258,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0012`. -->
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (dependência) | 2026-10-02 | `depends_on: [SPEC-0011]` passa a `consumes_contract: [SPEC-0011@1]` | a dependência real é o código/contrato já integrado na `main` (SPEC-0011 com G5 e H2); o fechamento (G6 manual e G7) das specs do épico acontece em lote numa única rc no fim, pois a verificação manual exige o Thomas | SPEC-0011 (sem efeito no contrato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |

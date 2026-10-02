@@ -61,6 +61,8 @@ export function candidatesOfSnapshot(
         ...classification,
         frameId,
         frameUrl: snapshot.pageUrl,
+        kind: 'file',
+        source: 'dom',
       });
     }
   }

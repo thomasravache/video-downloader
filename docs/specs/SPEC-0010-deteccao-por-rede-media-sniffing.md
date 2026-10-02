@@ -4,11 +4,11 @@ title: Detecção por rede (media sniffing)
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
-depends_on: [SPEC-0009]
-consumes_contract: []
+depends_on: []
+consumes_contract: [SPEC-0009@1]
 contract_version: 1
 touches: [wxt.config.ts, .dependency-cruiser.cjs, src/core/**, entrypoints/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
 adrs: [ADR-0012, ADR-0009, ADR-0006, ADR-0001]
@@ -137,6 +137,7 @@ function mergeCandidates(dom: VideoCandidate[], network: VideoCandidate[]): Vide
 - **IT-03** — Um `onBeforeRequest` de `main_frame` limpa a lista da aba; `tabs.onRemoved` descarta a lista.
 - **IT-04** — Com `pnpm build` real, ambos os manifestos têm exatamente as permissões `activeTab, scripting, downloads, storage, webRequest`, e a política de host de cada flavor da SPEC-0009 permanece.
 - **IT-05** — Com o logger real, o diagnóstico depois de eventos de rede com `?token=...` não contém `token=`; todas as entradas têm `correlationId`.
+- **IT-06** — Sem `browser.webRequest` (API ausente) ou com `addListener` lançando, o background não quebra, continua detectando pelo DOM e registra no diagnóstico a entrada `network.unavailable` com o motivo (`no_api` ou o nome do erro, sem URL); um evento `onBeforeRequest` de `main_frame` com `tabId < 0` é ignorado e não limpa nenhuma lista (Emenda 2).
 
 ### 7.4 Testes de Contrato
 - **CT-01** — Contrato de `VideoCandidate` v3 (consumido pela SPEC-0011): o validador aceita `kind ∈ {file,hls,dash}` e `source ∈ {dom,network}` e rejeita valores desconhecidos ou ausentes.
@@ -200,12 +201,12 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
-| G5 Integração & CI | PENDING | | |
-| H2 Integração aprovada | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/29]⎯) — eeb8c56 | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 203 ms); test exit 0 (Duration  27.83s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 149 ms); coverage exit 0 (================================================================================) — 20c2a99 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)) — 20c2a99 | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01; delta 20c2a99 (IT-06) = correção exata recomendada pelo reviewer, conferida pelo Architect (diff de 1 arquivo, testes verdes) — 20c2a99 | 2026-10-02 |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 181 ms); test exit 0 (Duration  23.23s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.43s (tests 74%, transform 17%, setup 4%, import 3%, worker 1%)); test_e2e exit 0 (34 passed (26.0s)); arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)); security_scan exit 0 ([90m4:43PM[0m [32mINF[0m [1mno leaks found[0m) — 77dabb0 | 2026-10-02 |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
@@ -253,3 +254,5 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0010`. -->
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (dependência) | 2026-10-02 | `depends_on: [SPEC-0009]` passa a `consumes_contract: [SPEC-0009@1]` | a dependência real é o código/contrato já integrado na `main` (SPEC-0009 com G5 e H2); o fechamento (G6 manual e G7) das specs do épico acontece em lote numa única rc no fim, pois a verificação manual exige o Thomas | SPEC-0009 (sem efeito no contrato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 2 (revisão) | 2026-10-02 | novo IT-06: falha de registro do webRequest é registrada (`network.unavailable`) em vez de silenciosa; eventos com `tabId < 0` são ignorados | achados do Reviewer (G4): o `catch` silencioso esconderia para sempre uma falha de permissão/API na funcionalidade principal; o NFR já dizia que eventos sem aba são ignorados | nenhuma | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |

@@ -13,7 +13,12 @@
  *  - `browser.permissions.contains({ origins: [origem + '/*'] })` diz se a origem já tem permissão
  *    (stub `contains`; padrão: nenhuma origem concedida);
  *  - `browser.downloads.download({ url, filename })` resolve com o `downloadId`;
- *  - `browser.tabs.onRemoved` descarta os candidatos da aba.
+ *  - `browser.tabs.onRemoved` descarta os candidatos da aba;
+ *  - (SPEC-0010) `browser.webRequest.onResponseStarted.addListener(cb, { urls }, ['responseHeaders'])` e
+ *    `onBeforeRequest.addListener(cb, { urls, types: ['main_frame'] })`: o fake do WXT não implementa
+ *    `webRequest`, então o harness o substitui por eventos que CAPTURAM os listeners; `network.*`
+ *    chama os listeners capturados. `restart()` simula a suspensão do service worker: remove os
+ *    listeners e chama `background.main()` de novo SEM resetar o fake (storage.session é mantido).
  */
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { vi } from 'vitest';
@@ -28,6 +33,74 @@ import type {
 } from '../../../src/core/contracts';
 
 export const NO_RESPONSE = Symbol('NO_RESPONSE');
+
+interface Registration {
+  callback: (details: Record<string, unknown>) => unknown;
+  filter: { urls?: string[]; types?: string[] } | undefined;
+  extraInfoSpec: string[] | undefined;
+}
+
+/** Evento de `webRequest` que captura os listeners registrados pelo background. */
+export interface CapturedEvent {
+  registrations: Registration[];
+  emit(details: Record<string, unknown>): Promise<void>;
+}
+
+function capturedEvent(): CapturedEvent & Record<string, unknown> {
+  const registrations: Registration[] = [];
+  return {
+    registrations,
+    addListener: (
+      callback: Registration['callback'],
+      filter?: Registration['filter'],
+      extraInfoSpec?: string[],
+    ) => {
+      registrations.push({ callback, filter, extraInfoSpec });
+    },
+    removeListener: (callback: Registration['callback']) => {
+      const index = registrations.findIndex((r) => r.callback === callback);
+      if (index >= 0) {
+        registrations.splice(index, 1);
+      }
+    },
+    hasListener: (callback: Registration['callback']) =>
+      registrations.some((r) => r.callback === callback),
+    async emit(details: Record<string, unknown>) {
+      await Promise.all(registrations.map((r) => r.callback(details)));
+      // Dá tempo a gravações assíncronas disparadas sem await pelo listener.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    },
+  };
+}
+
+export interface ResponseDetails {
+  url: string;
+  tabId: number;
+  statusCode?: number;
+  method?: string;
+  frameId?: number;
+  /** Cabeçalhos de resposta; a ordem/caixa das chaves é preservada. */
+  headers?: Record<string, string>;
+}
+
+export interface NetworkHarness {
+  responseStarted: CapturedEvent;
+  beforeRequest: CapturedEvent;
+  /** Dispara `onResponseStarted` com a forma de `WebResponseHeadersDetails`. */
+  respond(details: ResponseDetails): Promise<void>;
+  /** Dispara `onBeforeRequest` de uma navegação do frame principal da aba. */
+  navigate(tabId: number, url: string): Promise<void>;
+}
+
+function installWebRequestStub(): { responseStarted: CapturedEvent; beforeRequest: CapturedEvent } {
+  const responseStarted = capturedEvent();
+  const beforeRequest = capturedEvent();
+  Object.defineProperty(fakeBrowser, 'webRequest', {
+    configurable: true,
+    value: { onResponseStarted: responseStarted, onBeforeRequest: beforeRequest },
+  });
+  return { responseStarted, beforeRequest };
+}
 
 export function video(overrides: Partial<VideoSnapshot> = {}): VideoSnapshot {
   return {
@@ -72,6 +145,10 @@ export interface BackgroundHarness {
     tabUrl?: string,
   ): Promise<{ tabId: number; response: DetectResponse }>;
   ownId: string;
+  /** Eventos de `webRequest` (SPEC-0010). */
+  network: NetworkHarness;
+  /** Suspende e recria o background mantendo o mesmo `storage.session` (SPEC-0010:IT-02). */
+  restart(): void;
 }
 
 export function startBackground(): BackgroundHarness {
@@ -91,6 +168,7 @@ export function startBackground(): BackgroundHarness {
     .spyOn(fakeBrowser.downloads as unknown as Record<string, () => unknown>, 'download')
     .mockResolvedValue(1);
 
+  const stub = installWebRequestStub();
   background.main();
 
   const ownId = fakeBrowser.runtime.id;
@@ -146,5 +224,53 @@ export function startBackground(): BackgroundHarness {
     return { tabId, response };
   }
 
-  return { send, executeScript, contains, download, newTab, detect, detectFrames, ownId };
+  const network: NetworkHarness = {
+    ...stub,
+    async respond({ url, tabId, statusCode = 200, method = 'GET', frameId = 0, headers = {} }) {
+      await stub.responseStarted.emit({
+        url,
+        tabId,
+        statusCode,
+        method,
+        frameId,
+        type: 'xmlhttprequest',
+        requestId: String(Math.random()),
+        timeStamp: Date.now(),
+        responseHeaders: Object.entries(headers).map(([name, value]) => ({ name, value })),
+      });
+    },
+    async navigate(tabId, url) {
+      await stub.beforeRequest.emit({
+        url,
+        tabId,
+        frameId: 0,
+        method: 'GET',
+        type: 'main_frame',
+        requestId: String(Math.random()),
+        timeStamp: Date.now(),
+      });
+    },
+  };
+
+  function restart(): void {
+    // Service worker suspenso: os listeners somem; o storage.session do navegador permanece.
+    fakeBrowser.runtime.onMessage.removeAllListeners();
+    fakeBrowser.tabs.onRemoved.removeAllListeners();
+    stub.responseStarted.registrations.length = 0;
+    stub.beforeRequest.registrations.length = 0;
+    background.main();
+  }
+
+  return {
+    send,
+    executeScript,
+    contains,
+    download,
+    newTab,
+    detect,
+    detectFrames,
+    ownId,
+    network,
+    restart,
+  };
 }
