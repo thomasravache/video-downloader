@@ -11,7 +11,7 @@ import { redactUrls } from './diagnostics';
 import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
 import { validateMessage } from './messages';
-import type { DownloadPort, ScriptingPort, TabsPort } from './ports';
+import type { DownloadPort, PermissionsPort, ScriptingPort, TabsPort } from './ports';
 
 export type ServiceResponse = DetectResponse | DownloadResponse | DiagnosticsResponse;
 
@@ -22,6 +22,7 @@ export interface ServiceDeps {
   scripting: ScriptingPort;
   downloads: DownloadPort;
   tabs: TabsPort;
+  permissions: PermissionsPort;
   diagnostics: Diagnostics;
   store?: CandidateStore;
 }
@@ -106,7 +107,8 @@ export function createService(deps: ServiceDeps): Service {
         support: c.support,
       })),
     });
-    return { ok: true, candidates };
+    // scaffold (SPEC-0009): `access` real vem de computeBlockedOrigins.
+    return { ok: true, candidates, access: { blockedOrigins: [] } };
   }
 
   async function download(candidateId: string, fallbackId: string): Promise<DownloadResponse> {

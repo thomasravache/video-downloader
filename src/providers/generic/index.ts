@@ -55,6 +55,9 @@ export function extractCandidates(snapshot: PageSnapshot, tabId: number): VideoC
         ...(title !== undefined && { title }),
         ...(mimeType !== undefined && { mimeType }),
         ...classification,
+        // scaffold (SPEC-0009): frame principal apenas; mergeFrameSnapshots passa a atribuir o frame.
+        frameId: 0,
+        frameUrl: snapshot.pageUrl,
       });
     }
   }
@@ -66,7 +69,9 @@ const provider: Provider = {
   flavors: ['public', 'local'],
   matches: () => true,
   async detect(ctx: DetectContext) {
-    return extractCandidates(await ctx.scripting.collectVideos(ctx.tabId), ctx.tabId);
+    // scaffold (SPEC-0009): só o frame principal até a implementação de mergeFrameSnapshots.
+    const [main] = await ctx.scripting.collectVideos(ctx.tabId);
+    return main ? extractCandidates(main.snapshot, ctx.tabId) : [];
   },
 };
 

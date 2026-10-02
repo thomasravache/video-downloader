@@ -30,5 +30,6 @@ export function collectVideos(): PageSnapshot {
       encrypted: encrypted.has(video),
     };
   });
-  return { pageUrl: location.href, pageTitle: document.title, videos };
+  // scaffold (SPEC-0009): crossOriginFrames passa a ser calculado com findCrossOriginFrames.
+  return { pageUrl: location.href, pageTitle: document.title, videos, crossOriginFrames: [] };
 }

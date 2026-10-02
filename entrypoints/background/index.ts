@@ -30,8 +30,13 @@ export default defineBackground(() => {
         if (!isPageSnapshot(injection?.result)) {
           throw new Error('executeScript não devolveu o retrato da página');
         }
-        return injection.result;
+        // scaffold (SPEC-0009): allFrames e um retrato por frame vêm com a implementação.
+        return [{ frameId: 0, snapshot: injection.result }];
       },
+    },
+    permissions: {
+      contains: () => Promise.reject(new Error('NotImplemented')),
+      request: () => Promise.reject(new Error('NotImplemented')),
     },
     downloads: {
       download: (options) => browser.downloads.download(options),

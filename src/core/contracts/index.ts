@@ -24,11 +24,19 @@ export interface PageSnapshot {
   pageUrl: string;
   pageTitle: string;
   videos: VideoSnapshot[];
+  /** Origens 'https://host[:porta]' de `<iframe src>` http(s) com origem diferente da do frame (v2, SPEC-0009). */
+  crossOriginFrames: string[];
 }
 
-/** Porta para o `scripting` do navegador; rejeita quando a página não permite scripts. */
+/** Retrato de um frame da aba (v2, SPEC-0009); `frameId` 0 é o documento principal. */
+export interface FrameSnapshot {
+  frameId: number;
+  snapshot: PageSnapshot;
+}
+
+/** Porta para o `scripting` do navegador: um retrato por frame com acesso; rejeita quando nenhum frame permite scripts. */
 export interface ScriptingPort {
-  collectVideos(tabId: number): Promise<PageSnapshot>;
+  collectVideos(tabId: number): Promise<FrameSnapshot[]>;
 }
 
 export interface VideoCandidate {
@@ -42,6 +50,9 @@ export interface VideoCandidate {
   sizeBytes?: number;
   protection: 'none' | 'drm';
   support: 'downloadable' | 'unsupported-stream';
+  /** Frame em que o vídeo foi visto (v2, SPEC-0009); 0 = principal. */
+  frameId: number;
+  frameUrl: string;
 }
 
 export interface DetectContext {
@@ -68,9 +79,22 @@ export interface LogEntry {
   [field: string]: unknown;
 }
 
+/** Origens de iframe vistas na página e ainda sem permissão de host (v2, SPEC-0009). */
+export interface DetectAccess {
+  blockedOrigins: string[];
+}
+
 export type DetectResponse =
-  | { ok: true; candidates: VideoCandidate[] }
+  | { ok: true; candidates: VideoCandidate[]; access: DetectAccess }
   | { ok: false; error: 'RESTRICTED_PAGE' | 'INVALID_MESSAGE' };
+
+export type DetectResponseValidation =
+  { ok: true; value: DetectResponse } | { ok: false; error: string };
+
+/** Valida a resposta de `detect` v2 (SPEC-0009:CT-01). */
+export function validateDetectResponse(_input: unknown): DetectResponseValidation {
+  throw new Error('NotImplemented');
+}
 
 export type DownloadResponse =
   | { ok: true; downloadId: number }
