@@ -207,7 +207,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/21]⎯) — b55d080 | 2026-10-02 |
 | G2 Green | PASS | build exit 0 (✔ Finished in 206 ms); test exit 0 (Duration  26.97s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 144 ms); coverage exit 0 (================================================================================) — 25ac22b | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)) — 25ac22b | 2026-10-02 |
-| G4 Review | FAIL | reviewer-agent a3eaef7d (2ª rodada): CHANGES_REQUESTED @ 302082c — 2 major: tokenizador de aspas ainda esconde METHOD=AES-128 (aspa solta em valor sem aspas, aspa sem fechar, U+2028/2029 fazem a linha da chave ser ignorada; confirmado com ffmpeg/hls.js) + 4 minor | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent addd12b5 (3ª rodada): APPROVED @ 25ac22b (fuzz independente de 150.000 playlists, 0 violações; lista de permissão exata; mutações detectadas; 2 minor viram obrigações da SPEC-0012) — 25ac22b | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
