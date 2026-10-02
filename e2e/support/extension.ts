@@ -1,11 +1,16 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { chromium, test as base } from '@playwright/test';
 import type { BrowserContext, Page, Worker } from '@playwright/test';
 import { ensureBuilt } from './build';
 import { startFixtureServer } from './fixture-server';
 import type { Flavor } from './flavor';
+import {
+  prepareTestExtension,
+  seedDownloadPreferences,
+  useDefaultDownloadBehavior,
+} from './test-profile';
 
 export type { Flavor } from './flavor';
 
@@ -64,8 +69,13 @@ export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixt
   },
 
   context: async ({ flavor, downloadsDir }, use) => {
-    const extensionPath = ensureBuilt(flavor);
+    // Cópia do build com host_permissions só para os testes (Emenda 1 (teste) da SPEC-0005).
+    const extensionPath = prepareTestExtension(
+      ensureBuilt(flavor),
+      join(mkdtempSync(join(tmpdir(), 'vd-e2e-extension-')), 'extension'),
+    );
     const userDataDir = mkdtempSync(join(tmpdir(), 'vd-e2e-profile-'));
+    seedDownloadPreferences(userDataDir, downloadsDir);
     const context = await chromium.launchPersistentContext(userDataDir, {
       // Extensões exigem o Chromium completo (novo headless), não o headless shell.
       channel: 'chromium',
@@ -83,9 +93,11 @@ export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixt
       (route) => route.abort('blockedbyclient'),
     );
     context.on('page', settleFailedNavigations);
+    await useDefaultDownloadBehavior(context);
     await use(context);
     await context.close();
     rmSync(userDataDir, { recursive: true, force: true });
+    rmSync(dirname(extensionPath), { recursive: true, force: true });
   },
 
   serviceWorker: async ({ context }, use) => {

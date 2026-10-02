@@ -1,4 +1,74 @@
 {
-  "extName": { "message": "Video Downloader" },
-  "extDescription": { "message": "Detects and downloads DRM-free videos from the pages you visit." }
+  "extName": {
+    "message": "Video Downloader"
+  },
+  "extDescription": {
+    "message": "Detects and downloads DRM-free videos from the pages you visit."
+  },
+  "popupSearching": {
+    "message": "Looking for videos…"
+  },
+  "popupEmpty": {
+    "message": "No videos found on this page"
+  },
+  "popupRestricted": {
+    "message": "Chrome does not allow extensions on this page"
+  },
+  "popupDetectFailed": {
+    "message": "Could not look for videos in this tab. Try again."
+  },
+  "listLabel": {
+    "message": "Detected videos"
+  },
+  "badgeDrm": {
+    "message": "Protected (DRM)"
+  },
+  "badgeUnsupported": {
+    "message": "Not supported yet"
+  },
+  "buttonDownload": {
+    "message": "Download"
+  },
+  "buttonDownloadNamed": {
+    "message": "Download $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Lesson 1"
+      }
+    }
+  },
+  "statusDownloadStarted": {
+    "message": "Download started"
+  },
+  "statusDownloadFailed": {
+    "message": "Download failed: $REASON$",
+    "placeholders": {
+      "reason": {
+        "content": "$1",
+        "example": "NETWORK_FAILED"
+      }
+    }
+  },
+  "errorCandidateNotFound": {
+    "message": "Video not found. Reopen the popup and try again."
+  },
+  "errorProtected": {
+    "message": "This video is DRM-protected and cannot be downloaded."
+  },
+  "errorUnsupported": {
+    "message": "This kind of video is not supported yet."
+  },
+  "errorGeneric": {
+    "message": "Could not start the download."
+  },
+  "buttonCopyDiagnostics": {
+    "message": "Copy diagnostics"
+  },
+  "statusDiagnosticsCopied": {
+    "message": "Diagnostics copied"
+  },
+  "statusDiagnosticsFailed": {
+    "message": "Could not copy diagnostics"
+  }
 }

@@ -4,9 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Video Downloader</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <h1 id="title"></h1>
+    <header class="header">
+      <h1 id="title" class="title"></h1>
+    </header>
+    <main id="content" class="content" aria-live="polite" aria-busy="true"></main>
+    <footer class="footer">
+      <button
+        type="button"
+        class="link-button"
+        data-testid="copy-diagnostics"
+        id="copy-diagnostics"
+      ></button>
+      <p id="footer-status" class="status" role="status"></p>
+    </footer>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

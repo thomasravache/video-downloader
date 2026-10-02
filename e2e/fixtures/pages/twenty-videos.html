@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vinte vídeos</title>
+  </head>
+  <body>
+    <h1>Vinte vídeos distintos</h1>
+    <script>
+      for (let i = 0; i < 20; i++) {
+        const v = document.createElement('video');
+        v.preload = 'none';
+        v.muted = true;
+        v.src = '../sample.mp4?n=' + i;
+        document.body.append(v);
+      }
+    </script>
+  </body>
+</html>
