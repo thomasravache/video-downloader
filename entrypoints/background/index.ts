@@ -31,6 +31,7 @@ export default defineBackground(() => {
     get: async (key) => (await browser.storage.session.get(key))[key],
     set: (key, value) => browser.storage.session.set({ [key]: value }),
     remove: (key) => browser.storage.session.remove(key),
+    keys: async () => Object.keys(await browser.storage.session.get(null)),
   });
   const service = createService({
     extensionId: browser.runtime.id,

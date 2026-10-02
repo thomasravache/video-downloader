@@ -261,9 +261,21 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
-  async function resolveHls(candidateId: string, fallbackId: string): Promise<ResolveHlsResponse> {
+  /** Memória primeiro; depois o `NetworkStore` (o service worker pode ter reiniciado sem `detect`). */
+  async function findCandidate(candidateId: string): Promise<VideoCandidate | undefined> {
+    const known = store.find(candidateId);
+    if (known) {
+      return known;
+    }
+    return deps.network?.find(candidateId).catch(() => undefined);
+  }
+
+  async function resolveHlsOnce(
+    candidateId: string,
+    fallbackId: string,
+  ): Promise<ResolveHlsResponse> {
     const correlationId = correlations.get(candidateId) ?? fallbackId;
-    const candidate = store.find(candidateId);
+    const candidate = await findCandidate(candidateId);
     if (candidate?.kind !== 'hls') {
       diagnostics.log('warn', 'hls.not_found', correlationId, { candidateId });
       return { ok: false, error: 'CANDIDATE_NOT_FOUND' };
@@ -313,7 +325,10 @@ export function createService(deps: ServiceDeps): Service {
     const resolved: VideoCandidate = {
       ...candidate,
       hls,
-      ...(hls.encrypted && { protection: 'encrypted' as const }),
+      // Pela resolução mais recente: nunca deixa `encrypted` velho ao lado de `hls.encrypted: false`.
+      ...(candidate.protection !== 'drm' && {
+        protection: hls.encrypted ? ('encrypted' as const) : ('none' as const),
+      }),
       ...(hls.live && { support: 'unsupported-stream' as const }),
     };
     store.update(resolved);
@@ -342,6 +357,19 @@ export function createService(deps: ServiceDeps): Service {
       fmp4: hls.fmp4,
     });
     return { ok: true, hls };
+  }
+
+  /** Resoluções simultâneas do mesmo candidato compartilham uma única busca. */
+  const resolving = new Map<string, Promise<ResolveHlsResponse>>();
+  function resolveHls(candidateId: string, fallbackId: string): Promise<ResolveHlsResponse> {
+    let pending = resolving.get(candidateId);
+    if (!pending) {
+      pending = resolveHlsOnce(candidateId, fallbackId).finally(() => {
+        resolving.delete(candidateId);
+      });
+      resolving.set(candidateId, pending);
+    }
+    return pending;
   }
 
   return {
