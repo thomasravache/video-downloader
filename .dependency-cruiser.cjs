@@ -61,11 +61,21 @@ module.exports = {
       name: 'not-to-unresolvable',
       comment:
         'Imports não resolvidos não podem escapar das regras de fronteira. Exceção documentada: ' +
-        'aliases virtuais do WXT (#imports, #build, ...), que resolvem para .wxt (excluído); no ' +
-        'core eles são proibidos por no-core-browser-api.',
+        'aliases virtuais do WXT (#imports, #build, ...), que resolvem para .wxt (excluído) — no ' +
+        'core eles são proibidos por no-core-browser-api — e o módulo virtual `virtual:providers` ' +
+        '(ADR-0011), que só o background pode importar (no-virtual-providers-outside-background).',
       severity: 'error',
       from: { path: '^(src|entrypoints)/' },
-      to: { couldNotResolve: true, pathNot: '^#[a-z]' },
+      to: { couldNotResolve: true, pathNot: '^(#[a-z]|virtual:providers$)' },
+    },
+    {
+      name: 'no-virtual-providers-outside-background',
+      comment:
+        'ADR-0001/ADR-0011: o registro de providers (`virtual:providers`) é consumido só pelo ' +
+        'background; core, providers e popup nunca o importam.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/background(\\.ts$|/)' },
+      to: { path: '^virtual:providers$' },
     },
     {
       name: 'no-circular',
