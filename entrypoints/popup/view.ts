@@ -1,4 +1,5 @@
-import type { VideoCandidate } from '../../src/core/contracts';
+import type { ResolveHlsResponse, VideoCandidate } from '../../src/core/contracts';
+import type { HlsInfo } from '../../src/core/hls';
 
 export interface ViewText {
   listLabel: string;
@@ -9,6 +10,16 @@ export interface ViewText {
   accessNeeded: string;
   grantAccess: string;
   accessDenied: string;
+  badgeEncrypted: string;
+  badgeLive: string;
+  hlsLoading: string;
+  hlsQuality: string;
+  hlsErrorFetch: string;
+  hlsErrorParse: string;
+  hlsErrorGeneric: string;
+  duration(formatted: string): string;
+  /** Número no idioma da interface (vírgula decimal em pt-BR). */
+  number(value: number): string;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -79,6 +90,114 @@ function sourceLabel(mediaUrl: string): string {
   }
 }
 
+const hlsSlotId = (candidateId: string): string => `hls-${candidateId}`;
+
+function unsupportedBadge(text: ViewText): HTMLElement {
+  const badge = element('span', 'badge badge-warn', text.badgeUnsupported);
+  badge.dataset['testid'] = 'badge-unsupported';
+  return badge;
+}
+
+function fillLoading(slot: HTMLElement, text: ViewText): void {
+  const skeleton = element('div', 'skeleton');
+  skeleton.dataset['testid'] = 'hls-loading';
+  skeleton.setAttribute('aria-busy', 'true');
+  skeleton.append(
+    element('span', 'skeleton-bar'),
+    element('span', 'skeleton-text', text.hlsLoading),
+  );
+  slot.replaceChildren(skeleton);
+}
+
+function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(seconds % 60).padStart(2, '0');
+  return h > 0 ? `${String(h)}:${String(m).padStart(2, '0')}:${s}` : `${String(m)}:${s}`;
+}
+
+/** `720p · 3,2 Mbps`; sem altura o próprio rótulo já é a banda (`800 kbps`). */
+function optionText(variant: HlsInfo['variants'][number], text: ViewText): string {
+  if (variant.height === undefined) {
+    return variant.label;
+  }
+  const bandwidth =
+    variant.bandwidth >= 1_000_000
+      ? `${text.number(variant.bandwidth / 1_000_000)} Mbps`
+      : `${String(Math.round(variant.bandwidth / 1000))} kbps`;
+  return `${variant.label} · ${bandwidth}`;
+}
+
+function qualitySelect(hls: HlsInfo, candidateKey: string, text: ViewText): HTMLElement {
+  const field = element('div', 'field');
+  const label = element('label', 'field-label', text.hlsQuality);
+  const select = element('select', 'select');
+  select.id = `quality-${candidateKey}`;
+  select.dataset['testid'] = 'quality-select';
+  label.htmlFor = select.id;
+  hls.variants.forEach((variant, position) => {
+    const option = element('option', undefined, optionText(variant, text));
+    option.value = String(variant.index);
+    option.selected = position === 0;
+    select.append(option);
+  });
+  field.append(label, select);
+  return field;
+}
+
+/** Estado resolvido: protegido, ao vivo, ou seletor de qualidade (a mais alta já escolhida). */
+function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText): void {
+  if (hls.encrypted) {
+    const badge = element('span', 'badge badge-warn', text.badgeEncrypted);
+    badge.dataset['testid'] = 'badge-encrypted';
+    slot.replaceChildren(badge);
+    return;
+  }
+  if (hls.live) {
+    const badge = element('span', 'badge badge-warn', text.badgeLive);
+    badge.dataset['testid'] = 'badge-live';
+    slot.replaceChildren(badge);
+    return;
+  }
+  const parts: HTMLElement[] = [];
+  if (hls.durationSec !== undefined) {
+    parts.push(element('p', 'status', text.duration(formatDuration(hls.durationSec))));
+  }
+  if (hls.variants.length > 0) {
+    parts.push(qualitySelect(hls, slot.id, text));
+  }
+  slot.replaceChildren(...parts, unsupportedBadge(text));
+}
+
+/** Aplica a resposta de `resolveHls` ao cartão do candidato (ignora se o cartão já saiu da tela). */
+export function renderHlsResult(
+  container: HTMLElement,
+  candidateId: string,
+  response: ResolveHlsResponse | undefined,
+  text: ViewText,
+): void {
+  const slot = container.querySelector<HTMLElement>(`#${hlsSlotId(candidateId)}`);
+  if (!slot) {
+    return;
+  }
+  if (response?.ok === true) {
+    fillHls(slot, response.hls, text);
+    return;
+  }
+  const message = element(
+    'p',
+    'status status-error',
+    response?.error === 'HLS_FETCH_FAILED'
+      ? text.hlsErrorFetch
+      : response?.error === 'HLS_PARSE_FAILED'
+        ? text.hlsErrorParse
+        : text.hlsErrorGeneric,
+  );
+  message.dataset['testid'] = 'hls-error';
+  slot.replaceChildren(message, unsupportedBadge(text));
+}
+
 function renderCard(
   candidate: VideoCandidate,
   text: ViewText,
@@ -104,6 +223,17 @@ function renderCard(
     const badge = element('span', 'badge badge-warn', text.badgeDrm);
     badge.dataset['testid'] = 'badge-drm';
     item.append(badge);
+  } else if (candidate.kind === 'hls') {
+    // HLS nunca tem botão de download aqui (SPEC-0012); o estado da playlist vive neste espaço.
+    const slot = element('div', 'hls');
+    slot.id = hlsSlotId(candidate.id);
+    slot.setAttribute('aria-live', 'polite');
+    if (candidate.hls) {
+      fillHls(slot, candidate.hls, text);
+    } else {
+      fillLoading(slot, text);
+    }
+    item.append(slot);
   } else if (candidate.support === 'unsupported-stream') {
     const badge = element('span', 'badge badge-warn', text.badgeUnsupported);
     badge.dataset['testid'] = 'badge-unsupported';

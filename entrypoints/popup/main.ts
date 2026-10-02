@@ -2,11 +2,19 @@ import type {
   DetectResponse,
   DiagnosticsResponse,
   DownloadResponse,
+  ResolveHlsResponse,
   VideoCandidate,
 } from '../../src/core/contracts';
 import { requestAccess } from '../../src/core/access';
 import type { PermissionsPort } from '../../src/core/access';
-import { renderAccess, renderCandidates, setStatus, showAccessDenied, showMessage } from './view';
+import {
+  renderAccess,
+  renderCandidates,
+  renderHlsResult,
+  setStatus,
+  showAccessDenied,
+  showMessage,
+} from './view';
 import type { ViewText } from './view';
 
 const t = (key: string, ...substitutions: string[]): string =>
@@ -21,6 +29,16 @@ const text: ViewText = {
   accessNeeded: t('accessNeeded'),
   grantAccess: t('buttonGrantAccess'),
   accessDenied: t('accessDenied'),
+  badgeEncrypted: t('badgeEncrypted'),
+  badgeLive: t('badgeLive'),
+  hlsLoading: t('hlsLoading'),
+  hlsQuality: t('hlsQuality'),
+  hlsErrorFetch: t('hlsErrorFetch'),
+  hlsErrorParse: t('hlsErrorParse'),
+  hlsErrorGeneric: t('hlsErrorGeneric'),
+  duration: (formatted) => t('hlsDuration', formatted),
+  number: (value) =>
+    new Intl.NumberFormat(browser.i18n.getUILanguage(), { maximumFractionDigits: 1 }).format(value),
 };
 
 /** `browser.permissions` do próprio popup: `permissions.request` exige o gesto do usuário (ADR-0012). */
@@ -101,6 +119,24 @@ function grantAccess(origins: string[], button: HTMLButtonElement): void {
   });
 }
 
+/** Uma mensagem `resolveHls` por cartão HLS ainda sem `hls`; cada falha fica no próprio cartão. */
+function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]): void {
+  for (const candidate of candidates) {
+    if (candidate.kind !== 'hls' || candidate.hls || candidate.protection === 'drm') {
+      continue;
+    }
+    void browser.runtime
+      .sendMessage<unknown, ResolveHlsResponse | undefined>({
+        type: 'resolveHls',
+        candidateId: candidate.id,
+      })
+      .catch(() => undefined)
+      .then((response) => {
+        renderHlsResult(container, candidate.id, response, text);
+      });
+  }
+}
+
 async function detect(): Promise<void> {
   if (!content || !access) {
     return;
@@ -136,6 +172,7 @@ async function detect(): Promise<void> {
       renderCandidates(content, response.candidates, text, (candidate, button) => {
         void download(candidate, button);
       });
+      resolvePlaylists(content, response.candidates);
     }
   } else if (response?.error === 'RESTRICTED_PAGE') {
     showMessage(content, t('popupRestricted'), 'restricted-state');
