@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Player MSE</title>
+  </head>
+  <body>
+    <h1>Player com MediaSource (blob:) que busca o MP4 por JavaScript</h1>
+    <video id="player" controls muted></video>
+    <script>
+      // O <video> só enxerga blob:; a URL real do arquivo só é visível na rede (SPEC-0010).
+      const source = new MediaSource();
+      document.getElementById('player').src = URL.createObjectURL(source);
+      fetch('/media/stream.mp4')
+        .then((response) => response.arrayBuffer())
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>

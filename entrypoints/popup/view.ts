@@ -38,8 +38,14 @@ export function setStatus(node: HTMLElement, message: string, isError: boolean):
   node.classList.toggle('status-error', isError);
 }
 
-function formatBadge(mimeType: string | undefined): string | undefined {
-  switch (mimeType) {
+function formatBadge(candidate: VideoCandidate): string | undefined {
+  if (candidate.kind === 'hls') {
+    return 'HLS';
+  }
+  if (candidate.kind === 'dash') {
+    return 'DASH';
+  }
+  switch (candidate.mimeType) {
     case 'video/mp4':
       return 'MP4';
     case 'video/webm':
@@ -84,7 +90,7 @@ function renderCard(
   item.append(element('p', 'card-title', label));
 
   const meta = element('div', 'card-meta');
-  const format = formatBadge(candidate.mimeType);
+  const format = formatBadge(candidate);
   if (format !== undefined) {
     meta.append(element('span', 'badge', format));
   }

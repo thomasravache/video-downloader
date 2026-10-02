@@ -2,6 +2,7 @@
  * Contrato usado (SPEC-0005:IT-04, CT-01). Estes testes compartilham `.wxt/` e o diretório de
  * saída; por isso ficam no MESMO arquivo (execução serial) e fazem builds reais.
  *
+ *  - SPEC-0010:IT-04: no mesmo build, permissões exatas (+ webRequest) e política de host da SPEC-0009
  *  - IT-04: `pnpm build` -> .output/chrome-mv3-{public,local}/manifest.json
  *  - SPEC-0009:IT-05 (ADR-0012): no mesmo build, local tem host_permissions http(s) (http + https, qualquer host)
  *    e nenhuma optional_host_permissions; public tem optional_host_permissions iguais e nenhuma
@@ -54,16 +55,17 @@ function bundleText(dir: string): string {
     .join('\n');
 }
 
-describe('manifesto dos builds reais', () => {
-  let built = false;
-  const build = () => {
-    if (!built) {
-      const r = sh('pnpm', ['build']);
-      expect(r.code, r.out).toBe(0);
-      built = true;
-    }
-  };
+/** Um único `pnpm build` real por arquivo (os describes compartilham `.output/`). */
+let built = false;
+function build(): void {
+  if (!built) {
+    const r = sh('pnpm', ['build']);
+    expect(r.code, r.out).toBe(0);
+    built = true;
+  }
+}
 
+describe('manifesto dos builds reais', () => {
   it('SPEC-0005:IT-04 o manifest de public não tem host_permissions e nenhum flavor tem <all_urls> nem CSP customizada', () => {
     build();
     expect(
@@ -77,12 +79,12 @@ describe('manifesto dos builds reais', () => {
     }
   }, 600_000);
 
-  it('SPEC-0005:IT-04 o manifest de public e local pede só activeTab, scripting, downloads e storage', () => {
+  it('SPEC-0005:IT-04 o manifest de public e local pede só activeTab, scripting, downloads, storage e webRequest', () => {
     build();
     for (const flavor of flavors) {
       const manifest = readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
       expect([...((manifest['permissions'] as string[] | undefined) ?? [])].sort(), flavor).toEqual(
-        ['activeTab', 'downloads', 'scripting', 'storage'],
+        ['activeTab', 'downloads', 'scripting', 'storage', 'webRequest'],
       );
     }
   }, 600_000);
@@ -90,15 +92,7 @@ describe('manifesto dos builds reais', () => {
 
 describe('permissões de host por flavor (ADR-0012)', () => {
   const HOST_PATTERNS = ['http://*/*', 'https://*/*'];
-  const SPEC_0005_PERMISSIONS = ['activeTab', 'downloads', 'scripting', 'storage'];
-  let built = false;
-  const build = () => {
-    if (!built) {
-      const r = sh('pnpm', ['build']);
-      expect(r.code, r.out).toBe(0);
-      built = true;
-    }
-  };
+  const SPEC_0005_PERMISSIONS = ['activeTab', 'downloads', 'scripting', 'storage', 'webRequest'];
   const manifestOf = (flavor: (typeof flavors)[number]) =>
     readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
   const sorted = (value: unknown) => [...((value as string[] | undefined) ?? [])].sort();
@@ -119,10 +113,46 @@ describe('permissões de host por flavor (ADR-0012)', () => {
     expect(manifest['host_permissions']).toBeUndefined();
   }, 600_000);
 
-  it('SPEC-0009:IT-05 os dois flavors mantêm as permissões da SPEC-0005 e nenhuma outra', () => {
+  it('SPEC-0009:IT-05 os dois flavors mantêm as permissões da SPEC-0005 (mais webRequest da SPEC-0010) e nenhuma outra', () => {
     build();
     for (const flavor of flavors) {
       expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual(SPEC_0005_PERMISSIONS);
+    }
+  }, 600_000);
+});
+
+describe('permissões da detecção por rede (SPEC-0010)', () => {
+  const HOST_PATTERNS = ['http://*/*', 'https://*/*'];
+  const manifestOf = (flavor: (typeof flavors)[number]) =>
+    readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
+  const sorted = (value: unknown) => [...((value as string[] | undefined) ?? [])].sort();
+
+  it('SPEC-0010:IT-04 os dois manifestos têm exatamente activeTab, scripting, downloads, storage e webRequest', () => {
+    build();
+    for (const flavor of flavors) {
+      expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual([
+        'activeTab',
+        'downloads',
+        'scripting',
+        'storage',
+        'webRequest',
+      ]);
+    }
+  }, 600_000);
+
+  it('SPEC-0010:IT-04 (guarda: passa antes da mudança) a política de host da SPEC-0009 permanece (local: host_permissions; public: opcionais), sem <all_urls> nem CSP', () => {
+    build();
+    const local = manifestOf('local');
+    const pub = manifestOf('public');
+
+    expect(sorted(local['host_permissions'])).toEqual(HOST_PATTERNS);
+    expect(local['optional_host_permissions']).toBeUndefined();
+    expect(sorted(pub['optional_host_permissions'])).toEqual(HOST_PATTERNS);
+    expect(pub['host_permissions']).toBeUndefined();
+    for (const flavor of flavors) {
+      const manifest = manifestOf(flavor);
+      expect(manifest['content_security_policy'], flavor).toBeUndefined();
+      expect(JSON.stringify(manifest), flavor).not.toContain('<all_urls>');
     }
   }, 600_000);
 });

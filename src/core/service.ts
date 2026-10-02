@@ -1,4 +1,4 @@
-import { createCandidateStore } from './candidates';
+import { candidateId, createCandidateStore } from './candidates';
 import type { CandidateStore } from './candidates';
 import type {
   DetectResponse,
@@ -13,6 +13,8 @@ import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
+import { classifyNetworkResponse, mergeCandidates } from './network';
+import type { NetworkResponse, NetworkStore } from './network';
 import type { DownloadPort, PermissionsPort, ScriptingPort, TabsPort } from './ports';
 
 export type ServiceResponse = DetectResponse | DownloadResponse | DiagnosticsResponse;
@@ -27,12 +29,18 @@ export interface ServiceDeps {
   permissions: PermissionsPort;
   diagnostics: Diagnostics;
   store?: CandidateStore;
+  /** Repositório de candidatos vistos na rede (SPEC-0010); sem ele, só o DOM conta. */
+  network?: NetworkStore;
 }
 
 export interface Service {
   handle(message: unknown, sender: { id?: string }): Promise<ServiceResponse>;
   /** `tabs.onRemoved`: descarta o estado da aba. */
   onTabRemoved(tabId: number): void;
+  /** `webRequest.onResponseStarted`: classifica e, se aceita, grava na lista da aba (SPEC-0010). */
+  onNetworkResponse(response: NetworkResponse): Promise<void>;
+  /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
+  clearNetwork(tabId: number): Promise<void>;
 }
 
 function stripQuery(url: string): string {
@@ -124,7 +132,19 @@ export function createService(deps: ServiceDeps): Service {
       return { ok: false, error: 'RESTRICTED_PAGE' };
     }
 
-    const candidates = [...found.values()];
+    const networkCandidates = await (deps.network?.forTab(tabId) ?? Promise.resolve([])).catch(
+      (error: unknown) => {
+        diagnostics.log('warn', 'detect.network_failed', correlationId, {
+          tabId,
+          reason: reasonOf(error),
+        });
+        return [] as VideoCandidate[];
+      },
+    );
+    const candidates = mergeCandidates(
+      [...found.values()],
+      networkCandidates.map((c) => ({ ...c, pageUrl, frameUrl: pageUrl })),
+    );
     store.replaceTab(tabId, candidates);
     for (const candidate of candidates) {
       correlations.set(candidate.id, correlationId);
@@ -137,6 +157,8 @@ export function createService(deps: ServiceDeps): Service {
         mediaUrl: stripQuery(c.mediaUrl),
         protection: c.protection,
         support: c.support,
+        kind: c.kind,
+        source: c.source,
       })),
     });
     const frames = await collected?.catch((): FrameSnapshot[] => []);
@@ -212,6 +234,55 @@ export function createService(deps: ServiceDeps): Service {
           return download(valid.candidateId, correlationId);
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
+      }
+    },
+    async onNetworkResponse(response) {
+      if (!deps.network) {
+        return;
+      }
+      const classification = classifyNetworkResponse(response);
+      if (!classification) {
+        diagnostics.countNetwork('discarded');
+        return;
+      }
+      const { kind, mimeType, sizeBytes } = classification;
+      diagnostics.countNetwork(kind);
+      diagnostics.log('debug', 'network.captured', diagnostics.newCorrelationId(), {
+        tabId: response.tabId,
+        kind,
+        mediaUrl: stripQuery(response.url),
+      });
+      try {
+        await deps.network.add(response.tabId, {
+          id: candidateId(response.tabId, response.url),
+          providerId: 'network',
+          tabId: response.tabId,
+          pageUrl: '',
+          mediaUrl: response.url,
+          ...(mimeType !== undefined && { mimeType }),
+          ...(sizeBytes !== undefined && { sizeBytes }),
+          protection: 'none',
+          support: kind === 'file' ? 'downloadable' : 'unsupported-stream',
+          frameId: response.frameId,
+          frameUrl: '',
+          kind,
+          source: 'network',
+        });
+      } catch (error) {
+        diagnostics.log('warn', 'network.store_failed', diagnostics.newCorrelationId(), {
+          tabId: response.tabId,
+          reason: reasonOf(error),
+        });
+      }
+    },
+    async clearNetwork(tabId) {
+      try {
+        await deps.network?.clear(tabId);
+      } catch (error) {
+        diagnostics.log('warn', 'network.clear_failed', diagnostics.newCorrelationId(), {
+          tabId,
+          reason: reasonOf(error),
+        });
       }
     },
     onTabRemoved(tabId) {
