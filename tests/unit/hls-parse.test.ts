@@ -293,18 +293,143 @@ v720.m3u8
         BASE,
       ).encrypted,
     ).toBe(true);
-    expect(parseHlsPlaylist(master('#EXT-X-SESSION-KEY:METHOD=NONE'), BASE).encrypted).toBe(false);
+    // Emenda 3: EXT-X-SESSION-KEY de qualquer forma conta como criptografada.
+    expect(parseHlsPlaylist(master('#EXT-X-SESSION-KEY:METHOD=NONE'), BASE).encrypted).toBe(true);
   });
 
-  it('SPEC-0011:UT-03 METHOD=none em minúsculas, único, conta como limpo (sem diferenciar maiúsculas)', () => {
-    expect(encryptedOf('#EXT-X-KEY:METHOD=none')).toBe(false);
-    expect(encryptedOf('#EXT-X-KEY:METHOD=None')).toBe(false);
+  it('SPEC-0011:UT-03 METHOD=none/None em minúsculas conta como criptografada (lista de permissão, Emenda 3)', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=none')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:METHOD=None')).toBe(true);
   });
 
-  it('SPEC-0011:UT-03 guarda: um único METHOD=NONE (inclusive com KEYFORMAT) continua limpo', () => {
+  it('SPEC-0011:UT-03 guarda: exatamente #EXT-X-KEY:METHOD=NONE continua limpo', () => {
     expect(encryptedOf('#EXT-X-KEY:METHOD=NONE')).toBe(false);
-    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE,KEYFORMAT="identity"')).toBe(false);
-    expect(encryptedOf('#EXT-X-KEY:KEYFORMAT="identity",METHOD=NONE')).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 NONE com atributos extras conta como criptografada (Emenda 3, conservador)', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE,KEYFORMAT="identity"')).toBe(true);
+    expect(encryptedOf('#EXT-X-KEY:KEYFORMAT="identity",METHOD=NONE')).toBe(true);
+  });
+});
+
+describe('parseHlsPlaylist: lista de permissão de chaves (Emenda 3)', () => {
+  const encryptedOf = (keyLine: string): boolean =>
+    parseHlsPlaylist(withKey(keyLine), BASE).encrypted;
+
+  const hostile: [string, string][] = [
+    ['aspas soltas em atributo desconhecido', '#EXT-X-KEY:METHOD=NONE,X=a"b,METHOD=AES-128,Y="'],
+    ['aspas soltas em A/D', '#EXT-X-KEY:METHOD=NONE,A=b"c,METHOD=AES-128,D=e"f'],
+    ['URI com aspa sem fechar', '#EXT-X-KEY:METHOD=NONE,URI="x,METHOD=AES-128'],
+    ['U+2028 dentro da string', '#EXT-X-KEY:METHOD=AES-128,URI="k "'],
+    ['U+2029 dentro da string', '#EXT-X-KEY:METHOD=AES-128,URI="k "'],
+    ['U+0085 dentro da string', '#EXT-X-KEY:METHOD=AES-128,URI="k\u0085"'],
+    ['U+2028 seguido de METHOD=NONE', '#EXT-X-KEY:METHOD=AES-128,URI="k ",METHOD=NONE'],
+    ['tag precedida de espaço', ' #EXT-X-KEY:METHOD=AES-128,URI="x"'],
+    ['tag precedida de NBSP', ' #EXT-X-KEY:METHOD=AES-128,URI="x"'],
+    ['tag precedida de U+2028', ' #EXT-X-KEY:METHOD=AES-128,URI="x"'],
+    ['CR solto no meio da linha', '#EXT-X-KEY:METHOD=NONE\r,METHOD=AES-128'],
+    ['valor em minúsculas', '#EXT-X-KEY:METHOD=none'],
+    ['NONE com atributo extra', '#EXT-X-KEY:METHOD=NONE,URI="https://k/x"'],
+    ['NONE com espaço final', '#EXT-X-KEY:METHOD=NONE '],
+    ['NONE com NUL final', '#EXT-X-KEY:METHOD=NONE\0'],
+    ['NONE com dois CR finais', '#EXT-X-KEY:METHOD=NONE\r\r'],
+    ['NONE com tab final', '#EXT-X-KEY:METHOD=NONE\t'],
+  ];
+
+  it.each(hostile)('SPEC-0011:UT-03 %s conta como criptografada', (_name, keyLine) => {
+    expect(encryptedOf(keyLine)).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 gêmeo de SESSION-KEY do caso URI sem fechar, num master, conta como criptografado', () => {
+    const master = `#EXTM3U
+#EXT-X-SESSION-KEY:METHOD=NONE,URI="x,METHOD=AES-128
+#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=1280x720
+v720.m3u8
+`;
+
+    expect(parseHlsPlaylist(master, BASE).encrypted).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 SESSION-KEY de qualquer forma, também em playlist de mídia, conta como criptografada', () => {
+    expect(encryptedOf('#EXT-X-SESSION-KEY:METHOD=NONE,URI="x,METHOD=AES-128')).toBe(true);
+    expect(encryptedOf('#EXT-X-SESSION-KEY:METHOD=NONE')).toBe(true);
+  });
+
+  it('SPEC-0011:UT-03 guarda: exatamente #EXT-X-KEY:METHOD=NONE é limpo', () => {
+    expect(encryptedOf('#EXT-X-KEY:METHOD=NONE')).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 guarda: exatamente #EXT-X-KEY:METHOD=NONE com finais de linha CRLF é limpo', () => {
+    const crlf = withKey('#EXT-X-KEY:METHOD=NONE').replace(/\n/g, '\r\n');
+
+    expect(parseHlsPlaylist(crlf, BASE).encrypted).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 guarda: BOM UTF-8 no início da playlist com METHOD=NONE é limpo', () => {
+    const bom = `﻿${withKey('#EXT-X-KEY:METHOD=NONE')}`;
+
+    expect(parseHlsPlaylist(bom, BASE).encrypted).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 guarda: playlist sem nenhuma tag de chave é limpa', () => {
+    expect(parseHlsPlaylist(withKey(undefined), BASE).encrypted).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 guarda: tag em minúsculas é ignorada (as tags da RFC 8216 diferenciam maiúsculas)', () => {
+    // Deliberado: `#ext-x-key` não é uma tag HLS; players não a interpretam, então não conta como chave.
+    expect(encryptedOf('#ext-x-key:METHOD=AES-128,URI="x"')).toBe(false);
+  });
+
+  it('SPEC-0011:UT-03 propriedade: em 2.000 linhas de chave aleatórias, só é limpa a linha exatamente #EXT-X-KEY:METHOD=NONE', () => {
+    // Gerador determinístico (mulberry32), sem dependência nova.
+    let state = 0x5eed0011;
+    const rand = (): number => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const fragments = [
+      'METHOD=NONE',
+      'METHOD=AES-128',
+      'METHOD=SAMPLE-AES',
+      '"',
+      ',',
+      '\r',
+      ' ',
+      'URI="k.bin"',
+      'URI="x',
+      ' ',
+      'X-FOO',
+      'X-FOO="a,METHOD=NONE"',
+      '=',
+    ];
+    const EXACT = '#EXT-X-KEY:METHOD=NONE';
+    let clean = 0;
+
+    for (let i = 0; i < 2000; i += 1) {
+      const count = Math.floor(rand() * 6);
+      let line = '#EXT-X-KEY:';
+      for (let j = 0; j < count; j += 1) {
+        line += fragments[Math.floor(rand() * fragments.length)] ?? '';
+      }
+      // Um único \r final antes do \n é tolerado (CRLF) e não torna a linha suspeita.
+      const expectClean = line === EXACT || line === `${EXACT}\r`;
+      let encrypted = true;
+      try {
+        encrypted = parseHlsPlaylist(withKey(line), BASE).encrypted;
+      } catch (error) {
+        // Recusar a playlist (HLS_PARSE_FAILED) também é seguro: nunca devolve "limpa".
+        expect(error, JSON.stringify(line)).toBeInstanceOf(HlsParseError);
+      }
+      if (!encrypted) {
+        clean += 1;
+      }
+
+      expect(encrypted, JSON.stringify(line)).toBe(!expectClean);
+    }
+
+    expect(clean).toBeGreaterThan(0);
   });
 });
 

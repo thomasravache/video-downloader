@@ -379,6 +379,28 @@ describe('resolveHls: estado, reinício e concorrência (Emenda 2)', () => {
     expect(again.protection).toBe('none');
   });
 
+  it('SPEC-0011:IT-05 (f) playlist ao vivo que vira VOD limpa: o support acompanha o último resolve, sem ficar preso em unsupported-stream', async () => {
+    let live = true;
+    await server.close();
+    server = await startPlaylistServer({
+      '/hls/grow.m3u8': (req, res) => {
+        body(media([4, 4], { endlist: !live }))(req, res);
+      },
+    });
+    const candidate = await observe(`${server.origin}/hls/grow.m3u8`);
+    expect(await resolve(candidate.id)).toMatchObject({ ok: true, hls: { live: true } });
+    expect((await detectById(candidate)).support).toBe('unsupported-stream');
+
+    live = false;
+    const second = await resolve(candidate.id);
+    const again = await detectById(candidate);
+
+    expect(second).toMatchObject({ ok: true, hls: { live: false, encrypted: false } });
+    expect(again.hls).toMatchObject({ live: false, encrypted: false });
+    expect(again.protection).toBe('none');
+    expect(again.support).not.toBe('unsupported-stream');
+  });
+
   it('SPEC-0011:IT-05 (c) depois de bg.restart() e sem detect, resolveHls acha o candidato guardado no NetworkStore', async () => {
     const candidate = await observe(`${server.origin}/hls/master.m3u8`);
 
