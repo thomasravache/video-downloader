@@ -3,7 +3,7 @@
  *
  * Contrato: `checkFlavorGuard({ distDir, providersDir })` (síncrono; `providersDir` é string ou lista).
  *  - Cada SUBDIRETÓRIO de `providersDir` com `provider.json` é um provider (mesma forma de `src/providers`
- *    e de `PROVIDERS_EXTRA_DIR`, SPEC-0005@1). Subdiretórios sem `provider.json` são ignorados.
+ *    e de `PROVIDERS_EXTRA_DIR`, SPEC-0005@1). Subdiretório sem `provider.json` falha fechado (Emenda 2).
  *  - Varre TODOS os arquivos de `distDir` (recursivo); se algum contém o `id` (texto) de um provider cujo
  *    `flavors` não inclui 'public' → lança Error com `FORBIDDEN_PROVIDER_IN_PUBLIC:<id>`.
  *  - `provider.json` inválido (JSON ruim, sem `id`, `id` vazio/não-string, `flavors` ausente/não-array/vazio,
@@ -37,7 +37,6 @@ function providersWithFixture(): string {
   writeTree(dir, {
     'generic/provider.json': manifest('generic', ['public', 'local']),
     'only-public/provider.json': manifest('only-public-x', ['public']),
-    'not-a-provider/readme.txt': 'sem manifesto',
   });
   return dir;
 }
