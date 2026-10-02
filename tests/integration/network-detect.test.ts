@@ -105,7 +105,10 @@ describe('detecção por rede: webRequest -> detect/download', () => {
     expect(ok).toEqual({ ok: true, downloadId: 31 });
     expect(bg.download).toHaveBeenCalledTimes(1);
     expect((bg.download.mock.calls[0]?.[0] as { url: string }).url).toBe(mp4WithQuery);
-    expect(unsupported).toEqual({ ok: false, error: 'UNSUPPORTED' });
+    // SPEC-0012: HLS ainda não resolvido (sem `hls`) continua sem download; o motivo pode ser
+    // UNSUPPORTED (support) ou HLS_NOT_RESOLVED (desconhecido nunca é tratado como limpo).
+    expect(unsupported).toMatchObject({ ok: false });
+    expect(['UNSUPPORTED', 'HLS_NOT_RESOLVED']).toContain((unsupported as { error: string }).error);
   });
 
   it('SPEC-0010:IT-01 resposta 206 usa o total do Content-Range como tamanho', async () => {

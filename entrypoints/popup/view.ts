@@ -1,5 +1,6 @@
 import type { ResolveHlsResponse, VideoCandidate } from '../../src/core/contracts';
 import type { HlsInfo } from '../../src/core/hls';
+import type { JobState } from '../../src/core/hls-download';
 
 export interface ViewText {
   listLabel: string;
@@ -18,6 +19,17 @@ export interface ViewText {
   hlsErrorParse: string;
   hlsErrorGeneric: string;
   duration(formatted: string): string;
+  progressLabel: string;
+  cancelDownload: string;
+  retryDownload: string;
+  redownload: string;
+  jobAssembling: string;
+  jobSaving: string;
+  jobCanceled: string;
+  jobSegments(done: number, total: number): string;
+  jobSaved(filename: string): string;
+  /** Mensagem traduzida de `JobState.error`. */
+  jobError(error: string | undefined): string;
   /** Número no idioma da interface (vírgula decimal em pt-BR). */
   number(value: number): string;
 }
@@ -77,6 +89,11 @@ function formatSize(bytes: number): string {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024)).toString()} KB`;
 }
 
+/** Nome mostrado do vídeo: o título ou o último trecho do caminho da URL. */
+export function candidateLabel(candidate: VideoCandidate): string {
+  return candidate.title ?? sourceLabel(candidate.mediaUrl);
+}
+
 /** Última parte do caminho da URL (sem query), para distinguir vídeos com o mesmo título. */
 function sourceLabel(mediaUrl: string): string {
   if (!/^https?:/i.test(mediaUrl)) {
@@ -88,6 +105,13 @@ function sourceLabel(mediaUrl: string): string {
   } catch {
     return mediaUrl;
   }
+}
+
+/** Como o popup inicia um download HLS: a escolha da qualidade e o espaço do progresso. */
+export interface HlsContext {
+  candidateId: string;
+  label: string;
+  onStart(variantIndex: number, area: HTMLElement, select: HTMLSelectElement | undefined): void;
 }
 
 const hlsSlotId = (candidateId: string): string => `hls-${candidateId}`;
@@ -146,8 +170,115 @@ function qualitySelect(hls: HlsInfo, candidateKey: string, text: ViewText): HTML
   return field;
 }
 
-/** Estado resolvido: protegido, ao vivo, ou seletor de qualidade (a mais alta já escolhida). */
-function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText): void {
+const TERMINAL: readonly JobState['state'][] = ['done', 'error', 'canceled'];
+export const isTerminalJob = (job: JobState): boolean => TERMINAL.includes(job.state);
+
+export interface JobView {
+  element: HTMLElement;
+  update(job: JobState): void;
+  /** Falha antes de existir um job (resposta de recusa do `download`). */
+  fail(message: string): void;
+}
+
+/** Progresso de um job: criado uma vez e atualizado no lugar (o foco do teclado não se perde). */
+export function createJobView(text: ViewText, onCancel: () => void, onRetry: () => void): JobView {
+  const root = element('div', 'job');
+  const progress = element('div', 'progress');
+  progress.dataset['testid'] = 'download-progress';
+  progress.setAttribute('role', 'progressbar');
+  progress.setAttribute('aria-label', text.progressLabel);
+  progress.setAttribute('aria-valuemin', '0');
+  progress.setAttribute('aria-valuemax', '100');
+  progress.setAttribute('aria-valuenow', '0');
+  progress.dataset['state'] = 'queued';
+  const fill = element('div', 'progress-fill');
+  progress.append(fill);
+
+  const status = element('p', 'status');
+  status.setAttribute('role', 'status');
+  const actions = element('div', 'job-actions');
+  const cancel = element('button', 'button button-secondary', text.cancelDownload);
+  cancel.type = 'button';
+  cancel.dataset['testid'] = 'cancel-download';
+  cancel.setAttribute('aria-label', text.cancelDownload);
+  cancel.addEventListener('click', () => {
+    cancel.disabled = true;
+    onCancel();
+  });
+  const retry = element('button', 'button');
+  retry.type = 'button';
+  retry.dataset['testid'] = 'retry-download';
+  retry.addEventListener('click', onRetry);
+  const error = element('p', 'status status-error');
+  error.dataset['testid'] = 'job-error';
+
+  actions.append(cancel);
+  root.append(progress, status, actions);
+
+  function showError(message: string): void {
+    error.textContent = message;
+    if (!error.isConnected) {
+      root.insertBefore(error, actions);
+    }
+  }
+
+  return {
+    element: root,
+    update(job) {
+      progress.setAttribute('aria-valuenow', String(Math.round(job.percent)));
+      progress.dataset['state'] = job.state;
+      fill.style.width = `${String(Math.round(job.percent))}%`;
+      switch (job.state) {
+        case 'queued':
+        case 'running':
+          status.textContent = text.jobSegments(job.segmentsDone, job.segmentsTotal);
+          break;
+        case 'assembling':
+          status.textContent = text.jobAssembling;
+          break;
+        case 'saving':
+          status.textContent = text.jobSaving;
+          break;
+        case 'done':
+          status.textContent = text.jobSaved(job.filename ?? '');
+          break;
+        case 'canceled':
+          status.textContent = text.jobCanceled;
+          break;
+        case 'error':
+          status.textContent = '';
+          showError(text.jobError(job.error));
+          break;
+      }
+      if (isTerminalJob(job)) {
+        cancel.remove();
+        if (job.state !== 'done') {
+          retry.textContent = job.state === 'error' ? text.retryDownload : text.redownload;
+          actions.replaceChildren(retry);
+        }
+      }
+    },
+    fail(message) {
+      progress.remove();
+      status.remove();
+      cancel.remove();
+      showError(message);
+      retry.textContent = text.retryDownload;
+      actions.replaceChildren(retry);
+    },
+  };
+}
+
+function downloadButton(context: HlsContext, text: ViewText): HTMLButtonElement {
+  const button = element('button', 'button', text.download);
+  button.type = 'button';
+  button.dataset['testid'] = 'download-button';
+  button.setAttribute('aria-label', text.downloadNamed(context.label));
+  return button;
+}
+
+/** Estado resolvido: protegido, ao vivo, ou seletor de qualidade + Baixar (a mais alta já escolhida). */
+function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsContext): void {
   if (hls.encrypted) {
     const badge = element('span', 'badge badge-warn', text.badgeEncrypted);
     badge.dataset['testid'] = 'badge-encrypted';
@@ -164,10 +295,18 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText): void {
   if (hls.durationSec !== undefined) {
     parts.push(element('p', 'status', text.duration(formatDuration(hls.durationSec))));
   }
-  if (hls.variants.length > 0) {
-    parts.push(qualitySelect(hls, slot.id, text));
+  const field = hls.variants.length > 0 ? qualitySelect(hls, slot.id, text) : undefined;
+  if (field) {
+    parts.push(field);
   }
-  slot.replaceChildren(...parts, unsupportedBadge(text));
+  const select = field?.querySelector('select') ?? undefined;
+  const area = element('div', 'job-area');
+  const button = downloadButton(context, text);
+  button.addEventListener('click', () => {
+    context.onStart(Number(select?.value ?? 0), area, select);
+  });
+  area.append(button);
+  slot.replaceChildren(...parts, area);
 }
 
 /** Aplica a resposta de `resolveHls` ao cartão do candidato (ignora se o cartão já saiu da tela). */
@@ -176,13 +315,14 @@ export function renderHlsResult(
   candidateId: string,
   response: ResolveHlsResponse | undefined,
   text: ViewText,
+  context: HlsContext,
 ): void {
   const slot = container.querySelector<HTMLElement>(`#${hlsSlotId(candidateId)}`);
   if (!slot) {
     return;
   }
   if (response?.ok === true) {
-    fillHls(slot, response.hls, text);
+    fillHls(slot, response.hls, text, context);
     return;
   }
   const message = element(
@@ -202,8 +342,9 @@ function renderCard(
   candidate: VideoCandidate,
   text: ViewText,
   onDownload: (candidate: VideoCandidate, button: HTMLButtonElement) => void,
+  hlsContext: (candidate: VideoCandidate) => HlsContext,
 ): HTMLLIElement {
-  const label = candidate.title ?? sourceLabel(candidate.mediaUrl);
+  const label = candidateLabel(candidate);
   const item = element('li', 'card');
   item.dataset['testid'] = 'candidate-item';
   item.append(element('p', 'card-title', label));
@@ -224,12 +365,12 @@ function renderCard(
     badge.dataset['testid'] = 'badge-drm';
     item.append(badge);
   } else if (candidate.kind === 'hls') {
-    // HLS nunca tem botão de download aqui (SPEC-0012); o estado da playlist vive neste espaço.
+    // O estado da playlist (e, resolvida e limpa, o Baixar com o progresso) vive neste espaço.
     const slot = element('div', 'hls');
     slot.id = hlsSlotId(candidate.id);
     slot.setAttribute('aria-live', 'polite');
     if (candidate.hls) {
-      fillHls(slot, candidate.hls, text);
+      fillHls(slot, candidate.hls, text, hlsContext(candidate));
     } else {
       fillLoading(slot, text);
     }
@@ -261,11 +402,14 @@ export function renderCandidates(
   candidates: VideoCandidate[],
   text: ViewText,
   onDownload: (candidate: VideoCandidate, button: HTMLButtonElement) => void,
+  hlsContext: (candidate: VideoCandidate) => HlsContext,
 ): void {
   const list = element('ul', 'list');
   list.dataset['testid'] = 'candidate-list';
   list.setAttribute('aria-label', text.listLabel);
-  list.append(...candidates.map((candidate) => renderCard(candidate, text, onDownload)));
+  list.append(
+    ...candidates.map((candidate) => renderCard(candidate, text, onDownload, hlsContext)),
+  );
   container.replaceChildren(list);
 }
 

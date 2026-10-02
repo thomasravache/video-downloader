@@ -10,7 +10,7 @@
  *  - o popup resolve cada candidato HLS pela mensagem `resolveHls` e mostra, no cartão (`candidate-item`
  *    com o selo "HLS"): `hls-loading` enquanto lê; `quality-select` (um <select> com rótulo, uma <option>
  *    por variante, da maior para a menor, selecionada a maior); `badge-encrypted`; `badge-live`;
- *    `hls-error`; nenhum `download-button` para HLS;
+ *    `hls-error`; `download-button` só para HLS limpo e VOD (SPEC-0012: antes, nenhum para HLS);
  *  - o texto das opções contém o rótulo da variante ('1080p', '720p', '480p');
  *  - o service worker requisita apenas as playlists (master + melhor variante): nenhum segmento, chave
  *    nem outra variante.
@@ -60,7 +60,8 @@ test.describe('playlists HLS', () => {
     await expect(item.getByTestId('hls-error')).toHaveCount(0);
     await expect(item.getByTestId('badge-encrypted')).toHaveCount(0);
     await expect(item.getByTestId('badge-live')).toHaveCount(0);
-    await expect(popup.getByTestId('download-button')).toHaveCount(0);
+    // SPEC-0012: HLS limpo e VOD já resolvido tem o botão Baixar (antes da SPEC-0012 não havia).
+    await expect(item.getByTestId('download-button')).toBeEnabled();
     expect(await seriousViolations(popup)).toEqual([]);
 
     // A extensão só requisitou as playlists: o master observado (com a query) e a melhor variante.

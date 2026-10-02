@@ -3,6 +3,7 @@ declare module 'm3u8-parser' {
   export interface ParsedSegment {
     uri?: string;
     duration?: number;
+    map?: { uri?: string };
   }
 
   export interface ParsedVariant {

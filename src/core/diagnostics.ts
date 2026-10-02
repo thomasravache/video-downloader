@@ -21,6 +21,9 @@ export type NetworkOutcome = 'file' | 'hls' | 'dash' | 'discarded';
 
 export type HlsOutcome = 'resolved' | 'encrypted' | 'live' | 'failed';
 
+/** Resultado de um job de download HLS (SPEC-0012): `done`, `canceled` ou o código do erro. */
+export type JobOutcome = string;
+
 export interface Diagnostics {
   newCorrelationId(): string;
   log(
@@ -34,6 +37,8 @@ export interface Diagnostics {
   countNetwork(outcome: NetworkOutcome): void;
   /** Contador local de playlists HLS por resultado (SPEC-0011). */
   countHls(outcome: HlsOutcome): void;
+  /** Contador local de jobs de download por resultado (SPEC-0012). */
+  countJob(outcome: JobOutcome): void;
   /** Entradas do ring buffer + uma entrada final `counters` com os contadores por provider. */
   snapshot(): LogEntry[];
 }
@@ -74,6 +79,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
   const counters = new Map<string, Counters>();
   const network = new Map<NetworkOutcome, number>();
   const hls = new Map<HlsOutcome, number>();
+  const jobs = new Map<string, number>();
 
   return {
     newCorrelationId: newId,
@@ -106,6 +112,9 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
     countHls(outcome) {
       hls.set(outcome, (hls.get(outcome) ?? 0) + 1);
     },
+    countJob(outcome) {
+      jobs.set(outcome, (jobs.get(outcome) ?? 0) + 1);
+    },
     snapshot() {
       return [
         ...entries,
@@ -117,6 +126,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
           providers: Object.fromEntries(counters),
           ...(network.size > 0 && { network: Object.fromEntries(network) }),
           ...(hls.size > 0 && { hls: Object.fromEntries(hls) }),
+          ...(jobs.size > 0 && { jobs: Object.fromEntries(jobs) }),
         },
       ];
     },

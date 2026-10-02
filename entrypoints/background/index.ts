@@ -5,6 +5,7 @@ import { createService } from '../../src/core/service';
 import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
 import { toNetworkResponse } from './network';
+import { createOffscreenPort } from './offscreen';
 import { createPlaylistFetcher } from './playlist-fetcher';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
@@ -64,7 +65,13 @@ export default defineBackground(() => {
     },
     downloads: {
       download: (options) => browser.downloads.download(options),
+      cancel: (downloadId) => browser.downloads.cancel(downloadId),
     },
+    jobStore: {
+      get: async (key) => (await browser.storage.session.get(key))[key],
+      set: (key, value) => browser.storage.session.set({ [key]: value }),
+    },
+    offscreen: createOffscreenPort(),
     tabs: {
       async getUrl(tabId) {
         return (await browser.tabs.get(tabId)).url;
@@ -115,7 +122,45 @@ export default defineBackground(() => {
     void service.clearNetwork(tabId);
   });
 
+  // Download concluído/interrompido: fecha o job em `saving` (SPEC-0012). Registro síncrono, no topo.
+  // Só API ausente/não implementada (ex.: fake de browser.* do WXT) é tolerada; outra falha propaga.
+  const downloadsChanged = (
+    browser as { downloads?: { onChanged?: typeof browser.downloads.onChanged } }
+  ).downloads?.onChanged;
+  const downloadsUnavailable = (reason: string): void => {
+    diagnostics.log('warn', 'downloads.unavailable', diagnostics.newCorrelationId(), { reason });
+  };
+  if (downloadsChanged === undefined) {
+    downloadsUnavailable('no_api');
+  } else {
+    try {
+      downloadsChanged.addListener((delta) => {
+        void service.onDownloadChanged(delta);
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not implemented/i.test(error.message)) {
+        throw error;
+      }
+      downloadsUnavailable('not_implemented');
+    }
+  }
+
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+    const target =
+      typeof message === 'object' && message !== null
+        ? (message as { target?: unknown }).target
+        : undefined;
+    if (target === 'offscreen') {
+      // Comando ao documento offscreen: quem responde é ele.
+      return false;
+    }
+    if (target === 'background') {
+      // Evento do offscreen (SPEC-0012): responde só depois de processar.
+      void service.onOffscreenMessage(message, sender).then((ok) => {
+        sendResponse({ ok });
+      });
+      return true;
+    }
     if (
       typeof message === 'object' &&
       message !== null &&

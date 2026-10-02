@@ -39,7 +39,8 @@ export class HlsParseError extends Error {
 export type HlsInfoValidation = { ok: true; value: HlsInfo } | { ok: false; error: string };
 
 const MAX_VARIANTS = 50;
-const KEY_PREFIXES = ['#EXT-X-KEY', '#EXT-X-SESSION-KEY'];
+// `#EXT-X-FAXS-CM` (DRM Adobe, obsoleta) também nunca é limpa (SPEC-0012).
+const KEY_PREFIXES = ['#EXT-X-KEY', '#EXT-X-SESSION-KEY', '#EXT-X-FAXS-CM'];
 const CLEAN_KEY_LINE = '#EXT-X-KEY:METHOD=NONE';
 
 /**
