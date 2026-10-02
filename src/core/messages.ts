@@ -31,6 +31,10 @@ export function validateMessage(
       return typeof candidateId === 'string' && candidateId !== ''
         ? { ok: true, message: { type, candidateId } }
         : INVALID;
+    case 'resolveHls':
+      return typeof candidateId === 'string' && candidateId !== ''
+        ? { ok: true, message: { type, candidateId } }
+        : INVALID;
     case 'diagnostics':
       return { ok: true, message: { type } };
     default:

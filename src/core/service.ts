@@ -12,6 +12,8 @@ import type {
 import { redactUrls } from './diagnostics';
 import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
+import { HlsParseError, parseHlsPlaylist } from './hls';
+import type { HlsInfo } from './hls';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
@@ -52,6 +54,10 @@ export interface Service {
   /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
   clearNetwork(tabId: number): Promise<void>;
 }
+
+type PlaylistRead =
+  | { ok: true; info: HlsInfo }
+  | { ok: false; error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED'; reason?: string };
 
 function stripQuery(url: string): string {
   return redactUrls(url);
@@ -224,6 +230,120 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
+  function isHttp(url: string): boolean {
+    try {
+      const { protocol } = new URL(url);
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Busca e interpreta uma playlist; falha de rede vira `fetch`, texto inválido vira `parse`. */
+  async function readPlaylist(url: string): Promise<PlaylistRead> {
+    let text: string;
+    try {
+      if (!deps.playlists || !isHttp(url)) {
+        throw new Error('playlist indisponível');
+      }
+      text = await deps.playlists.fetchPlaylist(url);
+    } catch (error) {
+      return { ok: false, error: 'HLS_FETCH_FAILED', reason: reasonOf(error) };
+    }
+    try {
+      return { ok: true, info: parseHlsPlaylist(text, url) };
+    } catch (error) {
+      return {
+        ok: false,
+        error: 'HLS_PARSE_FAILED',
+        ...(error instanceof HlsParseError ? {} : { reason: reasonOf(error) }),
+      };
+    }
+  }
+
+  async function resolveHls(candidateId: string, fallbackId: string): Promise<ResolveHlsResponse> {
+    const correlationId = correlations.get(candidateId) ?? fallbackId;
+    const candidate = store.find(candidateId);
+    if (candidate?.kind !== 'hls') {
+      diagnostics.log('warn', 'hls.not_found', correlationId, { candidateId });
+      return { ok: false, error: 'CANDIDATE_NOT_FOUND' };
+    }
+    const fields = { candidateId, mediaUrl: stripQuery(candidate.mediaUrl) };
+    const fail = (
+      error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED',
+      stage: 'playlist' | 'variant',
+      reason?: string,
+    ): ResolveHlsResponse => {
+      diagnostics.countHls('failed');
+      diagnostics.log('warn', 'hls.failed', correlationId, {
+        ...fields,
+        error,
+        stage,
+        ...(reason !== undefined && { reason: redactUrls(reason) }),
+      });
+      return { ok: false, error };
+    };
+
+    const first = await readPlaylist(candidate.mediaUrl);
+    if (!first.ok) {
+      return fail(first.error, 'playlist', first.reason);
+    }
+    let hls = first.info;
+    const best = first.info.variants[0];
+    if (first.info.type === 'master' && best) {
+      const second = await readPlaylist(best.url);
+      if (!second.ok) {
+        return fail(second.error, 'variant', second.reason);
+      }
+      if (second.info.type !== 'media') {
+        return fail('HLS_PARSE_FAILED', 'variant');
+      }
+      const { durationSec, segmentCount } = second.info;
+      const { durationSec: _d, segmentCount: _s, ...master } = first.info;
+      hls = {
+        ...master,
+        encrypted: first.info.encrypted || second.info.encrypted,
+        live: second.info.live,
+        fmp4: second.info.fmp4,
+        ...(durationSec !== undefined && { durationSec }),
+        ...(segmentCount !== undefined && { segmentCount }),
+      };
+    }
+
+    const resolved: VideoCandidate = {
+      ...candidate,
+      hls,
+      ...(hls.encrypted && { protection: 'encrypted' as const }),
+      ...(hls.live && { support: 'unsupported-stream' as const }),
+    };
+    store.update(resolved);
+    try {
+      await deps.network?.update(candidate.tabId, resolved);
+    } catch (error) {
+      diagnostics.log('warn', 'hls.store_failed', correlationId, {
+        ...fields,
+        reason: reasonOf(error),
+      });
+    }
+    diagnostics.countHls('resolved');
+    if (hls.encrypted) {
+      diagnostics.countHls('encrypted');
+    }
+    if (hls.live) {
+      diagnostics.countHls('live');
+    }
+    diagnostics.log('info', 'hls.resolved', correlationId, {
+      ...fields,
+      type: hls.type,
+      variants: hls.variants.length,
+      segmentCount: hls.segmentCount,
+      encrypted: hls.encrypted,
+      live: hls.live,
+      fmp4: hls.fmp4,
+    });
+    return { ok: true, hls };
+  }
+
   return {
     async handle(message, sender) {
       const correlationId = diagnostics.newCorrelationId();
@@ -245,7 +365,7 @@ export function createService(deps: ServiceDeps): Service {
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
         case 'resolveHls':
-          throw new Error('NotImplemented');
+          return resolveHls(valid.candidateId, correlationId);
       }
     },
     async onNetworkResponse(response) {

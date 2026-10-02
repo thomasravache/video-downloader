@@ -159,6 +159,22 @@ export class NetworkStore {
     });
   }
 
+  /** Atualiza o candidato guardado (mesmo id) sem mudar a ordem; ausente é ignorado. */
+  update(tabId: number, candidate: VideoCandidate): Promise<void> {
+    return this.serial(async () => {
+      const entries = await this.read(tabId);
+      const at = entries.findIndex((entry) => entry.candidate.id === candidate.id);
+      if (at < 0) {
+        return;
+      }
+      const current = entries[at];
+      if (current) {
+        entries[at] = { at: current.at, candidate };
+        await this.port.set(keyOf(tabId), entries);
+      }
+    });
+  }
+
   /** Mais recentes primeiro. */
   forTab(tabId: number): Promise<VideoCandidate[]> {
     return this.serial(async () => (await this.read(tabId)).map((entry) => entry.candidate));

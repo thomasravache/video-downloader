@@ -5,6 +5,8 @@ export interface CandidateStore {
   replaceTab(tabId: number, candidates: VideoCandidate[]): void;
   forTab(tabId: number): VideoCandidate[];
   find(candidateId: string): VideoCandidate | undefined;
+  /** Substitui o candidato guardado (mesmo id), p.ex. com o `HlsInfo` resolvido. */
+  update(candidate: VideoCandidate): void;
   /** Descarta o estado da aba (aba fechada). */
   removeTab(tabId: number): void;
 }
@@ -46,6 +48,17 @@ export function createCandidateStore(): CandidateStore {
     },
     forTab: (tabId) => [...(byTab.get(tabId) ?? [])],
     find: (candidateId) => byId.get(candidateId),
+    update(candidate) {
+      if (!byId.has(candidate.id)) {
+        return;
+      }
+      byId.set(candidate.id, candidate);
+      const list = byTab.get(candidate.tabId);
+      const at = list?.findIndex((c) => c.id === candidate.id) ?? -1;
+      if (list && at >= 0) {
+        list[at] = candidate;
+      }
+    },
     removeTab,
   };
 }

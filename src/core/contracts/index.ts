@@ -1,5 +1,6 @@
 /** Contratos v1 (SPEC-0005): tipos das mensagens/providers e o schema de `provider.json`. */
 
+import { validateHlsInfo } from '../hls';
 import type { HlsInfo } from '../hls';
 
 export type Flavor = 'public' | 'local';
@@ -120,13 +121,14 @@ function isCandidate(value: unknown): value is VideoCandidate {
     typeof c['tabId'] === 'number' &&
     typeof c['pageUrl'] === 'string' &&
     typeof c['mediaUrl'] === 'string' &&
-    (c['protection'] === 'none' || c['protection'] === 'drm') &&
+    (c['protection'] === 'none' || c['protection'] === 'drm' || c['protection'] === 'encrypted') &&
     (c['support'] === 'downloadable' || c['support'] === 'unsupported-stream') &&
     typeof c['frameId'] === 'number' &&
     Number.isInteger(c['frameId']) &&
     typeof c['frameUrl'] === 'string' &&
     (c['kind'] === 'file' || c['kind'] === 'hls' || c['kind'] === 'dash') &&
-    (c['source'] === 'dom' || c['source'] === 'network')
+    (c['source'] === 'dom' || c['source'] === 'network') &&
+    (c['hls'] === undefined || validateHlsInfo(c['hls']).ok)
   );
 }
 
@@ -147,7 +149,8 @@ export function validateDetectResponse(input: unknown): DetectResponseValidation
   if (!Array.isArray(candidates) || !(candidates as unknown[]).every(isCandidate)) {
     return {
       ok: false,
-      error: 'candidates inválido (frameId inteiro, frameUrl, kind e source são obrigatórios)',
+      error:
+        'candidates inválido (frameId inteiro, frameUrl, kind e source são obrigatórios; hls, se presente, deve ser um HlsInfo válido)',
     };
   }
   const blocked =

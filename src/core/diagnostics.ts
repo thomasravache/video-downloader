@@ -19,6 +19,8 @@ export interface Counters {
 
 export type NetworkOutcome = 'file' | 'hls' | 'dash' | 'discarded';
 
+export type HlsOutcome = 'resolved' | 'encrypted' | 'live' | 'failed';
+
 export interface Diagnostics {
   newCorrelationId(): string;
   log(
@@ -30,6 +32,8 @@ export interface Diagnostics {
   count(providerId: string, counter: keyof Counters): void;
   /** Contador local de respostas de rede por resultado (`file`/`hls`/`dash` ou `discarded`) — SPEC-0010. */
   countNetwork(outcome: NetworkOutcome): void;
+  /** Contador local de playlists HLS por resultado (SPEC-0011). */
+  countHls(outcome: HlsOutcome): void;
   /** Entradas do ring buffer + uma entrada final `counters` com os contadores por provider. */
   snapshot(): LogEntry[];
 }
@@ -69,6 +73,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
   const entries: LogEntry[] = [];
   const counters = new Map<string, Counters>();
   const network = new Map<NetworkOutcome, number>();
+  const hls = new Map<HlsOutcome, number>();
 
   return {
     newCorrelationId: newId,
@@ -98,6 +103,9 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
     countNetwork(outcome) {
       network.set(outcome, (network.get(outcome) ?? 0) + 1);
     },
+    countHls(outcome) {
+      hls.set(outcome, (hls.get(outcome) ?? 0) + 1);
+    },
     snapshot() {
       return [
         ...entries,
@@ -108,6 +116,7 @@ export function createDiagnostics(options: DiagnosticsOptions = {}): Diagnostics
           correlationId: newId(),
           providers: Object.fromEntries(counters),
           ...(network.size > 0 && { network: Object.fromEntries(network) }),
+          ...(hls.size > 0 && { hls: Object.fromEntries(hls) }),
         },
       ];
     },
