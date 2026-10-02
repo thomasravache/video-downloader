@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0004]
 consumes_contract: [SPEC-0005@1]
 contract_version: 1
-touches: [tsconfig.json, vitest.config.ts, tests/harness/arch.test.ts, tests/harness/arch-gaps.test.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
+touches: [package.json, CHANGELOG.md, tsconfig.json, vitest.config.ts, tests/harness/arch.test.ts, tests/harness/arch-gaps.test.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
 adrs: [ADR-0010, ADR-0011, ADR-0004, ADR-0006]
 external: []
 size: M
@@ -225,3 +225,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | 2 (revisão) | 2026-09-30 | flavor-guard falha fechado (diretório sem manifesto, zero manifestos), id por token inteiro com formato mínimo, e rejeita `.map` e caminhos `src/providers/<local>` no bundle público; correção do procedimento de rollback no runbook; asserção de não-rebuild no smoke | achados do Reviewer (G4): o guard é a única barreira do ADR-0011 e falhava aberto; o rollback descrito não funcionava | nenhuma | pendente de ratificação do Thomas no H2 da onda 3 |
 | 3 (escopo) | 2026-10-02 | `touches` inclui `tests/harness/arch.test.ts` e `arch-gaps.test.ts` (SPEC-0003) para que a limpeza dos testes de arquitetura remova também o diretório-pai (`src/providers/`) que eles criam | `pnpm test` deixava `src/providers/` vazio e o flavor-guard (falha fechada) quebrava na 2ª execução e no `pnpm coverage`; defeito de poluição de teste | SPEC-0003 (testes, sem mudança de comportamento) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
 | 4 (integração) | 2026-10-02 | `src/providers/build/` é diretório reservado (código de build da SPEC-0005, não um provider): o flavor-guard o ignora, como o registro já faz; todo fixture de provider exporta `export default` um `Provider` (contrato SPEC-0005@1) | a integração das ondas 3 mostrou que o guard endurecido recusava `build/` e que o fixture da SPEC-0006 não seguia o contrato de default export | SPEC-0005 (nenhuma: já reserva `build`) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 5 (escopo) | 2026-10-02 | `touches` inclui `package.json` (apenas o campo `version`) e `CHANGELOG.md` | o runbook da própria spec manda que cada release comece com o bump de `version` e a entrada do changelog; o `pr-check` barrou o commit `chore(release): prepare v0.1.0-rc.1` por estar fora dos `touches` | nenhuma | thomas (pediu a tag rc no chat, 2026-10-02; escopo de preparação da release) |
