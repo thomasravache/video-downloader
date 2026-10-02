@@ -25,6 +25,7 @@ function isPageSnapshot(value: unknown): value is PageSnapshot {
  */
 export default defineBackground(() => {
   // `storage.session` vive só na memória do navegador e sobrevive à suspensão do service worker.
+  const diagnostics = createDiagnostics();
   const network = new NetworkStore({
     get: async (key) => (await browser.storage.session.get(key))[key],
     set: (key, value) => browser.storage.session.set({ [key]: value }),
@@ -33,7 +34,7 @@ export default defineBackground(() => {
   const service = createService({
     extensionId: browser.runtime.id,
     providers,
-    diagnostics: createDiagnostics(),
+    diagnostics,
     network,
     scripting: {
       async collectVideos(tabId) {
@@ -71,22 +72,39 @@ export default defineBackground(() => {
   // Observação apenas (nunca bloqueante, nunca lê corpo). Registrados de forma síncrona, no topo
   // do service worker, para que os eventos o acordem (ADR-0012, SPEC-0010).
   const filter = { urls: ['http://*/*', 'https://*/*'] };
-  try {
-    browser.webRequest.onResponseStarted.addListener(
-      (details) => {
-        void service.onNetworkResponse(toNetworkResponse(details));
-      },
-      filter,
-      ['responseHeaders'],
-    );
-    browser.webRequest.onBeforeRequest.addListener(
-      (details) => {
-        void service.clearNetwork(details.tabId);
-      },
-      { ...filter, types: ['main_frame'] },
-    );
-  } catch {
-    // Sem `webRequest` (ex.: ambiente sem a API) a detecção continua só pelo DOM.
+  const unavailable = (reason: string): void => {
+    diagnostics.log('warn', 'network.unavailable', diagnostics.newCorrelationId(), { reason });
+  };
+  // Sem `webRequest` a detecção continua só pelo DOM. Cada registro tem o próprio try/catch e o
+  // diagnóstico guarda só o nome do erro (a mensagem pode conter URLs/tokens).
+  const webRequest = (browser as { webRequest?: typeof browser.webRequest }).webRequest;
+  if (webRequest === undefined) {
+    unavailable('no_api');
+  } else {
+    try {
+      webRequest.onResponseStarted.addListener(
+        (details) => {
+          void service.onNetworkResponse(toNetworkResponse(details));
+        },
+        filter,
+        ['responseHeaders'],
+      );
+    } catch (error) {
+      unavailable(error instanceof Error ? error.name : 'unknown');
+    }
+    try {
+      webRequest.onBeforeRequest.addListener(
+        (details) => {
+          // Requisições sem aba (tabId < 0) não têm lista de rede a limpar.
+          if (details.tabId >= 0) {
+            void service.clearNetwork(details.tabId);
+          }
+        },
+        { ...filter, types: ['main_frame'] },
+      );
+    } catch (error) {
+      unavailable(error instanceof Error ? error.name : 'unknown');
+    }
   }
 
   browser.tabs.onRemoved.addListener((tabId) => {
