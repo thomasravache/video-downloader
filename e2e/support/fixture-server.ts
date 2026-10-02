@@ -9,6 +9,8 @@ const HOST = '127.0.0.1';
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.mp4': 'video/mp4',
+  '.m3u8': 'application/vnd.apple.mpegurl',
+  '.mpd': 'application/dash+xml',
   '.json': 'application/json',
   '.js': 'text/javascript',
   '.css': 'text/css',
