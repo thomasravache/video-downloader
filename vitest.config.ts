@@ -23,6 +23,7 @@ export default defineConfig({
             'tests/harness/**/*.test.ts',
             'tests/tooling/**/*.test.ts',
             'tests/ci/**/*.test.ts',
+            'tests/release/**/*.test.ts',
           ],
           exclude: ['**/*.integration.test.ts', '**/node_modules/**'],
           // Testes de arquitetura/tooling mutam a árvore e rodam lint/typecheck: nunca em paralelo.

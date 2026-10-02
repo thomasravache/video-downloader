@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ROOT, run } from '../tooling/helpers';
@@ -10,9 +10,18 @@ import { ROOT, run } from '../tooling/helpers';
  */
 const TMP = '__arch_tmp__';
 const created: string[] = [];
+const createdDirs: string[] = [];
+
+/** Registra o ancestral mais alto que ainda não existe, para restaurar a árvore exatamente. */
+function trackMissingDirs(dir: string): void {
+  let top: string | undefined;
+  for (let d = dir; d !== ROOT && !existsSync(d); d = dirname(d)) top = d;
+  if (top) createdDirs.push(top);
+}
 
 function write(rel: string, content: string): void {
   const abs = join(ROOT, rel);
+  trackMissingDirs(dirname(abs));
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, content);
   created.push(rel);
@@ -33,6 +42,9 @@ afterEach(() => {
     `entrypoints/popup/${TMP}`,
   ]) {
     rmSync(join(ROOT, dir), { recursive: true, force: true });
+  }
+  for (const dir of createdDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 
