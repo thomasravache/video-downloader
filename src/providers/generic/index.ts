@@ -1,67 +1,10 @@
-import { candidateId } from '../../core/candidates';
-import { classify } from '../../core/classify';
+import { candidatesOfSnapshot } from '../../core/extract';
+import { mergeFrameSnapshots } from '../../core/frames';
 import type { DetectContext, PageSnapshot, Provider, VideoCandidate } from '../../core/contracts';
 
-const MIME_BY_EXTENSION: Record<string, string> = {
-  mp4: 'video/mp4',
-  m4v: 'video/mp4',
-  webm: 'video/webm',
-  ogv: 'video/ogg',
-  ogg: 'video/ogg',
-  mov: 'video/quicktime',
-  mkv: 'video/x-matroska',
-};
-
-function mimeTypeOf(mediaUrl: string): string | undefined {
-  if (!/^https?:\/\//i.test(mediaUrl)) {
-    return undefined;
-  }
-  const path = mediaUrl.split(/[?#]/)[0] ?? '';
-  const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase();
-  return ext === undefined ? undefined : MIME_BY_EXTENSION[ext];
-}
-
-/** Converte o retrato da página em candidatos (um por URL distinta, sem duplicar `currentSrc`). */
+/** Candidatos do frame principal (frameId 0); `detect` usa mergeFrameSnapshots para todos os frames. */
 export function extractCandidates(snapshot: PageSnapshot, tabId: number): VideoCandidate[] {
-  const found = new Map<string, VideoCandidate>();
-  const title = snapshot.pageTitle.trim() === '' ? undefined : snapshot.pageTitle;
-
-  for (const video of snapshot.videos) {
-    const urls = [video.src, video.currentSrc, ...video.sources];
-    for (const mediaUrl of urls) {
-      if (mediaUrl === null || mediaUrl === '') {
-        continue;
-      }
-      const classification = classify({
-        mediaUrl,
-        hasMediaKeys: video.hasMediaKeys,
-        encrypted: video.encrypted,
-      });
-      const existing = found.get(mediaUrl);
-      if (existing) {
-        // A mesma URL em dois elementos: basta um estar protegido para o candidato ser protegido.
-        if (classification.protection === 'drm') {
-          existing.protection = 'drm';
-        }
-        continue;
-      }
-      const mimeType = mimeTypeOf(mediaUrl);
-      found.set(mediaUrl, {
-        id: candidateId(tabId, mediaUrl),
-        providerId: 'generic',
-        tabId,
-        pageUrl: snapshot.pageUrl,
-        mediaUrl,
-        ...(title !== undefined && { title }),
-        ...(mimeType !== undefined && { mimeType }),
-        ...classification,
-        // scaffold (SPEC-0009): frame principal apenas; mergeFrameSnapshots passa a atribuir o frame.
-        frameId: 0,
-        frameUrl: snapshot.pageUrl,
-      });
-    }
-  }
-  return [...found.values()];
+  return candidatesOfSnapshot(snapshot, tabId, 0);
 }
 
 const provider: Provider = {
@@ -69,9 +12,7 @@ const provider: Provider = {
   flavors: ['public', 'local'],
   matches: () => true,
   async detect(ctx: DetectContext) {
-    // scaffold (SPEC-0009): só o frame principal até a implementação de mergeFrameSnapshots.
-    const [main] = await ctx.scripting.collectVideos(ctx.tabId);
-    return main ? extractCandidates(main.snapshot, ctx.tabId) : [];
+    return mergeFrameSnapshots(await ctx.scripting.collectVideos(ctx.tabId), ctx.tabId);
   },
 };
 

@@ -8,9 +8,13 @@ export interface PermissionsPort {
  * Pede acesso às origens (cada `origin` vira o padrão `origin/*`); exceção da API = `granted: false`.
  * Só deve ser chamada a partir de um gesto do usuário (ADR-0012).
  */
-export function requestAccess(
-  _port: PermissionsPort,
-  _origins: string[],
+export async function requestAccess(
+  port: PermissionsPort,
+  origins: string[],
 ): Promise<{ granted: boolean }> {
-  throw new Error('NotImplemented');
+  try {
+    return { granted: await port.request(origins.map((origin) => `${origin}/*`)) };
+  } catch {
+    return { granted: false };
+  }
 }

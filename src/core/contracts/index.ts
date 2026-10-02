@@ -91,9 +91,65 @@ export type DetectResponse =
 export type DetectResponseValidation =
   { ok: true; value: DetectResponse } | { ok: false; error: string };
 
+const HTTP_ORIGIN = /^https?:\/\/[^\s/?#]+$/i;
+
+function isCandidate(value: unknown): value is VideoCandidate {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c['id'] === 'string' &&
+    typeof c['providerId'] === 'string' &&
+    typeof c['tabId'] === 'number' &&
+    typeof c['pageUrl'] === 'string' &&
+    typeof c['mediaUrl'] === 'string' &&
+    (c['protection'] === 'none' || c['protection'] === 'drm') &&
+    (c['support'] === 'downloadable' || c['support'] === 'unsupported-stream') &&
+    typeof c['frameId'] === 'number' &&
+    Number.isInteger(c['frameId']) &&
+    typeof c['frameUrl'] === 'string'
+  );
+}
+
 /** Valida a resposta de `detect` v2 (SPEC-0009:CT-01). */
-export function validateDetectResponse(_input: unknown): DetectResponseValidation {
-  throw new Error('NotImplemented');
+export function validateDetectResponse(input: unknown): DetectResponseValidation {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    return { ok: false, error: 'resposta deve ser um objeto' };
+  }
+  const { ok, error, candidates, access } = input as Record<string, unknown>;
+  if (ok === false) {
+    return error === 'RESTRICTED_PAGE' || error === 'INVALID_MESSAGE'
+      ? { ok: true, value: { ok: false, error } }
+      : { ok: false, error: 'error desconhecido' };
+  }
+  if (ok !== true) {
+    return { ok: false, error: 'ok deve ser booleano' };
+  }
+  if (!Array.isArray(candidates) || !(candidates as unknown[]).every(isCandidate)) {
+    return {
+      ok: false,
+      error: 'candidates inválido (frameId inteiro e frameUrl são obrigatórios)',
+    };
+  }
+  const blocked =
+    typeof access === 'object' && access !== null
+      ? (access as { blockedOrigins?: unknown }).blockedOrigins
+      : undefined;
+  if (
+    !Array.isArray(blocked) ||
+    !(blocked as unknown[]).every((o) => typeof o === 'string' && HTTP_ORIGIN.test(o))
+  ) {
+    return { ok: false, error: 'access.blockedOrigins deve ser uma lista de origens http(s)' };
+  }
+  return {
+    ok: true,
+    value: {
+      ok: true,
+      candidates: candidates as VideoCandidate[],
+      access: { blockedOrigins: blocked as string[] },
+    },
+  };
 }
 
 export type DownloadResponse =
