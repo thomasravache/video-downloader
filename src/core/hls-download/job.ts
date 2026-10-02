@@ -1,5 +1,6 @@
 /** Estado e máquina de estados dos jobs de download HLS (SPEC-0012:UT-04, CT-01). Assinaturas apenas. */
 import type { JobError } from './errors';
+import { percentOf } from './progress';
 
 export type JobStatus =
   'queued' | 'running' | 'assembling' | 'saving' | 'done' | 'error' | 'canceled';
@@ -31,15 +32,59 @@ export type JobEvent =
   | { type: 'fail'; error: JobError }
   | { type: 'cancel' };
 
-export function newJob(_init: {
+export function newJob(init: {
   jobId: string;
   candidateId: string;
   variantIndex: number;
 }): JobState {
-  throw new Error('NotImplemented');
+  return {
+    jobId: init.jobId,
+    candidateId: init.candidateId,
+    variantIndex: init.variantIndex,
+    state: 'queued',
+    segmentsDone: 0,
+    segmentsTotal: 0,
+    bytesDone: 0,
+    percent: 0,
+  };
 }
 
+const ACTIVE: readonly JobStatus[] = ['queued', 'running', 'assembling', 'saving'];
+
 /** Transição pura; evento inválido para o estado atual devolve o próprio `job` (sem mudança). */
-export function reduceJob(_job: JobState, _event: JobEvent): JobState {
-  throw new Error('NotImplemented');
+export function reduceJob(job: JobState, event: JobEvent): JobState {
+  switch (event.type) {
+    case 'start':
+      return job.state === 'queued'
+        ? { ...job, state: 'running', segmentsTotal: event.segmentsTotal }
+        : job;
+    case 'progress': {
+      if (job.state !== 'running') {
+        return job;
+      }
+      const bytesDone = Math.max(job.bytesDone, event.bytesDone);
+      if (bytesDone > MAX_BUFFERED_BYTES) {
+        return { ...job, bytesDone, state: 'error', error: 'TOO_LARGE' };
+      }
+      const segmentsDone = Math.max(job.segmentsDone, event.segmentsDone);
+      return {
+        ...job,
+        segmentsDone,
+        bytesDone,
+        percent: Math.max(job.percent, percentOf(segmentsDone, job.segmentsTotal)),
+      };
+    }
+    case 'assemble':
+      return job.state === 'running' ? { ...job, state: 'assembling' } : job;
+    case 'save':
+      return job.state === 'assembling'
+        ? { ...job, state: 'saving', filename: event.filename, downloadId: event.downloadId }
+        : job;
+    case 'complete':
+      return job.state === 'saving' ? { ...job, state: 'done', percent: 100 } : job;
+    case 'fail':
+      return ACTIVE.includes(job.state) ? { ...job, state: 'error', error: event.error } : job;
+    case 'cancel':
+      return ACTIVE.includes(job.state) ? { ...job, state: 'canceled' } : job;
+  }
 }

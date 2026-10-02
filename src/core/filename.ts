@@ -78,6 +78,13 @@ export function toFilename(input: FilenameInput): string {
     return `video-${date}.mp4`;
   }
 
+  if (input.label !== undefined && sanitize(input.label) !== '') {
+    // HLS (SPEC-0012): sempre MP4; o título é truncado primeiro, rótulo e extensão são preservados.
+    const suffix = ` - ${sanitize(input.label)}.mp4`;
+    const head = truncate(base, Math.max(1, MAX_FILENAME_LENGTH - suffix.length));
+    return `${head === '' ? 'video' : head}${suffix}`.slice(-MAX_FILENAME_LENGTH);
+  }
+
   const ext = extension ?? 'mp4';
   const name = truncate(base, MAX_FILENAME_LENGTH - ext.length - 1);
   return `${name === '' ? 'video' : name}.${ext}`;

@@ -1,4 +1,5 @@
-/** Agendador de segmentos (SPEC-0012:UT-01). Assinatura apenas. */
+/** Agendador de segmentos (SPEC-0012:UT-01): concorrência limitada, retentativas, ordem e abort. */
+import { SegmentFetchError } from './errors';
 
 export type SegmentFetch = (url: string, init: { signal: AbortSignal }) => Promise<Uint8Array>;
 
@@ -24,11 +25,105 @@ export interface RunSegmentsOptions {
   onProgress?: (progress: SegmentProgress) => void;
 }
 
+function abortError(): Error {
+  return new DOMException('aborted', 'AbortError');
+}
+
 /**
  * Baixa `urls` em paralelo (`concurrency`), com `retries` retentativas por segmento, e devolve os
  * bytes na ordem original. Falha definitiva: rejeita com `SegmentFetchError` e aborta os demais.
  * `signal.abort()`: rejeita com um erro de nome `AbortError` e não inicia novas requisições.
  */
-export function runSegments(_options: RunSegmentsOptions): Promise<Uint8Array[]> {
-  return Promise.reject(new Error('NotImplemented'));
+export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> {
+  const { urls, concurrency, retries, backoffMs, sleep, signal: external } = options;
+  if (external.aborted) {
+    return Promise.reject(abortError());
+  }
+  const total = urls.length;
+  if (total === 0) {
+    return Promise.resolve([]);
+  }
+
+  return new Promise<Uint8Array[]>((resolve, reject) => {
+    const internal = new AbortController();
+    const results = new Array<Uint8Array>(total);
+    let next = 0;
+    let done = 0;
+    let bytesDone = 0;
+    let settled = false;
+
+    const finish = (error?: Error): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      external.removeEventListener('abort', onExternalAbort);
+      if (error) {
+        internal.abort();
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    };
+    function onExternalAbort(): void {
+      finish(abortError());
+    }
+    external.addEventListener('abort', onExternalAbort);
+
+    async function fetchWithRetry(index: number): Promise<Uint8Array | undefined> {
+      const url = urls[index] as string;
+      for (let attempt = 0; ; attempt++) {
+        if (settled) {
+          return undefined;
+        }
+        try {
+          return await options.fetch(url, { signal: internal.signal });
+        } catch {
+          if (settled) {
+            return undefined;
+          }
+          if (attempt >= retries) {
+            throw new SegmentFetchError(index);
+          }
+          try {
+            await sleep(backoffMs(attempt), internal.signal);
+          } catch {
+            if (settled) {
+              return undefined;
+            }
+          }
+        }
+      }
+    }
+
+    async function worker(): Promise<void> {
+      while (!settled && next < total) {
+        const index = next++;
+        const bytes = await fetchWithRetry(index);
+        if (bytes === undefined || settled) {
+          return;
+        }
+        results[index] = bytes;
+        done += 1;
+        bytesDone += bytes.byteLength;
+        options.onProgress?.({
+          index,
+          bytes: bytes.byteLength,
+          segmentsDone: done,
+          segmentsTotal: total,
+          bytesDone,
+        });
+        if (done === total) {
+          finish();
+        }
+      }
+    }
+
+    const workers = Math.max(1, Math.min(concurrency, total));
+    for (let i = 0; i < workers; i++) {
+      worker().catch((error: unknown) => {
+        finish(error instanceof Error ? error : new SegmentFetchError(-1));
+      });
+    }
+  });
 }
