@@ -49,6 +49,11 @@ async function main(argv: string[]): Promise<void> {
       const dirs = [resolve(ROOT, 'src/providers')].filter((d) => existsSync(d));
       const extra = process.env['PROVIDERS_EXTRA_DIR'];
       if (extra) dirs.push(resolve(extra));
+      if (dirs.length === 0) {
+        throw new Error(
+          'NO_PROVIDERS_FOUND: src/providers ausente e PROVIDERS_EXTRA_DIR não definido',
+        );
+      }
       checkFlavorGuard({ distDir: resolve(a), providersDir: dirs });
       console.log(`flavor-guard ok: ${a}`);
       return;

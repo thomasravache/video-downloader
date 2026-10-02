@@ -10,6 +10,9 @@ export interface FlavorGuardOptions {
 
 const FLAVORS = ['public', 'local'];
 
+/** Subdiretório de um providers dir que é código de build, não um provider (espelha NOT_A_PROVIDER em src/providers/build/plugin.ts). */
+const NOT_A_PROVIDER = new Set(['build']);
+
 const ID_PATTERN = /^[a-z][a-z0-9-]{2,}$/;
 
 interface ProviderManifest {
@@ -52,14 +55,18 @@ function loadManifests(providersDir: string | readonly string[]): ProviderManife
   const manifests: ProviderManifest[] = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;
+    let found = 0;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory() || NOT_A_PROVIDER.has(entry.name)) continue;
       const file = join(dir, entry.name, 'provider.json');
       if (!existsSync(file)) throw invalid(join(dir, entry.name), 'diretório sem provider.json');
       manifests.push(readManifest(file, entry.name));
+      found += 1;
     }
+    // Diretório configurado e existente que não rende nenhum manifesto é falha.
+    if (found === 0) throw new Error(`NO_PROVIDERS_FOUND: nenhum provider.json em ${dir}`);
   }
-  // Sem nenhum diretório configurado não há o que verificar; configurado e vazio é falha.
+  // Nenhum diretório configurado existe: nada foi verificado, o que também é falha.
   if (dirs.length > 0 && manifests.length === 0) {
     throw new Error(`NO_PROVIDERS_FOUND: nenhum provider.json em ${dirs.join(', ')}`);
   }
@@ -85,7 +92,7 @@ export function checkFlavorGuard({ distDir, providersDir }: FlavorGuardOptions):
   }
   const manifests = loadManifests(providersDir);
   const files = [...walk(distDir)];
-  const map = files.find((file) => file.endsWith('.map'));
+  const map = files.find((file) => file.toLowerCase().endsWith('.map'));
   if (map !== undefined) {
     throw new Error(`FORBIDDEN_PROVIDER_IN_PUBLIC: source map no bundle public (${map})`);
   }
