@@ -2,6 +2,7 @@ import { createCandidateStore } from './candidates';
 import type { CandidateStore } from './candidates';
 import type {
   DetectResponse,
+  FrameSnapshot,
   DiagnosticsResponse,
   DownloadResponse,
   Provider,
@@ -10,8 +11,9 @@ import type {
 import { redactUrls } from './diagnostics';
 import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
+import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
-import type { DownloadPort, ScriptingPort, TabsPort } from './ports';
+import type { DownloadPort, PermissionsPort, ScriptingPort, TabsPort } from './ports';
 
 export type ServiceResponse = DetectResponse | DownloadResponse | DiagnosticsResponse;
 
@@ -22,6 +24,7 @@ export interface ServiceDeps {
   scripting: ScriptingPort;
   downloads: DownloadPort;
   tabs: TabsPort;
+  permissions: PermissionsPort;
   diagnostics: Diagnostics;
   store?: CandidateStore;
 }
@@ -47,6 +50,29 @@ export function createService(deps: ServiceDeps): Service {
   /** candidateId -> correlationId da detecção que o produziu (atravessa detect -> download). */
   const correlations = new Map<string, string>();
 
+  /** ⋃ crossOriginFrames − origem do frame principal − origens com permissão (`permissions.contains`). */
+  async function findBlockedOrigins(
+    frames: readonly FrameSnapshot[],
+    tabUrl: string,
+  ): Promise<string[]> {
+    const main = frames.find((frame) => frame.frameId === 0);
+    const pageOrigin = originOf(main?.snapshot.pageUrl ?? tabUrl) ?? '';
+    const seen = [...new Set(frames.flatMap((frame) => frame.snapshot.crossOriginFrames))];
+    const granted = new Set<string>();
+    await Promise.all(
+      seen.map(async (origin) => {
+        if (origin === pageOrigin) {
+          return;
+        }
+        const has = await deps.permissions.contains([`${origin}/*`]).catch(() => false);
+        if (has) {
+          granted.add(origin);
+        }
+      }),
+    );
+    return computeBlockedOrigins(seen, pageOrigin, granted);
+  }
+
   async function detect(tabId: number, correlationId: string): Promise<DetectResponse> {
     const pageUrl = (await deps.tabs.getUrl(tabId).catch(() => undefined)) ?? '';
     diagnostics.log('info', 'detect.start', correlationId, { tabId, pageUrl });
@@ -65,11 +91,18 @@ export function createService(deps: ServiceDeps): Service {
       }
     });
 
+    // Um único `executeScript` por detecção: os providers compartilham o resultado e o service
+    // reaproveita os frames para calcular as origens bloqueadas.
+    let collected: Promise<FrameSnapshot[]> | undefined;
+    const scripting: ScriptingPort = {
+      collectVideos: (id) => (collected ??= deps.scripting.collectVideos(id)),
+    };
+
     const found = new Map<string, VideoCandidate>();
     let failures = 0;
     for (const provider of matching) {
       try {
-        const candidates = await provider.detect({ tabId, pageUrl, scripting: deps.scripting });
+        const candidates = await provider.detect({ tabId, pageUrl, scripting });
         diagnostics.count(provider.id, 'detections');
         for (const candidate of candidates) {
           if (!found.has(candidate.id)) {
@@ -106,7 +139,14 @@ export function createService(deps: ServiceDeps): Service {
         support: c.support,
       })),
     });
-    return { ok: true, candidates };
+    const frames = await collected?.catch((): FrameSnapshot[] => []);
+    const blockedOrigins = await findBlockedOrigins(frames ?? [], pageUrl);
+    diagnostics.log('info', 'detect.frames', correlationId, {
+      tabId,
+      frames: frames?.length ?? 0,
+      blockedOrigins,
+    });
+    return { ok: true, candidates, access: { blockedOrigins } };
   }
 
   async function download(candidateId: string, fallbackId: string): Promise<DownloadResponse> {

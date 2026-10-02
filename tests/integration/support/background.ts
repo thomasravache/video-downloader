@@ -6,8 +6,12 @@
  * com o `sender.id` desejado, e `downloads.download`/`scripting.executeScript` são stubs.
  *
  * Contrato assumido do background (entrypoints/background.ts):
- *  - `browser.scripting.executeScript(...)` devolve `[{ result: PageSnapshot }]` (o retrato da página);
- *    quando rejeita, a resposta de `detect` é `{ ok: false, error: 'RESTRICTED_PAGE' }`;
+ *  - `browser.scripting.executeScript({ target: { tabId, allFrames: true }, func })` devolve um
+ *    item por frame com acesso, `[{ frameId, result: PageSnapshot }]` (SPEC-0009); itens sem
+ *    `result` válido (frame que falhou) são ignorados; quando rejeita, ou quando nenhum frame
+ *    responde, a resposta de `detect` é `{ ok: false, error: 'RESTRICTED_PAGE' }`;
+ *  - `browser.permissions.contains({ origins: [origem + '/*'] })` diz se a origem já tem permissão
+ *    (stub `contains`; padrão: nenhuma origem concedida);
  *  - `browser.downloads.download({ url, filename })` resolve com o `downloadId`;
  *  - `browser.tabs.onRemoved` descarta os candidatos da aba.
  */
@@ -15,7 +19,13 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import background from '../../../entrypoints/background';
-import type { PageSnapshot, VideoSnapshot, VideoCandidate } from '../../../src/core/contracts';
+import type {
+  DetectResponse,
+  FrameSnapshot,
+  PageSnapshot,
+  VideoCandidate,
+  VideoSnapshot,
+} from '../../../src/core/contracts';
 
 export const NO_RESPONSE = Symbol('NO_RESPONSE');
 
@@ -35,19 +45,32 @@ export function page(videos: VideoSnapshot[], overrides: Partial<PageSnapshot> =
     pageUrl: 'https://site.example.test/aula',
     pageTitle: 'Aula 1: Intro',
     videos,
+    crossOriginFrames: [],
     ...overrides,
   };
+}
+
+/** Item de `executeScript` de um frame (a forma devolvida pelo Chrome com `allFrames`). */
+export function injected(frame: FrameSnapshot): { frameId: number; result: PageSnapshot } {
+  return { frameId: frame.frameId, result: frame.snapshot };
 }
 
 export interface BackgroundHarness {
   /** Dispara `runtime.onMessage` como se viesse de `senderId` (padrão: a própria extensão). */
   send(message: unknown, senderId?: string): Promise<unknown>;
   executeScript: MockInstance;
+  /** `permissions.contains` (stub; padrão: false para toda origem). */
+  contains: MockInstance;
   download: MockInstance;
   /** Cria uma aba no fake e devolve o id. */
   newTab(url?: string): Promise<number>;
   /** `detect` para uma página e devolve os candidatos (falha o teste se não ok). */
   detect(snapshot: PageSnapshot): Promise<{ tabId: number; candidates: VideoCandidate[] }>;
+  /** `detect` com um retrato por frame (SPEC-0009); `tabUrl` padrão = pageUrl do frame 0. */
+  detectFrames(
+    frames: FrameSnapshot[],
+    tabUrl?: string,
+  ): Promise<{ tabId: number; response: DetectResponse }>;
   ownId: string;
 }
 
@@ -61,6 +84,9 @@ export function startBackground(): BackgroundHarness {
   const executeScript = vi
     .spyOn(fakeBrowser.scripting as unknown as Record<string, () => unknown>, 'executeScript')
     .mockResolvedValue([]);
+  const contains = vi
+    .spyOn(fakeBrowser.permissions as unknown as Record<string, () => unknown>, 'contains')
+    .mockResolvedValue(false);
   const download = vi
     .spyOn(fakeBrowser.downloads as unknown as Record<string, () => unknown>, 'download')
     .mockResolvedValue(1);
@@ -102,7 +128,7 @@ export function startBackground(): BackgroundHarness {
 
   async function detect(snapshot: PageSnapshot) {
     const tabId = await newTab(snapshot.pageUrl);
-    executeScript.mockResolvedValue([{ result: snapshot }]);
+    executeScript.mockResolvedValue([injected({ frameId: 0, snapshot })]);
     const response = (await send({ type: 'detect', tabId })) as {
       ok: boolean;
       candidates?: VideoCandidate[];
@@ -113,5 +139,12 @@ export function startBackground(): BackgroundHarness {
     return { tabId, candidates: response.candidates };
   }
 
-  return { send, executeScript, download, newTab, detect, ownId };
+  async function detectFrames(frames: FrameSnapshot[], tabUrl?: string) {
+    const tabId = await newTab(tabUrl ?? frames[0]?.snapshot.pageUrl);
+    executeScript.mockResolvedValue(frames.map(injected));
+    const response = (await send({ type: 'detect', tabId })) as DetectResponse;
+    return { tabId, response };
+  }
+
+  return { send, executeScript, contains, download, newTab, detect, detectFrames, ownId };
 }

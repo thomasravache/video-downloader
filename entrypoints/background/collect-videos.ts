@@ -30,5 +30,31 @@ export function collectVideos(): PageSnapshot {
       encrypted: encrypted.has(video),
     };
   });
-  return { pageUrl: location.href, pageTitle: document.title, videos };
+
+  // Origens http(s) de `<iframe src>` diferentes da deste frame. Espelha `findCrossOriginFrames`
+  // (src/core/frames.ts), duplicada aqui porque esta função é serializada e não pode importar nada.
+  const crossOrigins = new Set<string>();
+  for (const iframe of Array.from(document.querySelectorAll('iframe[src]'))) {
+    const src = iframe.getAttribute('src')?.trim() ?? '';
+    if (src === '') {
+      continue;
+    }
+    try {
+      const url = new URL(src, location.href);
+      if (
+        (url.protocol === 'http:' || url.protocol === 'https:') &&
+        url.origin !== location.origin
+      ) {
+        crossOrigins.add(url.origin);
+      }
+    } catch {
+      // src inválido: ignorado.
+    }
+  }
+  return {
+    pageUrl: location.href,
+    pageTitle: document.title,
+    videos,
+    crossOriginFrames: [...crossOrigins],
+  };
 }

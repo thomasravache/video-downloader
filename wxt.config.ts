@@ -13,6 +13,7 @@ export interface BuildManifest {
   [key: string]: unknown;
 }
 
+const HOST_PATTERNS = ['http://*/*', 'https://*/*'];
 const LOCAL_SUFFIX = ' (local)';
 
 export function resolveFlavor(mode: string): Flavor {
@@ -22,15 +23,19 @@ export function resolveFlavor(mode: string): Flavor {
   throw new Error(`FLAVOR inválido: "${mode}" (use FLAVOR=public|local ou --mode public)`);
 }
 
-export function buildManifest(_flavor: Flavor): BuildManifest {
+export function buildManifest(flavor: Flavor): BuildManifest {
   return {
     manifest_version: 3,
     default_locale: 'pt_BR',
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
-    // Permissões mínimas (ADR-0007): sem host_permissions e sem CSP customizada.
+    // Permissões mínimas (ADR-0007) sem CSP customizada; acesso a hosts por flavor (ADR-0012).
     permissions: ['activeTab', 'scripting', 'downloads', 'storage'],
-    // O manifesto é igual nos dois flavors; o sufixo " (local)" é aplicado em _locales (hook build:done).
+    // local: acesso amplo; public: opcional, pedido por site com gesto do usuário (popup).
+    ...(flavor === 'local'
+      ? { host_permissions: [...HOST_PATTERNS] }
+      : { optional_host_permissions: [...HOST_PATTERNS] }),
+    // O sufixo " (local)" é aplicado em _locales (hook build:done).
   };
 }
 

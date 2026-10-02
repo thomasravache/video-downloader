@@ -70,5 +70,14 @@
   },
   "statusDiagnosticsFailed": {
     "message": "Could not copy diagnostics"
+  },
+  "accessNeeded": {
+    "message": "This page has players on other sites:"
+  },
+  "buttonGrantAccess": {
+    "message": "Allow access"
+  },
+  "accessDenied": {
+    "message": "Access not granted. Videos from those sites will not be detected."
   }
 }

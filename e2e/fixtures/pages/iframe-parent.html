@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Página com player em iframe</title>
+  </head>
+  <body>
+    <h1>Página em 127.0.0.1 com player de outra origem (localhost)</h1>
+    <iframe id="player-frame" title="Player embutido" width="320" height="180"></iframe>
+    <script>
+      // Outra origem = outro nome de host (localhost) no MESMO servidor/porta da página.
+      document.getElementById('player-frame').src =
+        'http://localhost:' + location.port + '/pages/iframe-player.html';
+    </script>
+  </body>
+</html>

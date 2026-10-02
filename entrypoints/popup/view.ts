@@ -6,6 +6,9 @@ export interface ViewText {
   badgeUnsupported: string;
   download: string;
   downloadNamed(title: string): string;
+  accessNeeded: string;
+  grantAccess: string;
+  accessDenied: string;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -128,4 +131,50 @@ export function renderCandidates(
   list.setAttribute('aria-label', text.listLabel);
   list.append(...candidates.map((candidate) => renderCard(candidate, text, onDownload)));
   container.replaceChildren(list);
+}
+
+/** Bloco "acesso necessário" (origens de iframe sem permissão + botão); vazio esconde o bloco. */
+export function renderAccess(
+  container: HTMLElement,
+  origins: readonly string[],
+  text: ViewText,
+  onGrant: (button: HTMLButtonElement) => void,
+): void {
+  if (origins.length === 0) {
+    container.hidden = true;
+    container.replaceChildren();
+    return;
+  }
+  const block = element('div', 'access-block');
+  block.dataset['testid'] = 'access-needed';
+  const heading = element('p', 'access-title', text.accessNeeded);
+  heading.id = 'access-title';
+  const list = element('ul', 'access-list');
+  list.setAttribute('aria-labelledby', 'access-title');
+  for (const origin of origins) {
+    const item = element('li', 'access-origin', origin);
+    item.dataset['testid'] = 'access-origin';
+    list.append(item);
+  }
+  const button = element('button', 'button', text.grantAccess);
+  button.type = 'button';
+  button.dataset['testid'] = 'grant-access';
+  button.addEventListener('click', () => {
+    onGrant(button);
+  });
+  const denied = element('p', 'status status-error');
+  denied.id = 'access-status';
+  denied.setAttribute('role', 'status');
+  block.append(heading, list, button, denied);
+  container.replaceChildren(block);
+  container.hidden = false;
+}
+
+/** Mensagem de acesso negado dentro do bloco de acesso. */
+export function showAccessDenied(container: HTMLElement, message: string): void {
+  const status = container.querySelector<HTMLElement>('#access-status');
+  if (status) {
+    status.textContent = message;
+    status.dataset['testid'] = 'access-denied';
+  }
 }
