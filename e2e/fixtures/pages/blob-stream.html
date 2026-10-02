@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vídeo por stream</title>
+  </head>
+  <body>
+    <h1>Vídeo com MediaSource (src blob:)</h1>
+    <video id="player" controls muted></video>
+    <script>
+      const source = new MediaSource();
+      document.getElementById('player').src = URL.createObjectURL(source);
+      window.__streamReady = document.getElementById('player').src.startsWith('blob:');
+    </script>
+  </body>
+</html>
