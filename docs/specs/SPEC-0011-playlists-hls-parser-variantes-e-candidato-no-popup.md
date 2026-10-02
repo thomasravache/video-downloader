@@ -4,7 +4,7 @@ title: "Playlists HLS: parser, variantes e candidato no popup"
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
