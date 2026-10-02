@@ -217,7 +217,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/24]⎯) — ad36e26 | 2026-10-02 |
 | G2 Green | PASS | build exit 0 (✔ Finished in 191 ms); test exit 0 (Duration  21.21s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 143 ms); coverage exit 0 (================================================================================) — ce4e141 | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (20 modules, 33 dependencies cruised)) — ce4e141 | 2026-10-02 |
-| G4 Review | PENDING | | |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a06c570d: APPROVED @ ce4e141 (0 blocker/major, 6 minor; id do provider local ausente do bundle public verificado; IT-06 provado não-vazio por mutação) — ce4e141 | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
