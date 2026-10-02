@@ -203,7 +203,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 215 ms); test exit 0 (Duration  30.61s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 133 ms); coverage exit 0 (================================================================================) — 3673832 | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (23 modules, 42 dependencies cruised)) — 3673832 | 2026-10-02 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a339d9fd: APPROVED @ 3673832 (0 blocker/major, 6 minor; padrão com porta verificado no Chromium real; mutações de allFrames/blockedOrigins/log detectadas) — 3673832 | 2026-10-02 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 178 ms); test exit 0 (Duration  22.78s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.68s (tests 85%, transform 11%, setup 2%, import 2%)); test_e2e exit 0 (28 passed (28.5s)); arch_test exit 0 (✔ no dependency violations found (23 modules, 42 dependencies cruised)); security_scan exit 0 ([90m3:24PM[0m [32mINF[0m [1mno leaks found[0m) — a2a8a7b | 2026-10-02 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
