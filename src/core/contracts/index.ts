@@ -1,4 +1,4 @@
-/** Contratos v1 (SPEC-0005). Somente tipos e assinaturas: a lógica é escrita na fase Green. */
+/** Contratos v1 (SPEC-0005): tipos das mensagens/providers e o schema de `provider.json`. */
 
 export type Flavor = 'public' | 'local';
 
@@ -83,7 +83,28 @@ export type DiagnosticsResponse =
 export type ManifestValidation =
   { ok: true; value: ProviderManifest } | { ok: false; error: string };
 
-/** Valida `provider.json`: `id` não vazio e `flavors` não vazio, só com 'public' | 'local'. */
-export function validateProviderManifest(_input: unknown): ManifestValidation {
-  throw new Error('NotImplemented');
+export const PROVIDER_ID_PATTERN = /^[a-z][a-z0-9-]{2,}$/;
+const FLAVORS: readonly Flavor[] = ['public', 'local'];
+
+function isFlavor(value: unknown): value is Flavor {
+  return FLAVORS.includes(value as Flavor);
+}
+
+/** Valida `provider.json`: `id` no formato `^[a-z][a-z0-9-]{2,}$` e `flavors` não vazio, só com 'public' | 'local'. */
+export function validateProviderManifest(input: unknown): ManifestValidation {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    return { ok: false, error: 'provider.json deve ser um objeto' };
+  }
+  const { id, flavors } = input as { id?: unknown; flavors?: unknown };
+  if (typeof id !== 'string' || !PROVIDER_ID_PATTERN.test(id)) {
+    return { ok: false, error: `id inválido (use ${PROVIDER_ID_PATTERN.source})` };
+  }
+  if (!Array.isArray(flavors) || flavors.length === 0) {
+    return { ok: false, error: 'flavors deve ser uma lista não vazia' };
+  }
+  const list: unknown[] = flavors;
+  if (!list.every(isFlavor)) {
+    return { ok: false, error: "flavors aceita apenas 'public' e 'local'" };
+  }
+  return { ok: true, value: { id, flavors: [...new Set(list)] } };
 }

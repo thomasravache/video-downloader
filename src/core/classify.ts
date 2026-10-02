@@ -8,6 +8,13 @@ export interface ClassifyInput {
 
 export type Classification = Pick<VideoCandidate, 'protection' | 'support'>;
 
-export function classify(_input: ClassifyInput): Classification {
-  throw new Error('NotImplemented');
+/**
+ * DRM só é marcado (nunca contornado): `mediaKeys` definido ou evento `encrypted` => `drm`.
+ * Só URLs http(s) são baixáveis; `blob:` (MediaSource) e demais esquemas são streams não suportados.
+ */
+export function classify(input: ClassifyInput): Classification {
+  return {
+    protection: input.hasMediaKeys || input.encrypted ? 'drm' : 'none',
+    support: /^https?:\/\//i.test(input.mediaUrl) ? 'downloadable' : 'unsupported-stream',
+  };
 }
