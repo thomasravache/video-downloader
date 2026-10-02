@@ -1,14 +1,19 @@
 import { providers } from 'virtual:providers';
 import { createDiagnostics } from '../../src/core/diagnostics';
 import { createService } from '../../src/core/service';
-import type { PageSnapshot } from '../../src/core/contracts';
+import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const { pageUrl, videos, crossOriginFrames } = value as Record<string, unknown>;
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    Array.isArray((value as { videos?: unknown }).videos)
+    typeof pageUrl === 'string' &&
+    Array.isArray(videos) &&
+    Array.isArray(crossOriginFrames) &&
+    (crossOriginFrames as unknown[]).every((o) => typeof o === 'string')
   );
 }
 
@@ -23,20 +28,26 @@ export default defineBackground(() => {
     diagnostics: createDiagnostics(),
     scripting: {
       async collectVideos(tabId) {
-        const [injection] = await browser.scripting.executeScript({
-          target: { tabId },
+        const injections = await browser.scripting.executeScript({
+          target: { tabId, allFrames: true },
           func: collectVideos,
         });
-        if (!isPageSnapshot(injection?.result)) {
-          throw new Error('executeScript não devolveu o retrato da página');
+        // Frame sem acesso ou que recarregou durante a injeção vem sem `result`: é ignorado.
+        const frames: FrameSnapshot[] = [];
+        for (const injection of injections) {
+          if (isPageSnapshot(injection.result)) {
+            frames.push({ frameId: injection.frameId, snapshot: injection.result });
+          }
         }
-        // scaffold (SPEC-0009): allFrames e um retrato por frame vêm com a implementação.
-        return [{ frameId: 0, snapshot: injection.result }];
+        if (frames.length === 0) {
+          throw new Error('nenhum frame permitiu a coleta de vídeos');
+        }
+        return frames;
       },
     },
     permissions: {
-      contains: () => Promise.reject(new Error('NotImplemented')),
-      request: () => Promise.reject(new Error('NotImplemented')),
+      contains: (origins) => browser.permissions.contains({ origins }),
+      request: (origins) => browser.permissions.request({ origins }),
     },
     downloads: {
       download: (options) => browser.downloads.download(options),
