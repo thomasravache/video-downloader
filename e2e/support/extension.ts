@@ -37,7 +37,8 @@ interface WorkerFixtures {
   fixturesUrl: string;
 }
 
-const ALLOWED_HOST = '127.0.0.1';
+/** `localhost` é a segunda origem das fixtures de iframe (SPEC-0009); ambos resolvem para a máquina local. */
+const ALLOWED_HOSTS = new Set(['127.0.0.1', 'localhost']);
 
 /**
  * Após um `goto` abortado, o Chromium ainda confirma (commit) a página de erro de forma assíncrona;
@@ -76,14 +77,12 @@ export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixt
   },
 
   context: async ({ flavor, downloadsDir, grantedHostPatterns }, use) => {
-    if (grantedHostPatterns.length > 0) {
-      // SPEC-0009: a cópia de teste do build `public` deve receber estes padrões em host_permissions.
-      throw new Error('NotImplemented: grantedHostPatterns (e2e/support/test-profile.ts)');
-    }
-    // Cópia do build com host_permissions só para os testes (Emenda 1 (teste) da SPEC-0005).
+    // Cópia do build; no `public` ganha host_permissions só para os testes (Emenda 1 (teste) da SPEC-0005).
     const extensionPath = prepareTestExtension(
       ensureBuilt(flavor),
       join(mkdtempSync(join(tmpdir(), 'vd-e2e-extension-')), 'extension'),
+      flavor,
+      grantedHostPatterns,
     );
     const userDataDir = mkdtempSync(join(tmpdir(), 'vd-e2e-profile-'));
     seedDownloadPreferences(userDataDir, downloadsDir);
@@ -93,14 +92,14 @@ export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixt
       acceptDownloads: true,
       downloadsPath: downloadsDir,
       args: [
-        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1',
+        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost',
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
       ],
     });
-    // Isolamento de rede: nada sai de 127.0.0.1 (defesa em duas camadas: resolver + route).
+    // Isolamento de rede: nada sai de 127.0.0.1/localhost (defesa em duas camadas: resolver + route).
     await context.route(
-      (url) => /^https?:$/.test(url.protocol) && url.hostname !== ALLOWED_HOST,
+      (url) => /^https?:$/.test(url.protocol) && !ALLOWED_HOSTS.has(url.hostname),
       (route) => route.abort('blockedbyclient'),
     );
     context.on('page', settleFailedNavigations);
