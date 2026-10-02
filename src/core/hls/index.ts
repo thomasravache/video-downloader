@@ -62,11 +62,15 @@ function splitAttributes(list: string): string[] {
 
 /**
  * Regra de dúvida: só um único atributo `METHOD` (nome com maiúsculas exatas) de valor `NONE` (sem
- * diferenciar maiúsculas) deixa a chave limpa; METHOD ausente, repetido, desconhecido ou lista vazia
- * contam como criptografados.
+ * diferenciar maiúsculas) deixa a chave limpa; METHOD ausente, repetido, desconhecido, lista vazia ou
+ * atributo malformado contam como criptografados.
  */
 function keyIsEncrypted(attributeList: string): boolean {
-  const methods = splitAttributes(attributeList)
+  const parts = splitAttributes(attributeList);
+  if (!parts.every((part) => /^[A-Za-z0-9-]+=/.test(part))) {
+    return true;
+  }
+  const methods = parts
     .filter((part) => part.startsWith('METHOD='))
     .map((part) => part.slice('METHOD='.length));
   return methods.length !== 1 || methods[0]?.toUpperCase() !== 'NONE';
