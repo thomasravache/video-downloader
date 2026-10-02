@@ -137,6 +137,7 @@ function mergeCandidates(dom: VideoCandidate[], network: VideoCandidate[]): Vide
 - **IT-03** — Um `onBeforeRequest` de `main_frame` limpa a lista da aba; `tabs.onRemoved` descarta a lista.
 - **IT-04** — Com `pnpm build` real, ambos os manifestos têm exatamente as permissões `activeTab, scripting, downloads, storage, webRequest`, e a política de host de cada flavor da SPEC-0009 permanece.
 - **IT-05** — Com o logger real, o diagnóstico depois de eventos de rede com `?token=...` não contém `token=`; todas as entradas têm `correlationId`.
+- **IT-06** — Sem `browser.webRequest` (API ausente) ou com `addListener` lançando, o background não quebra, continua detectando pelo DOM e registra no diagnóstico a entrada `network.unavailable` com o motivo (`no_api` ou o nome do erro, sem URL); um evento `onBeforeRequest` de `main_frame` com `tabId < 0` é ignorado e não limpa nenhuma lista (Emenda 2).
 
 ### 7.4 Testes de Contrato
 - **CT-01** — Contrato de `VideoCandidate` v3 (consumido pela SPEC-0011): o validador aceita `kind ∈ {file,hls,dash}` e `source ∈ {dom,network}` e rejeita valores desconhecidos ou ausentes.
@@ -200,10 +201,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/29]⎯) — eeb8c56 | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 201 ms); test exit 0 (Duration  26.40s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 150 ms); coverage exit 0 (================================================================================) — f472a01 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)) — f472a01 | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01 (0 blocker/major, 3 minor; webRequest acorda o service worker suspenso, provado no Chromium real; mutações detectadas) — f472a01 | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
@@ -254,3 +255,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (dependência) | 2026-10-02 | `depends_on: [SPEC-0009]` passa a `consumes_contract: [SPEC-0009@1]` | a dependência real é o código/contrato já integrado na `main` (SPEC-0009 com G5 e H2); o fechamento (G6 manual e G7) das specs do épico acontece em lote numa única rc no fim, pois a verificação manual exige o Thomas | SPEC-0009 (sem efeito no contrato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 2 (revisão) | 2026-10-02 | novo IT-06: falha de registro do webRequest é registrada (`network.unavailable`) em vez de silenciosa; eventos com `tabId < 0` são ignorados | achados do Reviewer (G4): o `catch` silencioso esconderia para sempre uma falha de permissão/API na funcionalidade principal; o NFR já dizia que eventos sem aba são ignorados | nenhuma | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
