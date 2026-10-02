@@ -206,10 +206,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/44]⎯) — 55ed9b0 | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 233 ms); test exit 0 (Duration  35.49s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 184 ms); coverage exit 0 (================================================================================) — ce58af0 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (45 modules, 95 dependencies cruised)) — ce58af0 | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente (2 rodadas): APPROVED, 0 BLOCKER/0 MAJOR, 3 MINOR nao bloqueantes (saving->ASSEMBLY_FAILED, tolerancia onChanged, getContexts Chrome>=116) — 13fa46b | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
