@@ -257,3 +257,71 @@ describe('resolveHls: privacidade (NFR)', () => {
     );
   });
 });
+
+describe('resolveHls: estado do candidato guardado (Emenda 1)', () => {
+  /** Nova chamada de `detect` na mesma aba: devolve o candidato com o mesmo id. */
+  async function detectAgain(candidate: VideoCandidate): Promise<VideoCandidate> {
+    const tabId = candidate.tabId;
+    bg.executeScript.mockResolvedValue([injected({ frameId: 0, snapshot: page([]) })]);
+    const response = (await bg.send({ type: 'detect', tabId })) as DetectResponse;
+    if (!response.ok) {
+      throw new Error(`detect falhou: ${JSON.stringify(response)}`);
+    }
+    const found = response.candidates.find((c) => c.id === candidate.id);
+    if (!found) {
+      throw new Error(`candidato ${candidate.id} ausente: ${JSON.stringify(response.candidates)}`);
+    }
+    return found;
+  }
+
+  it('SPEC-0011:IT-04 playlist VOD limpa: detect devolve o mesmo candidato com hls resolvido e protection none', async () => {
+    const candidate = await observe(`${server.origin}/hls/master.m3u8`);
+
+    const response = await resolve(candidate.id);
+    const again = await detectAgain(candidate);
+
+    expect(response).toMatchObject({ ok: true });
+    expect(again.id).toBe(candidate.id);
+    expect(again.protection).toBe('none');
+    expect(again.hls).toEqual((response as { hls: unknown }).hls);
+    expect(again.hls).toMatchObject({ type: 'master', encrypted: false, live: false });
+  });
+
+  it('SPEC-0011:IT-04 playlist criptografada: o candidato passa a protection encrypted e deixa de ser baixável', async () => {
+    const candidate = await observe(`${server.origin}/hls/enc-master.m3u8`);
+
+    await resolve(candidate.id);
+    const again = await detectAgain(candidate);
+
+    expect(again.id).toBe(candidate.id);
+    expect(again.hls).toMatchObject({ encrypted: true });
+    expect(again.protection).toBe('encrypted');
+    expect(again.support).not.toBe('downloadable');
+  });
+
+  it('SPEC-0011:IT-04 playlist ao vivo: o candidato passa a support unsupported-stream', async () => {
+    const candidate = await observe(`${server.origin}/hls/live-master.m3u8`);
+
+    await resolve(candidate.id);
+    const again = await detectAgain(candidate);
+
+    expect(again.id).toBe(candidate.id);
+    expect(again.hls).toMatchObject({ live: true });
+    expect(again.support).toBe('unsupported-stream');
+  });
+
+  it('SPEC-0011:IT-04 resolveHls com falha (404 ou parse) deixa o candidato inalterado, sem hls', async () => {
+    const missing = await observe(`${server.origin}/hls/missing.m3u8`);
+    const html = await observe(`${server.origin}/hls/html.m3u8`);
+
+    expect(await resolve(missing.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
+    expect(await resolve(html.id)).toEqual({ ok: false, error: 'HLS_PARSE_FAILED' });
+    const missingAgain = await detectAgain(missing);
+    const htmlAgain = await detectAgain(html);
+
+    expect(missingAgain).toEqual(missing);
+    expect(htmlAgain).toEqual(html);
+    expect(missingAgain.hls).toBeUndefined();
+    expect(htmlAgain.hls).toBeUndefined();
+  });
+});

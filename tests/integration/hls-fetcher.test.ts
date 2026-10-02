@@ -6,7 +6,7 @@
  *   src/core/ports -> PlaylistFetcherPort { fetchPlaylist(url): Promise<string> } (resolve com o TEXTO;
  *     rejeita com PlaylistFetchError em qualquer recusa/falha)
  *   Limites (spec §6): 10 s (agendado no `clock` injetado; ao disparar, a requisição é abortada e a
- *   promessa rejeita), 1 MiB, ≤ 3 redirecionamentos, só http(s), só text/* ou
+ *   promessa rejeita), 1 MiB, redirecionamentos seguidos pelo navegador (`redirect: 'follow'`) com URL final http(s), só http(s), só text/* ou
  *   application/(vnd.apple.mpegurl|x-mpegurl|octet-stream).
  */
 import { afterEach, describe, expect, it } from 'vitest';
@@ -143,31 +143,30 @@ describe('PlaylistFetcherPort real: limites de tamanho, tipo, redirecionamento e
     );
   });
 
-  it('SPEC-0011:IT-02 até 3 redirecionamentos são seguidos; o 4º é recusado', async () => {
+  it('SPEC-0011:IT-02 playlist que redireciona (1 e 3 saltos) para outra URL http(s) é seguida e o corpo final é lido', async () => {
     const s = await start({
-      '/r1': redirect('/r2'),
-      '/r2': redirect('/r3'),
-      '/r3': redirect('/final.m3u8'),
-      '/r4': redirect('/r1'),
+      '/one': redirect('/final.m3u8'),
+      '/h1': redirect('/h2'),
+      '/h2': redirect('/h3'),
+      '/h3': redirect('/final.m3u8'),
       '/final.m3u8': body(PLAYLIST),
     });
     const fetcher = createPlaylistFetcher();
 
-    await expect(fetcher.fetchPlaylist(`${s.origin}/r1`)).resolves.toBe(PLAYLIST);
-    expect(await refusal(fetcher.fetchPlaylist(`${s.origin}/r4`))).toBeInstanceOf(
-      PlaylistFetchError,
-    );
+    await expect(fetcher.fetchPlaylist(`${s.origin}/one`)).resolves.toBe(PLAYLIST);
+    await expect(fetcher.fetchPlaylist(`${s.origin}/h1`)).resolves.toBe(PLAYLIST);
   });
 
-  it('SPEC-0011:IT-02 laço de redirecionamentos é recusado', async () => {
+  it('SPEC-0011:IT-02 laço de redirecionamentos termina em erro de busca, sem travar', async () => {
     const s = await start({ '/a': redirect('/b'), '/b': redirect('/a') });
 
     const error = await refusal(createPlaylistFetcher().fetchPlaylist(`${s.origin}/a`));
 
     expect(error).toBeInstanceOf(PlaylistFetchError);
+    expect(error).toMatchObject({ code: 'HLS_FETCH_FAILED' });
   });
 
-  it('SPEC-0011:IT-02 redirecionamento para esquema não http(s) é recusado', async () => {
+  it('SPEC-0011:IT-02 redirecionamento cujo destino final não é http(s) é recusado', async () => {
     const s = await start({
       '/file': redirect('file:///etc/hosts'),
       '/ftp': redirect('ftp://127.0.0.1/p.m3u8'),

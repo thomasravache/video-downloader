@@ -5,8 +5,7 @@
  *   HlsInfo v1: type 'master'|'media'; variants (master: banda decrescente; media: []); durationSec?;
  *     segmentCount?; encrypted; live; fmp4. HlsVariant: index, url (absoluta), bandwidth, width?, height?,
  *     codecs?, label ('<altura>p' ou '<round(bandwidth/1000)> kbps').
- * Observação: `HlsVariant.index` não tem semântica fixada na spec (posição na lista ordenada ou na
- * playlist original); os testes só exigem que os índices formem uma permutação de 0..n-1.
+ * `HlsVariant.index` = posição na lista ORDENADA por banda decrescente (0 = maior; Emenda 1).
  * As fixtures de e2e/fixtures/hls/ também são lidas aqui para garantir que descrevem o que o E2E espera.
  */
 import { readFileSync } from 'node:fs';
@@ -46,9 +45,9 @@ describe('parseHlsPlaylist: master e variantes', () => {
       'https://cdn.example.test/hls/audio-low.m3u8',
     ]);
     expect(indexes(info.variants)).toEqual([0, 1, 2]);
-    for (const variant of info.variants) {
-      expect(Number.isInteger(variant.index)).toBe(true);
-    }
+    info.variants.forEach((variant, i) => {
+      expect(variant.index).toBe(i);
+    });
   });
 
   it('SPEC-0011:UT-01 largura, altura e codecs vêm de RESOLUTION e CODECS; ausentes ficam indefinidos', () => {
