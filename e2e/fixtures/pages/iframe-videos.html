@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Quatro vídeos embutidos</title>
+  </head>
+  <body>
+    <script>
+      // ?n=<i> distingue os vídeos de cada iframe: 4 URLs distintas por frame.
+      const n = new URLSearchParams(location.search).get('n') || 'x';
+      for (let k = 0; k < 4; k++) {
+        const v = document.createElement('video');
+        v.preload = 'none';
+        v.muted = true;
+        v.src = '../sample.mp4?n=' + n + '-' + k;
+        document.body.append(v);
+      }
+    </script>
+  </body>
+</html>

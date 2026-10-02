@@ -17,6 +17,12 @@ export type { Flavor } from './flavor';
 /** Opções configuráveis por projeto no playwright.config.ts. */
 export interface ExtensionOptions {
   flavor: Flavor;
+  /**
+   * Padrões de host (ex.: 'http://localhost/*') que a CÓPIA de teste do build `public` recebe em
+   * `host_permissions`, além de http://127.0.0.1/*, simulando uma concessão de acesso por site
+   * (o diálogo nativo de permissão não é automatizável). Padrão: nenhum. SPEC-0009:E2E-03.
+   */
+  grantedHostPatterns: string[];
 }
 
 export interface ExtensionFixtures {
@@ -52,6 +58,7 @@ function settleFailedNavigations(page: Page): void {
 
 export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixtures>({
   flavor: ['public', { option: true }],
+  grantedHostPatterns: [[], { option: true }],
 
   fixturesUrl: [
     async ({}, use) => {
@@ -68,7 +75,11 @@ export const test = base.extend<ExtensionOptions & ExtensionFixtures, WorkerFixt
     rmSync(dir, { recursive: true, force: true });
   },
 
-  context: async ({ flavor, downloadsDir }, use) => {
+  context: async ({ flavor, downloadsDir, grantedHostPatterns }, use) => {
+    if (grantedHostPatterns.length > 0) {
+      // SPEC-0009: a cópia de teste do build `public` deve receber estes padrões em host_permissions.
+      throw new Error('NotImplemented: grantedHostPatterns (e2e/support/test-profile.ts)');
+    }
     // Cópia do build com host_permissions só para os testes (Emenda 1 (teste) da SPEC-0005).
     const extensionPath = prepareTestExtension(
       ensureBuilt(flavor),

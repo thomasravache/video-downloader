@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cinco frames, vinte vídeos</title>
+  </head>
+  <body>
+    <h1>Frame principal (127.0.0.1) com 4 vídeos e 4 iframes de localhost com 4 vídeos cada</h1>
+    <script>
+      for (let k = 0; k < 4; k++) {
+        const v = document.createElement('video');
+        v.preload = 'none';
+        v.muted = true;
+        v.src = '../sample.mp4?n=0-' + k;
+        document.body.append(v);
+      }
+      for (let i = 1; i <= 4; i++) {
+        const f = document.createElement('iframe');
+        f.title = 'Player embutido ' + i;
+        f.width = 160;
+        f.height = 90;
+        f.src = 'http://localhost:' + location.port + '/pages/iframe-videos.html?n=' + i;
+        document.body.append(f);
+      }
+    </script>
+  </body>
+</html>
