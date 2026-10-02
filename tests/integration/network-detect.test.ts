@@ -17,6 +17,7 @@
  */
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import background from '../../entrypoints/background';
 import { injected, page, startBackground, video } from './support/background';
 import type { BackgroundHarness } from './support/background';
 import type { DetectResponse, VideoCandidate } from '../../src/core/contracts';
@@ -245,5 +246,88 @@ describe('detecção por rede: webRequest -> detect/download', () => {
       expect(entry['correlationId'], JSON.stringify(entry)).toEqual(expect.any(String));
       expect(entry['correlationId']).not.toBe('');
     }
+  });
+});
+
+type DiagnosticsResponse = { ok: boolean; entries: Record<string, unknown>[] };
+
+/** Recria o background com um `browser.webRequest` arbitrário (o harness já rodou `main()` uma vez). */
+function remountWithWebRequest(webRequest: unknown): void {
+  fakeBrowser.runtime.onMessage.removeAllListeners();
+  fakeBrowser.tabs.onRemoved.removeAllListeners();
+  Object.defineProperty(fakeBrowser, 'webRequest', { configurable: true, value: webRequest });
+  background.main();
+}
+
+describe('detecção por rede: webRequest indisponível e navegação sem aba (Emenda 2)', () => {
+  it('SPEC-0010:IT-06 sem browser.webRequest o main() não lança, o DOM continua detectando e o diagnóstico registra network.unavailable/no_api', async () => {
+    expect(() => {
+      remountWithWebRequest(undefined);
+    }).not.toThrow();
+
+    const { candidates } = await bg.detect(
+      page([video({ src: 'https://cdn.example.test/dom.mp4' })]),
+    );
+    const diagnostics = (await bg.send({ type: 'diagnostics' })) as DiagnosticsResponse;
+
+    expect(candidates.some((c) => c.source === 'dom')).toBe(true);
+    const entry = diagnostics.entries.find((e) => e['event'] === 'network.unavailable');
+    expect(entry, JSON.stringify(diagnostics.entries)).toBeDefined();
+    expect(entry).toMatchObject({ reason: 'no_api' });
+    expect(entry?.['correlationId']).toEqual(expect.any(String));
+  });
+
+  it('SPEC-0010:IT-06 com addListener lançando TypeError o main() não lança, os demais registros acontecem e o diagnóstico traz só o nome do erro', async () => {
+    const beforeRequestAdd = vi.fn();
+    const responseAdd = vi.fn(() => {
+      throw new TypeError('falha em https://cdn.example.test/x.mp4?token=segredo');
+    });
+    expect(() => {
+      remountWithWebRequest({
+        onResponseStarted: { addListener: responseAdd },
+        onBeforeRequest: { addListener: beforeRequestAdd },
+      });
+    }).not.toThrow();
+
+    const { candidates } = await bg.detect(
+      page([video({ src: 'https://cdn.example.test/dom.mp4' })]),
+    );
+    const diagnostics = (await bg.send({ type: 'diagnostics' })) as DiagnosticsResponse;
+
+    expect(responseAdd).toHaveBeenCalledTimes(1);
+    expect(beforeRequestAdd).toHaveBeenCalledTimes(1);
+    expect(fakeBrowser.tabs.onRemoved.hasListeners()).toBe(true);
+    expect(candidates.some((c) => c.source === 'dom')).toBe(true);
+    const entry = diagnostics.entries.find((e) => e['event'] === 'network.unavailable');
+    expect(entry, JSON.stringify(diagnostics.entries)).toBeDefined();
+    expect(entry).toMatchObject({ reason: 'TypeError' });
+    const serialized = JSON.stringify(diagnostics.entries);
+    expect(serialized).not.toContain('token=');
+    expect(serialized).not.toContain('segredo');
+    expect(serialized).not.toContain('x.mp4');
+  });
+
+  it('SPEC-0010:IT-06 main_frame com tabId -1 é ignorado: a lista da aba real fica intacta e nenhuma chave vd:net:-1 é criada', async () => {
+    const tabId = await bg.newTab(PAGE);
+    await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
+
+    const remove = vi.spyOn(fakeBrowser.storage.session, 'remove');
+    const set = vi.spyOn(fakeBrowser.storage.session, 'set');
+    await bg.network.navigate(-1, 'https://site.example.test/outra');
+
+    expect(JSON.stringify([...remove.mock.calls, ...set.mock.calls])).not.toContain('vd:net:-1');
+    const all = await fakeBrowser.storage.session.get(null);
+    expect(Object.keys(all)).not.toContain('vd:net:-1');
+    expect((await detectTab(tabId)).map((c) => c.mediaUrl)).toEqual([MP4]);
+  });
+
+  it('SPEC-0010:IT-06 (guarda) main_frame com tabId >= 0 continua limpando a lista daquela aba', async () => {
+    const tabId = await bg.newTab(PAGE);
+    await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
+
+    await bg.network.navigate(tabId, 'https://site.example.test/outra');
+
+    expect(await fakeBrowser.storage.session.get(`vd:net:${String(tabId)}`)).toEqual({});
+    expect(await detectTab(tabId)).toEqual([]);
   });
 });
