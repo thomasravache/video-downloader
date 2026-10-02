@@ -185,6 +185,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
 | IMP-01 | 2026-09-30 | G1 | spec | Contrato da Chrome Web Store API baseado na v1.1 (publishTarget trustedTesters, uploadState FAILURE, sem publisherId); a API vigente é a v2 (docs oficiais: v1 arquivada desde out/2025): upload POST /upload/v2/publishers/{p}/items/{i}:upload com uploadState SUCCEEDED\|IN_PROGRESS\|FAILED; publish com publishType DEFAULT_PUBLISH\|STAGED_PUBLISH; exige publisherId | Consulta à documentação oficial e ao discovery document v2 (2026-09-30) | Architect (emenda; ratificação do Thomas no H2) | Emenda 1 (API) — cliente Web Store v2; ratificação no H2 da onda 3 | 2026-09-30 |
+| IMP-02 | 2026-10-02 | G2 | trabalho | TEST_DEFECT: providersWithFixture() em tests/release/flavor-guard.test.ts cria not-a-provider/readme.txt (subdiretório sem provider.json) e espera que seja ignorado, contradizendo a Emenda 2 (falha fechada: INVALID_PROVIDER_MANIFEST) e os testes de endurecimento | Implementer implementou o endurecimento (patch no scratchpad) e passa todos os testes novos; só os 4 testes antigos que usam o helper falham | Test-writer (remover not-a-provider/readme.txt do helper) |  |  |
 
 ## 14. Relatório de Entrega
 
