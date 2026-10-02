@@ -118,11 +118,13 @@ function isCandidate(value: unknown): value is VideoCandidate {
     (c['support'] === 'downloadable' || c['support'] === 'unsupported-stream') &&
     typeof c['frameId'] === 'number' &&
     Number.isInteger(c['frameId']) &&
-    typeof c['frameUrl'] === 'string'
+    typeof c['frameUrl'] === 'string' &&
+    (c['kind'] === 'file' || c['kind'] === 'hls' || c['kind'] === 'dash') &&
+    (c['source'] === 'dom' || c['source'] === 'network')
   );
 }
 
-/** Valida a resposta de `detect` v2 (SPEC-0009:CT-01). */
+/** Valida a resposta de `detect` v3 (SPEC-0009:CT-01, SPEC-0010:CT-01). */
 export function validateDetectResponse(input: unknown): DetectResponseValidation {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     return { ok: false, error: 'resposta deve ser um objeto' };
@@ -139,7 +141,7 @@ export function validateDetectResponse(input: unknown): DetectResponseValidation
   if (!Array.isArray(candidates) || !(candidates as unknown[]).every(isCandidate)) {
     return {
       ok: false,
-      error: 'candidates inválido (frameId inteiro e frameUrl são obrigatórios)',
+      error: 'candidates inválido (frameId inteiro, frameUrl, kind e source são obrigatórios)',
     };
   }
   const blocked =
