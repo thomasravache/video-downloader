@@ -117,6 +117,10 @@ function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo     // lança 
 | Master → variante | master não mostra criptografia | busca a playlist da melhor variante | IT-01 |
 | Candidato inexistente | id desconhecido | `CANDIDATE_NOT_FOUND` | IT-01 |
 | Privacidade | URL com `?token=` | logs sem query; só as playlists são requisitadas | IT-03 |
+| Chave com METHOD escondido em atributo entre aspas / ausente / repetido | `URI="..,METHOD=NONE",METHOD=AES-128` | `encrypted: true` (dúvida = criptografado) | UT-03 |
+| Muitas variantes / variante com esquema não http(s) | 16.000 variantes; `file:`, `javascript:` | no máximo 50, só `http(s)` | UT-06 |
+| HLS e arquivo com a mesma URL | `<video src=x.m3u8>` e rede `hls` | prevalece o candidato `hls` | UT-07 |
+| Reobservação, reinício e concorrência | mesma playlist observada de novo; `restart`; 3 `resolveHls` juntos | estado preservado; candidato achado no `NetworkStore`; 1 busca por URL | IT-05 |
 | Contrato de HlsInfo | objeto `HlsInfo` | validador aceita v1; rejeita campos ausentes | CT-01 |
 
 ## 7. Artefato B — Plano de Testes (TDD)
@@ -126,14 +130,17 @@ function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo     // lança 
 ### 7.2 Testes Unitários
 - **UT-01** — Dado um master com três variantes (com e sem `RESOLUTION`), quando `parseHlsPlaylist` é chamado, então devolve variantes ordenadas por banda decrescente com índice, URL absoluta e rótulo `1080p`/`720p`/`<kbps> kbps`.
 - **UT-02** — Dado playlists de mídia (VOD com `ENDLIST`, ao vivo sem `ENDLIST`, com `EXT-X-MAP`), quando `parseHlsPlaylist` é chamado, então devolve duração, contagem de segmentos, `live` e `fmp4` corretos.
-- **UT-03** — Dado playlists com `METHOD=NONE`, `AES-128`, `SAMPLE-AES` e `EXT-X-SESSION-KEY` no master, quando `parseHlsPlaylist` é chamado, então `encrypted` é falso só no `NONE` e verdadeiro nos demais.
+- **UT-03** — Dado playlists com `METHOD=NONE`, `AES-128`, `SAMPLE-AES` e `EXT-X-SESSION-KEY` no master, quando `parseHlsPlaylist` é chamado, então `encrypted` é falso só no `NONE` e verdadeiro nos demais. Regra de dúvida (Emenda 2): o atributo `METHOD` é lido por tokenização que respeita aspas; `METHOD=NONE` escondido dentro de outro atributo entre aspas (ex.: `URI="https://k/x?a,METHOD=NONE",METHOD=AES-128`), `METHOD` ausente, repetido ou com valor desconhecido contam como **criptografado**; só um `METHOD` único e exatamente `NONE` (sem diferenciar maiúsculas) conta como limpo.
 - **UT-04** — Dado URLs relativas (`seg.ts`, `../v/720.m3u8`, `/abs/x.m3u8`, absoluta com query) e uma base, quando as variantes/segmentos são resolvidos, então ficam absolutos e preservam a query.
 - **UT-05** — Dado texto vazio, HTML e lixo binário, quando `parseHlsPlaylist` é chamado, então lança `HLS_PARSE_FAILED`.
+- **UT-06** — Dado um master com 16.000 variantes e variantes com URL `file:`, `javascript:` e `ftp:`, quando `parseHlsPlaylist` é chamado, então devolve no máximo 50 variantes (as de maior banda, `index` 0..49) e descarta as de esquema não `http(s)` (Emenda 2).
+- **UT-07** — Dado um candidato DOM `kind: 'file'` e um candidato de rede `kind: 'hls'` com a mesma URL, quando `mergeCandidates` é chamado, então prevalece o candidato `hls`; para URLs iguais do mesmo `kind` o DOM continua prevalecendo (Emenda 2; ajusta SPEC-0010:UT-03 só para o caso de `kind` diferente).
 
 ### 7.3 Testes de Integração
 - **IT-01** — Com o background real, `fakeBrowser` e um `PlaylistFetcherPort` apontado para o servidor de fixtures, `resolveHls` devolve `HlsInfo` para um master (buscando a playlist da melhor variante para `encrypted/live/duração`), `HLS_PARSE_FAILED` para conteúdo inválido, `HLS_FETCH_FAILED` para 404/timeout e `CANDIDATE_NOT_FOUND` para id desconhecido.
 - **IT-02** — Com o fetcher real contra o servidor de fixtures, respostas > 1 MiB, de tipo inesperado, cujo redirecionamento termine em esquema não http(s) ou com esquema não http(s) são recusadas; redirecionamentos para outra URL http(s) são seguidos; timeout de 10 s é respeitado (relógio injetado).
 - **IT-04** — Com o background real, depois de `resolveHls` bem-sucedido, uma nova chamada de `detect` devolve o mesmo candidato com `hls` preenchido; se `hls.encrypted` o candidato tem `protection: 'encrypted'` (e nenhuma ação de download), se `hls.live` tem `support: 'unsupported-stream'`; um `resolveHls` com falha não altera o candidato (Emenda 1).
+- **IT-05** — Com o background real: (a) uma nova observação da mesma URL de playlist (`NetworkStore.add`) preserva `hls` e `protection` já resolvidos; (b) um novo `resolveHls` de playlist que deixou de ser criptografada volta `protection` para `none`; (c) após `bg.restart()` e sem `detect` prévio, `resolveHls` encontra o candidato guardado no `NetworkStore`; (d) três `resolveHls` simultâneos do mesmo candidato fazem uma única busca por URL de playlist; (e) um `HlsInfo` com mais de 50 variantes brutas é guardado com no máximo 50 (Emenda 2).
 - **IT-03** — Com o logger real, depois de `resolveHls` com URL de `?token=...`, o diagnóstico não contém `token=`, e o servidor de fixtures só recebeu requisições às URLs de playlist.
 
 ### 7.4 Testes de Contrato
@@ -198,9 +205,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/21]⎯) — b55d080 | 2026-10-02 |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 202 ms); test exit 0 (Duration  25.26s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 138 ms); coverage exit 0 (================================================================================) — 6633ce7 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)) — 6633ce7 | 2026-10-02 |
+| G4 Review | FAIL | reviewer-agent a84dfcae: CHANGES_REQUESTED @ 6633ce7 — 1 major (regra de segurança: METHOD=NONE escondido em atributo entre aspas classifica playlist criptografada como limpa) + 8 minor (estado perdido na reobservação, sem teto de variantes, content-type audio/mpegurl, protection não reseta, resolveHls sem fallback no NetworkStore, DOM encobre HLS de mesma URL, URLs de variante sem checagem de esquema) | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
@@ -253,3 +260,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|---|---|
 | 1 (dependência) | 2026-10-02 | `depends_on: [SPEC-0010]` passa a `consumes_contract: [SPEC-0010@1]` | a dependência real é o código/contrato já integrado na `main` (SPEC-0010 com G5 e H2); o fechamento (G6 manual e G7) das specs do épico acontece em lote numa única rc no fim, pois a verificação manual exige o Thomas | SPEC-0010 (sem efeito no contrato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
 | 1 (revisão do plano) | 2026-10-02 | (a) o teto de 3 redirecionamentos é substituído por: o navegador segue os redirecionamentos e a URL final precisa ser `http(s)`; (b) `HlsVariant.index` = posição na lista ordenada por banda decrescente (0 = maior); (c) `resolveHls` grava o `HlsInfo` no candidato guardado (`hls`, `protection: 'encrypted'`, `support: 'unsupported-stream'` para ao vivo), novo IT-04 | (a) `fetch` em service worker com `redirect: 'manual'` devolve resposta opaca sem destino, então contar redirecionamentos não é implementável; (b) a SPEC-0012 usa o índice como `variantIndex`; (c) a SPEC-0012 recusa criptografado e ao vivo no servidor com base no estado do candidato | SPEC-0012 (consome `HlsInfo` e o estado do candidato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 2 (revisão G4) | 2026-10-02 | regra de dúvida do `METHOD` (tokenização com aspas; dúvida = criptografado); no máximo 50 variantes e só `http(s)`; `mergeCandidates` prefere o candidato `hls` ao DOM de mesma URL; reobservação da playlist preserva `hls`/`protection`; re-resolve limpa `protection`; `resolveHls` acha o candidato no `NetworkStore` e deduplica chamadas simultâneas; content-type `audio/mpegurl` e `audio/x-mpegurl` aceitos pelo fetcher | achados do Reviewer (G4): um `METHOD=NONE` dentro de URI entre aspas classificava playlist criptografada como limpa (regra de segurança central); estado perdido na reobservação; teto de armazenamento; inconsistências | SPEC-0010 (UT-03 de `mergeCandidates` para `kind` diferente), SPEC-0012 (obrigações abaixo) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |

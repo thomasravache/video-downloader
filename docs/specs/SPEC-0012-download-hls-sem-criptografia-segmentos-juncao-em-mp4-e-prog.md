@@ -41,6 +41,7 @@ O usuário escolhe a qualidade de um vídeo HLS sem criptografia, clica em **Bai
 - Criptografia (AES-128/SAMPLE-AES) e DRM — nunca; ao vivo; DASH; legendas e áudios alternativos; gravação em disco por streaming (arquivos acima do limite são recusados).
 
 ## 3. Dependências
+<!-- Obrigações herdadas da revisão da SPEC-0011 (G4): o download NUNCA confia no estado guardado do master. Ele re-busca e re-analisa a playlist da variante escolhida (variantIndex → HlsVariant.url), exige URL http(s), recusa `encrypted` ou `live` dessa playlist, e trata candidato com `hls` ausente como desconhecido (recusa ou re-resolve), nunca como "não criptografado". Checar `protection === 'encrypted'` explicitamente, além de `support`. Um segmento fMP4 com `cenc` só no init não é visível na playlist: tratar como UNSUPPORTED_CODEC/ENCRYPTED se o init tiver caixa `sinf/schm` de criptografia. -->
 - **Implementações necessárias:** SPEC-0011 — `HlsInfo`, `resolveHls`, candidatos HLS resolvidos, seletor de qualidade, fixtures HLS.
 - **Contratos consumidos:** N/A
 - **Pré-requisitos externos:** `mux.js` 6.3.0 (Apache-2.0) instalado com versão fixa.
