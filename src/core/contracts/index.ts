@@ -39,6 +39,12 @@ export interface ScriptingPort {
   collectVideos(tabId: number): Promise<FrameSnapshot[]>;
 }
 
+/** Tipo de mídia do candidato (v3, SPEC-0010). */
+export type MediaKind = 'file' | 'hls' | 'dash';
+
+/** Origem do candidato: DOM da página ou observação de rede (v3, SPEC-0010). */
+export type CandidateSource = 'dom' | 'network';
+
 export interface VideoCandidate {
   id: string;
   providerId: string;
@@ -53,6 +59,10 @@ export interface VideoCandidate {
   /** Frame em que o vídeo foi visto (v2, SPEC-0009); 0 = principal. */
   frameId: number;
   frameUrl: string;
+  /** v3 (SPEC-0010). */
+  kind: MediaKind;
+  /** v3 (SPEC-0010). */
+  source: CandidateSource;
 }
 
 export interface DetectContext {
