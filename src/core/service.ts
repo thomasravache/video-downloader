@@ -5,19 +5,29 @@ import type {
   FrameSnapshot,
   DiagnosticsResponse,
   DownloadResponse,
+  ResolveHlsResponse,
   Provider,
   VideoCandidate,
 } from './contracts';
 import { redactUrls } from './diagnostics';
 import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
+import { HlsParseError, parseHlsPlaylist } from './hls';
+import type { HlsInfo } from './hls';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
 import type { NetworkResponse, NetworkStore } from './network';
-import type { DownloadPort, PermissionsPort, ScriptingPort, TabsPort } from './ports';
+import type {
+  DownloadPort,
+  PermissionsPort,
+  PlaylistFetcherPort,
+  ScriptingPort,
+  TabsPort,
+} from './ports';
 
-export type ServiceResponse = DetectResponse | DownloadResponse | DiagnosticsResponse;
+export type ServiceResponse =
+  DetectResponse | DownloadResponse | DiagnosticsResponse | ResolveHlsResponse;
 
 export interface ServiceDeps {
   extensionId: string;
@@ -31,6 +41,8 @@ export interface ServiceDeps {
   store?: CandidateStore;
   /** Repositório de candidatos vistos na rede (SPEC-0010); sem ele, só o DOM conta. */
   network?: NetworkStore;
+  /** Busca de playlists HLS (SPEC-0011). */
+  playlists?: PlaylistFetcherPort;
 }
 
 export interface Service {
@@ -42,6 +54,10 @@ export interface Service {
   /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
   clearNetwork(tabId: number): Promise<void>;
 }
+
+type PlaylistRead =
+  | { ok: true; info: HlsInfo }
+  | { ok: false; error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED'; reason?: string };
 
 function stripQuery(url: string): string {
   return redactUrls(url);
@@ -187,7 +203,7 @@ export function createService(deps: ServiceDeps): Service {
       diagnostics.log('warn', 'download.protected', correlationId, fields);
       return { ok: false, error: 'PROTECTED' };
     }
-    if (candidate.support !== 'downloadable') {
+    if (candidate.support !== 'downloadable' || candidate.kind === 'hls') {
       diagnostics.log('warn', 'download.unsupported', correlationId, fields);
       return { ok: false, error: 'UNSUPPORTED' };
     }
@@ -214,6 +230,152 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
+  function isHttp(url: string): boolean {
+    try {
+      const { protocol } = new URL(url);
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Busca e interpreta uma playlist; falha de rede vira `fetch`, texto inválido vira `parse`. */
+  async function readPlaylist(url: string): Promise<PlaylistRead> {
+    let text: string;
+    try {
+      if (!deps.playlists || !isHttp(url)) {
+        throw new Error('playlist indisponível');
+      }
+      text = await deps.playlists.fetchPlaylist(url);
+    } catch (error) {
+      return { ok: false, error: 'HLS_FETCH_FAILED', reason: reasonOf(error) };
+    }
+    try {
+      return { ok: true, info: parseHlsPlaylist(text, url) };
+    } catch (error) {
+      return {
+        ok: false,
+        error: 'HLS_PARSE_FAILED',
+        ...(error instanceof HlsParseError ? {} : { reason: reasonOf(error) }),
+      };
+    }
+  }
+
+  /** Memória primeiro; depois o `NetworkStore` (o service worker pode ter reiniciado sem `detect`). */
+  async function findCandidate(candidateId: string): Promise<VideoCandidate | undefined> {
+    const known = store.find(candidateId);
+    if (known) {
+      return known;
+    }
+    return deps.network?.find(candidateId).catch(() => undefined);
+  }
+
+  async function resolveHlsOnce(
+    candidateId: string,
+    fallbackId: string,
+  ): Promise<ResolveHlsResponse> {
+    const correlationId = correlations.get(candidateId) ?? fallbackId;
+    const candidate = await findCandidate(candidateId);
+    if (candidate?.kind !== 'hls') {
+      diagnostics.log('warn', 'hls.not_found', correlationId, { candidateId });
+      return { ok: false, error: 'CANDIDATE_NOT_FOUND' };
+    }
+    const fields = { candidateId, mediaUrl: stripQuery(candidate.mediaUrl) };
+    const fail = (
+      error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED',
+      stage: 'playlist' | 'variant',
+      reason?: string,
+    ): ResolveHlsResponse => {
+      diagnostics.countHls('failed');
+      diagnostics.log('warn', 'hls.failed', correlationId, {
+        ...fields,
+        error,
+        stage,
+        ...(reason !== undefined && { reason: redactUrls(reason) }),
+      });
+      return { ok: false, error };
+    };
+
+    const first = await readPlaylist(candidate.mediaUrl);
+    if (!first.ok) {
+      return fail(first.error, 'playlist', first.reason);
+    }
+    let hls = first.info;
+    const best = first.info.variants[0];
+    if (first.info.type === 'master' && best) {
+      const second = await readPlaylist(best.url);
+      if (!second.ok) {
+        return fail(second.error, 'variant', second.reason);
+      }
+      if (second.info.type !== 'media') {
+        return fail('HLS_PARSE_FAILED', 'variant');
+      }
+      const { durationSec, segmentCount } = second.info;
+      const { durationSec: _d, segmentCount: _s, ...master } = first.info;
+      hls = {
+        ...master,
+        encrypted: first.info.encrypted || second.info.encrypted,
+        live: second.info.live,
+        fmp4: second.info.fmp4,
+        ...(durationSec !== undefined && { durationSec }),
+        ...(segmentCount !== undefined && { segmentCount }),
+      };
+    }
+
+    const resolved: VideoCandidate = {
+      ...candidate,
+      hls,
+      // Pela resolução mais recente: nunca deixa `encrypted` velho ao lado de `hls.encrypted: false`.
+      ...(candidate.protection !== 'drm' && {
+        protection: hls.encrypted ? ('encrypted' as const) : ('none' as const),
+      }),
+      // Pelo resolve mais recente; `drm` fica como está. Só o download de HLS (SPEC-0012) usa 'downloadable'.
+      ...(candidate.protection !== 'drm' && {
+        support:
+          hls.live || hls.encrypted ? ('unsupported-stream' as const) : ('downloadable' as const),
+      }),
+    };
+    store.update(resolved);
+    try {
+      await deps.network?.update(candidate.tabId, resolved);
+    } catch (error) {
+      diagnostics.log('warn', 'hls.store_failed', correlationId, {
+        ...fields,
+        reason: reasonOf(error),
+      });
+    }
+    diagnostics.countHls('resolved');
+    if (hls.encrypted) {
+      diagnostics.countHls('encrypted');
+    }
+    if (hls.live) {
+      diagnostics.countHls('live');
+    }
+    diagnostics.log('info', 'hls.resolved', correlationId, {
+      ...fields,
+      type: hls.type,
+      variants: hls.variants.length,
+      segmentCount: hls.segmentCount,
+      encrypted: hls.encrypted,
+      live: hls.live,
+      fmp4: hls.fmp4,
+    });
+    return { ok: true, hls };
+  }
+
+  /** Resoluções simultâneas do mesmo candidato compartilham uma única busca. */
+  const resolving = new Map<string, Promise<ResolveHlsResponse>>();
+  function resolveHls(candidateId: string, fallbackId: string): Promise<ResolveHlsResponse> {
+    let pending = resolving.get(candidateId);
+    if (!pending) {
+      pending = resolveHlsOnce(candidateId, fallbackId).finally(() => {
+        resolving.delete(candidateId);
+      });
+      resolving.set(candidateId, pending);
+    }
+    return pending;
+  }
+
   return {
     async handle(message, sender) {
       const correlationId = diagnostics.newCorrelationId();
@@ -234,6 +396,8 @@ export function createService(deps: ServiceDeps): Service {
           return download(valid.candidateId, correlationId);
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
+        case 'resolveHls':
+          return resolveHls(valid.candidateId, correlationId);
       }
     },
     async onNetworkResponse(response) {

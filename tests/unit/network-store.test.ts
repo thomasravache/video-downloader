@@ -167,6 +167,28 @@ describe('mergeCandidates', () => {
     expect(merged.map((c) => c.mediaUrl.split('#')[0]).sort()).toEqual([url(1), url(2)]);
   });
 
+  it('SPEC-0011:UT-07 candidato DOM kind file e de rede kind hls com a mesma URL: prevalece o hls', () => {
+    const merged = mergeCandidates(
+      [candidate(1, url(1), { source: 'dom', kind: 'file' })],
+      [candidate(1, url(1), { source: 'network', kind: 'hls' })],
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({ mediaUrl: url(1), kind: 'hls', source: 'network' });
+  });
+
+  it('SPEC-0011:UT-07 guarda: mesma URL e mesmo kind (hls ou file) continua com o candidato do DOM', () => {
+    for (const kind of ['file', 'hls'] as const) {
+      const merged = mergeCandidates(
+        [candidate(1, url(1), { source: 'dom', kind })],
+        [candidate(1, url(1), { source: 'network', kind })],
+      );
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0], kind).toMatchObject({ kind, source: 'dom' });
+    }
+  });
+
   it('SPEC-0010:UT-03 listas vazias e entradas não são alteradas', () => {
     expect(mergeCandidates([], [])).toEqual([]);
     const domList = [dom(url(1))];

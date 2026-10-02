@@ -1,5 +1,8 @@
 /** Contratos v1 (SPEC-0005): tipos das mensagens/providers e o schema de `provider.json`. */
 
+import { validateHlsInfo } from '../hls';
+import type { HlsInfo } from '../hls';
+
 export type Flavor = 'public' | 'local';
 
 export interface ProviderManifest {
@@ -54,7 +57,8 @@ export interface VideoCandidate {
   title?: string;
   mimeType?: string;
   sizeBytes?: number;
-  protection: 'none' | 'drm';
+  /** v4 (SPEC-0011): 'encrypted' = HLS com EXT-X-KEY. */
+  protection: 'none' | 'drm' | 'encrypted';
   support: 'downloadable' | 'unsupported-stream';
   /** Frame em que o vídeo foi visto (v2, SPEC-0009); 0 = principal. */
   frameId: number;
@@ -63,6 +67,8 @@ export interface VideoCandidate {
   kind: MediaKind;
   /** v3 (SPEC-0010). */
   source: CandidateSource;
+  /** v4 (SPEC-0011): preenchido depois de `resolveHls`. */
+  hls?: HlsInfo;
 }
 
 export interface DetectContext {
@@ -79,7 +85,8 @@ export interface Provider extends ProviderManifest {
 export type DetectMessage = { type: 'detect'; tabId: number };
 export type DownloadMessage = { type: 'download'; candidateId: string };
 export type DiagnosticsMessage = { type: 'diagnostics' };
-export type Message = DetectMessage | DownloadMessage | DiagnosticsMessage;
+export type ResolveHlsMessage = { type: 'resolveHls'; candidateId: string };
+export type Message = DetectMessage | DownloadMessage | DiagnosticsMessage | ResolveHlsMessage;
 
 export interface LogEntry {
   ts: string;
@@ -114,13 +121,14 @@ function isCandidate(value: unknown): value is VideoCandidate {
     typeof c['tabId'] === 'number' &&
     typeof c['pageUrl'] === 'string' &&
     typeof c['mediaUrl'] === 'string' &&
-    (c['protection'] === 'none' || c['protection'] === 'drm') &&
+    (c['protection'] === 'none' || c['protection'] === 'drm' || c['protection'] === 'encrypted') &&
     (c['support'] === 'downloadable' || c['support'] === 'unsupported-stream') &&
     typeof c['frameId'] === 'number' &&
     Number.isInteger(c['frameId']) &&
     typeof c['frameUrl'] === 'string' &&
     (c['kind'] === 'file' || c['kind'] === 'hls' || c['kind'] === 'dash') &&
-    (c['source'] === 'dom' || c['source'] === 'network')
+    (c['source'] === 'dom' || c['source'] === 'network') &&
+    (c['hls'] === undefined || validateHlsInfo(c['hls']).ok)
   );
 }
 
@@ -141,7 +149,8 @@ export function validateDetectResponse(input: unknown): DetectResponseValidation
   if (!Array.isArray(candidates) || !(candidates as unknown[]).every(isCandidate)) {
     return {
       ok: false,
-      error: 'candidates inválido (frameId inteiro, frameUrl, kind e source são obrigatórios)',
+      error:
+        'candidates inválido (frameId inteiro, frameUrl, kind e source são obrigatórios; hls, se presente, deve ser um HlsInfo válido)',
     };
   }
   const blocked =
@@ -168,6 +177,13 @@ export type DownloadResponse =
   | { ok: true; downloadId: number }
   | { ok: false; error: 'CANDIDATE_NOT_FOUND' | 'PROTECTED' | 'UNSUPPORTED' | 'INVALID_MESSAGE' }
   | { ok: false; error: 'DOWNLOAD_FAILED'; reason: string };
+
+export type ResolveHlsResponse =
+  | { ok: true; hls: HlsInfo }
+  | {
+      ok: false;
+      error: 'CANDIDATE_NOT_FOUND' | 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED' | 'INVALID_MESSAGE';
+    };
 
 export type DiagnosticsResponse =
   { ok: true; entries: LogEntry[] } | { ok: false; error: 'INVALID_MESSAGE' };

@@ -185,6 +185,70 @@ body {
   font-weight: 600;
 }
 
+.hls {
+  display: grid;
+  gap: 6px;
+}
+
+.hls > * {
+  justify-self: start;
+}
+
+.field {
+  display: grid;
+  gap: 2px;
+  justify-self: stretch;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.select {
+  padding: 5px 8px;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.select:focus-visible {
+  outline: 3px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.skeleton {
+  display: grid;
+  gap: 4px;
+  justify-self: stretch;
+}
+
+.skeleton-bar {
+  display: block;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--border);
+}
+
+.skeleton-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-bar {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
 [hidden] {
   display: none !important;
 }

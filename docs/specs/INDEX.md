@@ -5,8 +5,8 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 12 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 2, in-progress 2, implemented 5
-- Impedimentos: **0 aberto(s)**, 6 resolvido(s)
+- Specs: proposed 1, approved 1, in-progress 3, implemented 5
+- Impedimentos: **0 aberto(s)**, 7 resolvido(s)
 
 ## Cobertura de Pilares
 
@@ -37,7 +37,7 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -45,7 +45,7 @@ Perfil: **padrao**
 |---|---|---|---|---|---|---|
 | 1 | SPEC-0009 | Detecção em iframes e acesso por site | full/M | in-progress | 🔄 em andamento |  |
 | 2 | SPEC-0010 | Detecção por rede (media sniffing) | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009 |
-| 3 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010 |
+| 3 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010 |
 | 4 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011 |
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 
@@ -70,7 +70,7 @@ flowchart LR
   subgraph E0008["SPEC-0008 · Detector completo de vídeos: iframes, rede e HLS"]
     S0009["SPEC-0009<br/>Detecção em iframes e acesso por site"]:::inprogress
     S0010["SPEC-0010<br/>Detecção por rede (media sniffing)"]:::inprogress
-    S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::approved
+    S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::inprogress
     S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::approved
   end
   S0002 --> S0007
@@ -99,7 +99,7 @@ flowchart LR
 | [SPEC-0008](SPEC-0008-detector-completo-de-videos-iframes-rede-e-hls.md) | Detector completo de vídeos: iframes, rede e HLS | epic | feature | approved | 2026-10-02 | — | — | — |
 | [SPEC-0009](SPEC-0009-deteccao-em-iframes-e-acesso-por-site.md) | Detecção em iframes e acesso por site | full | feature | in-progress | 2026-10-02 | SPEC-0008 | SPEC-0005 | — |
 | [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0009@1 |
-| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
+| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
 | [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1 |
 
 ## ADRs

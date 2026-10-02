@@ -12,3 +12,8 @@ export interface DownloadPort {
 export interface TabsPort {
   getUrl(tabId: number): Promise<string | undefined>;
 }
+
+/** Porta para buscar o texto de uma playlist HLS (SPEC-0011); rejeita em qualquer falha. */
+export interface PlaylistFetcherPort {
+  fetchPlaylist(url: string): Promise<string>;
+}

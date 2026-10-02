@@ -79,6 +79,7 @@ Executam em sequência (arquivos em comum: background, popup, manifesto e harnes
 - **Blob URL do offscreen em `chrome.downloads` é pouco documentado** — provado por E2E no Chromium real (SPEC-0012:E2E-01); se falhar, vira impedimento e alternativa registrada em ADR.
 - **Memória em arquivos grandes** — limite de 1,5 GiB com erro claro; streaming para disco fica para depois.
 - **Codecs fora de H.264/AAC** (ex.: HEVC) — erro `UNSUPPORTED_CODEC` com mensagem clara.
+- **Build `public` não enxerga mídia de CDN de terceiros** — o `webRequest` e o `fetch` do service worker só alcançam hosts com permissão concedida; um player cuja playlist/mídia vem de um host diferente do da página só será detectado no `public` se o usuário também conceder esse host. Consequência do ADR-0012 (por site). Mitigação a decidir pelo Thomas após a verificação manual: oferecer no popup "Permitir todos os sites" (uma concessão ampla opcional) ou aceitar a limitação do `public` e deixar a cobertura completa para o `local` (decisão de produto, registrada em ADR se mudar).
 - **Conteúdo protegido/pago** — nunca contornamos DRM ou criptografia; a política da loja e o uso responsável permanecem como no épico da fundação.
 
 ## 7. Critérios de Aceite do Épico
