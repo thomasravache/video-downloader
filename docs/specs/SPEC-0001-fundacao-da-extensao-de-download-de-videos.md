@@ -89,11 +89,11 @@ Uma extensão do Chrome (Manifest V3) que identifica vídeos na página aberta e
 - **Permissões amplas (`<all_urls>`) geram alerta e revisão mais lenta** — ADR-0007 define permissões mínimas e `optional_host_permissions` quando possível.
 
 ## 7. Critérios de Aceite do Épico
-- [ ] Numa página de teste com `<video src="*.mp4">`, o usuário abre o popup, vê o vídeo listado e o arquivo é salvo em Downloads — SPEC-0005:E2E-01
-- [ ] Vídeo com DRM (EME/`encrypted`) aparece como protegido e sem botão de download — SPEC-0005:E2E-02
-- [ ] O build `public` não contém código de provider `local` — SPEC-0006:IT-01
-- [ ] Todo PR roda build, lint, typecheck, unitário, integração, arquitetura, E2E e job SDD, obrigatórios na `main` — SPEC-0004:IT-01
-- [ ] Release gera os zips `public` e `local` versionados e o `public` é enviado à Web Store pela API — SPEC-0006:IT-02
+- [x] Numa página de teste com `<video src="*.mp4">`, o usuário abre o popup, vê o vídeo listado e o arquivo é salvo em Downloads — SPEC-0005:E2E-01
+- [x] Vídeo com DRM (EME/`encrypted`) aparece como protegido e sem botão de download — SPEC-0005:E2E-02
+- [x] O build `public` não contém código de provider `local` — SPEC-0006:IT-01
+- [x] Todo PR roda build, lint, typecheck, unitário, integração, arquitetura, E2E e job SDD, obrigatórios na `main` — SPEC-0004:IT-01
+- [ ] Release gera os zips `public` e `local` versionados e o `public` é enviado à Web Store pela API — SPEC-0006:IT-02 *(pendente: zips, prerelease v0.1.0-rc.1 e job `webstore` aguardando aprovação provados em 2026-10-02; o envio real depende da conta de desenvolvedor da Web Store e dos secrets `CWS_*`)*
 
 ## 8. Questões em Aberto
 - [x] Distribuição — pública na Web Store para o que a política permitir; o resto (ex.: YouTube) só em build local (Thomas, 2026-09-30)
@@ -117,6 +117,7 @@ Uma aprovação humana cobre o épico e as specs filhas apresentadas junto com e
 |---|---|---|---|---|---|---|---|---|
 
 ## 11. Relatório de Entrega
+<!-- Epic em aberto: todas as filhas (SPEC-0002 a SPEC-0006) estão implemented; falta o critério de aceite da Web Store (envio real). Relatório final ao fechar. Estado em 2026-10-02: ondas 1 a 3 integradas e mergeadas (PR #1 de thomasravache/video-downloader), release candidata v0.1.0-rc.1 publicada como prerelease no GitHub. Pendente de Thomas: conta e secrets da Web Store, aprovação do job webstore, release estável. -->
 
 ## 12. Emendas
 | Versão | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
