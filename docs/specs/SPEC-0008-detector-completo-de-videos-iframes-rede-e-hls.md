@@ -3,13 +3,13 @@ id: SPEC-0008
 title: "Detector completo de vídeos: iframes, rede e HLS"
 tier: epic
 type: feature
-status: proposed
+status: approved
 created: 2026-10-02
 depends_on: []
 adrs: [ADR-0012, ADR-0013]
 external: []
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-02
 ---
 
 # SPEC-0008 — Detector completo de vídeos: iframes, rede e HLS (Épico)
@@ -67,7 +67,7 @@ Executam em sequência (arquivos em comum: background, popup, manifesto e harnes
 
 ## 5. Estratégia de Entrega
 - **Ambientes:** staging = release candidata (`v0.1.0-rc.N`/`v0.2.0-rc.N`) como prerelease no GitHub com os dois zips e smoke E2E; produção = estável, que só sai com confirmação do Thomas e depois da conta da Chrome Web Store.
-- **Entrega por onda:** cada spec fecha com o G6 de staging (rc) e a verificação manual descrita no §7.6 dela; a conta da Web Store e o primeiro envio acontecem **depois** deste épico.
+- **Entrega por onda:** cada spec fecha com o G6 de staging (rc) e a verificação manual descrita no §7.6 dela; a conta da Web Store e o primeiro envio acontecem **depois** deste épico e **só quando o Thomas decidir** (regra de 2026-10-02: a publicação na loja passa pelo crivo dele; nenhum agente cria conta, aprova o job `webstore` nem publica por conta própria).
 - **Feature flags:** N/A — o flavor isola o risco de permissões.
 - **Rollback:** nova versão com o código anterior pela pipeline de release (runbook seção 4).
 - **Métricas de sucesso pós-release:** a página da MDN passa a mostrar o vídeo (local direto; público após conceder acesso); um HLS sem criptografia baixa um MP4 que toca; HLS criptografado aparece como protegido.

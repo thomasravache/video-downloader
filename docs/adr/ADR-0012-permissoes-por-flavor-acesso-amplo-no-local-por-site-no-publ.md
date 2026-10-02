@@ -1,7 +1,7 @@
 ---
 id: ADR-0012
 title: "Permissões por flavor: acesso amplo no local, por site no público"
-status: proposed
+status: accepted
 origin: user
 date: 2026-10-02
 pillars: [seguranca-acesso]

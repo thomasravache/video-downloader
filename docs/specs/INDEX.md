@@ -5,7 +5,7 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 5, implemented 5
+- Specs: proposed 1, approved 3, in-progress 1, implemented 5
 - Impedimentos: **0 aberto(s)**, 6 resolvido(s)
 
 ## Cobertura de Pilares
@@ -20,8 +20,8 @@ Perfil: **padrao**
 | Entrega contínua e ambientes | coberto | ADR-0004 |
 | Fluxo de mudança | coberto | ADR-0005 |
 | Segredos e dados sensíveis | coberto | ADR-0006 |
-| Identidade e acesso | coberto | ADR-0007 |
-| Dependências e ciclo de vida da stack | coberto | ADR-0008 |
+| Identidade e acesso | coberto | ADR-0007, ADR-0012 |
+| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013 |
 | Observabilidade | coberto | ADR-0009 |
 | Resiliência e recuperação | dispensado | extensão 100% local, sem servidor nem dados persistentes de valor; retomada/falha de download tratada nas specs de feature |
 | Dados e migrações | dispensado | sem banco; só preferências em chrome.storage — migração de schema de preferências coberta por teste na spec que introduzir a primeira mudança |
@@ -37,24 +37,24 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
+**Em andamento:** SPEC-0009  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
-| 2 | SPEC-0009 | Detecção em iframes e acesso por site | full/M | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0007 |
-| 3 | SPEC-0010 | Detecção por rede (media sniffing) | full/M | proposed | ⏳ aguardando aprovação (H1) |  |
-| 4 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | proposed | ⏳ aguardando aprovação (H1) |  |
-| 5 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | proposed | ⏳ aguardando aprovação (H1) |  |
+| 1 | SPEC-0009 | Detecção em iframes e acesso por site | full/M | in-progress | 🔄 em andamento |  |
+| 2 | SPEC-0010 | Detecção por rede (media sniffing) | full/M | approved | ⛔ aguarda implementação de SPEC-0009 |  |
+| 3 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | approved | ⛔ aguarda implementação de SPEC-0010 |  |
+| 4 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | approved | ⛔ aguarda implementação de SPEC-0011 |  |
+| 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 
 ## Épicos
 
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
-| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | proposed | 0/4 implementadas |
+| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 0/4 implementadas |
 
 ## Grafo de Dependências
 
@@ -68,10 +68,10 @@ flowchart LR
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
   end
   subgraph E0008["SPEC-0008 · Detector completo de vídeos: iframes, rede e HLS"]
-    S0009["SPEC-0009<br/>Detecção em iframes e acesso por site"]:::proposed
-    S0010["SPEC-0010<br/>Detecção por rede (media sniffing)"]:::proposed
-    S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::proposed
-    S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::proposed
+    S0009["SPEC-0009<br/>Detecção em iframes e acesso por site"]:::inprogress
+    S0010["SPEC-0010<br/>Detecção por rede (media sniffing)"]:::approved
+    S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::approved
+    S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::approved
   end
   S0002 --> S0007
   S0005 --> S0009
@@ -96,11 +96,11 @@ flowchart LR
 | [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
 | [SPEC-0006](SPEC-0006-pipeline-de-release-e-builds-public-local.md) | Pipeline de release e builds public/local | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0004 | SPEC-0005@1 |
 | [SPEC-0007](SPEC-0007-endurecer-selecao-de-flavor-e-tipar-flavor.md) | Endurecer seleção de flavor e tipar FLAVOR | lite | fix | proposed | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
-| [SPEC-0008](SPEC-0008-detector-completo-de-videos-iframes-rede-e-hls.md) | Detector completo de vídeos: iframes, rede e HLS | epic | feature | proposed | 2026-10-02 | — | — | — |
-| [SPEC-0009](SPEC-0009-deteccao-em-iframes-e-acesso-por-site.md) | Detecção em iframes e acesso por site | full | feature | proposed | 2026-10-02 | SPEC-0008 | SPEC-0005 | — |
-| [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | proposed | 2026-10-02 | SPEC-0008 | SPEC-0009 | — |
-| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | proposed | 2026-10-02 | SPEC-0008 | SPEC-0010 | — |
-| [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | proposed | 2026-10-02 | SPEC-0008 | SPEC-0011 | — |
+| [SPEC-0008](SPEC-0008-detector-completo-de-videos-iframes-rede-e-hls.md) | Detector completo de vídeos: iframes, rede e HLS | epic | feature | approved | 2026-10-02 | — | — | — |
+| [SPEC-0009](SPEC-0009-deteccao-em-iframes-e-acesso-por-site.md) | Detecção em iframes e acesso por site | full | feature | in-progress | 2026-10-02 | SPEC-0008 | SPEC-0005 | — |
+| [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | approved | 2026-10-02 | SPEC-0008 | SPEC-0009 | — |
+| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | approved | 2026-10-02 | SPEC-0008 | SPEC-0010 | — |
+| [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | approved | 2026-10-02 | SPEC-0008 | SPEC-0011 | — |
 
 ## ADRs
 
@@ -117,5 +117,5 @@ flowchart LR
 | [ADR-0009](../adr/ADR-0009-observabilidade.md) | Observabilidade | accepted | teste de integração do logger (ID de correlação, sem URLs completas com query) — SPEC-0005 |
 | [ADR-0010](../adr/ADR-0010-stack-da-extensao-typescript-wxt-manifest-v3.md) | Stack da extensão: TypeScript + WXT (Manifest V3) | accepted | typecheck (tsc --noEmit) e build WXT no CI (SPEC-0004); dependency-cruiser (ADR-0001) |
 | [ADR-0011](../adr/ADR-0011-providers-por-site-e-builds-public-local.md) | Providers por site e builds public/local | accepted | dependency-cruiser (fronteiras) + teste sobre dist/public que falha se contiver provider local (SPEC-0006:IT-01) |
-| [ADR-0012](../adr/ADR-0012-permissoes-por-flavor-acesso-amplo-no-local-por-site-no-publ.md) | Permissões por flavor: acesso amplo no local, por site no público | proposed | teste de integração sobre o manifest.json gerado de cada flavor (SPEC-0009:IT-05) + teste de que o bundle público não declara host_permissions |
-| [ADR-0013](../adr/ADR-0013-montagem-de-hls-m3u8-parser-e-mux-js-em-offscreen-document.md) | Montagem de HLS: m3u8-parser e mux.js em offscreen document | proposed | teste de arquitetura: m3u8-parser só em src/core; mux.js só no offscreen (dependency-cruiser); versões fixadas no package.json (ADR-0008) |
+| [ADR-0012](../adr/ADR-0012-permissoes-por-flavor-acesso-amplo-no-local-por-site-no-publ.md) | Permissões por flavor: acesso amplo no local, por site no público | accepted | teste de integração sobre o manifest.json gerado de cada flavor (SPEC-0009:IT-05) + teste de que o bundle público não declara host_permissions |
+| [ADR-0013](../adr/ADR-0013-montagem-de-hls-m3u8-parser-e-mux-js-em-offscreen-document.md) | Montagem de HLS: m3u8-parser e mux.js em offscreen document | accepted | teste de arquitetura: m3u8-parser só em src/core; mux.js só no offscreen (dependency-cruiser); versões fixadas no package.json (ADR-0008) |

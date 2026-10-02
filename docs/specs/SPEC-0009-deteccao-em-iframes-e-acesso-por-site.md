@@ -4,7 +4,7 @@ title: Detecção em iframes e acesso por site
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: [SPEC-0005]
@@ -14,8 +14,8 @@ touches: [wxt.config.ts, .dependency-cruiser.cjs, src/core/**, src/providers/gen
 adrs: [ADR-0012, ADR-0007, ADR-0011, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-02
 ---
 
 # SPEC-0009 — Detecção em iframes e acesso por site
@@ -168,7 +168,31 @@ public: optional_host_permissions: ['http://*/*','https://*/*']   (sem host_perm
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
-<!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+<!-- Preenchido na fase PLAN. -->
+
+**Fase 1: Núcleo de frames**
+- [ ] Red: escrever UT-01, UT-02, UT-03, UT-04, CT-01 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (`src/core`: findCrossOriginFrames, mergeFrameSnapshots, computeBlockedOrigins, requestAccess, contrato v2)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 2: Background e manifestos por flavor**
+- [ ] Red: escrever IT-01, IT-02, IT-05, IT-06 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (allFrames, PermissionsPort, manifestos local/public)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 3: Popup e jornada E2E**
+- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (bloco de acesso e harness com iframe/origens)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->

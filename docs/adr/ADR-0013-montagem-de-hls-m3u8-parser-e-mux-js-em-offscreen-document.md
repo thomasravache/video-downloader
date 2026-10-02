@@ -1,7 +1,7 @@
 ---
 id: ADR-0013
 title: "Montagem de HLS: m3u8-parser e mux.js em offscreen document"
-status: proposed
+status: accepted
 origin: decision
 date: 2026-10-02
 pillars: [dependencias]

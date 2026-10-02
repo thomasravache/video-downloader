@@ -4,7 +4,7 @@ title: Detecção por rede (media sniffing)
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: [SPEC-0009]
@@ -14,8 +14,8 @@ touches: [wxt.config.ts, .dependency-cruiser.cjs, src/core/**, entrypoints/**, p
 adrs: [ADR-0012, ADR-0009, ADR-0006, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-02
 ---
 
 # SPEC-0010 — Detecção por rede (media sniffing)
@@ -169,7 +169,31 @@ function mergeCandidates(dom: VideoCandidate[], network: VideoCandidate[]): Vide
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
-<!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+<!-- Preenchido na fase PLAN. -->
+
+**Fase 1: Classificação e repositório**
+- [ ] Red: escrever UT-01, UT-02, UT-03, CT-01 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (`classifyNetworkResponse`, `NetworkStore`, `mergeCandidates`, contrato v3)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 2: Background com webRequest**
+- [ ] Red: escrever IT-01, IT-02, IT-03, IT-04, IT-05 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (listeners no topo, storage.session, permissão webRequest)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 3: Jornada E2E**
+- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (popup com itens de rede)
+- [ ] Refactor mantendo tudo verde
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
