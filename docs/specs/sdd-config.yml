@@ -84,7 +84,9 @@ tracker:
 # --- Jornadas críticas (references/testing.md) ---
 # O que o produto não pode quebrar. Cada uma precisa de um E2E marcado [jornada: <id>] no plano de alguma spec.
 critical_journeys:
-  baixar-video-direto: "Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo"   
+  baixar-video-direto: "Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo"
+  baixar-video-em-iframe: "Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo"
+  baixar-hls: "Usuário escolhe a qualidade de um vídeo HLS sem criptografia e baixa um MP4 válido"   
 
 # --- Pilares de entrega (references/pillars.md) ---
 # profile: minimo | padrao | rigoroso — ativa a checagem de cobertura (`pillars`, validate, INDEX).
