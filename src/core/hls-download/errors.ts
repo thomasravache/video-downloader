@@ -10,6 +10,16 @@ export type JobError =
   | 'ENCRYPTED'
   | 'LIVE';
 
+export const JOB_ERRORS = [
+  'FETCH_FAILED',
+  'TOO_LARGE',
+  'UNSUPPORTED_CODEC',
+  'ASSEMBLY_FAILED',
+  'DOWNLOAD_FAILED',
+  'ENCRYPTED',
+  'LIVE',
+] as const satisfies readonly JobError[];
+
 /** Um segmento falhou definitivamente (depois das retentativas). */
 export class SegmentFetchError extends Error {
   readonly code = 'FETCH_FAILED';

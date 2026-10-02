@@ -5,6 +5,7 @@ import { createService } from '../../src/core/service';
 import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
 import { toNetworkResponse } from './network';
+import { createOffscreenPort } from './offscreen';
 import { createPlaylistFetcher } from './playlist-fetcher';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
@@ -64,7 +65,13 @@ export default defineBackground(() => {
     },
     downloads: {
       download: (options) => browser.downloads.download(options),
+      cancel: (downloadId) => browser.downloads.cancel(downloadId),
     },
+    jobStore: {
+      get: async (key) => (await browser.storage.session.get(key))[key],
+      set: (key, value) => browser.storage.session.set({ [key]: value }),
+    },
+    offscreen: createOffscreenPort(),
     tabs: {
       async getUrl(tabId) {
         return (await browser.tabs.get(tabId)).url;
@@ -115,7 +122,27 @@ export default defineBackground(() => {
     void service.clearNetwork(tabId);
   });
 
+  // Download concluído/interrompido: fecha o job em `saving` (SPEC-0012). Registro síncrono, no topo.
+  browser.downloads.onChanged.addListener((delta) => {
+    void service.onDownloadChanged(delta);
+  });
+
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+    const target =
+      typeof message === 'object' && message !== null
+        ? (message as { target?: unknown }).target
+        : undefined;
+    if (target === 'offscreen') {
+      // Comando ao documento offscreen: quem responde é ele.
+      return false;
+    }
+    if (target === 'background') {
+      // Evento do offscreen (SPEC-0012): responde só depois de processar.
+      void service.onOffscreenMessage(message, sender).then((ok) => {
+        sendResponse({ ok });
+      });
+      return true;
+    }
     if (
       typeof message === 'object' &&
       message !== null &&

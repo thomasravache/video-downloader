@@ -16,12 +16,16 @@ import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
 import { HlsParseError, parseHlsPlaylist } from './hls';
 import type { HlsInfo } from './hls';
+import { createJobManager, parseMediaSegments } from './hls-download';
+import type { JobManager } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
 import type { NetworkResponse, NetworkStore } from './network';
 import type {
   DownloadPort,
+  JobStoragePort,
+  OffscreenPort,
   PermissionsPort,
   PlaylistFetcherPort,
   ScriptingPort,
@@ -50,6 +54,9 @@ export interface ServiceDeps {
   network?: NetworkStore;
   /** Busca de playlists HLS (SPEC-0011). */
   playlists?: PlaylistFetcherPort;
+  /** Jobs de download HLS (SPEC-0012): estado em `storage.session` e documento offscreen. */
+  jobStore?: JobStoragePort;
+  offscreen?: OffscreenPort;
 }
 
 export interface Service {
@@ -60,6 +67,10 @@ export interface Service {
   onNetworkResponse(response: NetworkResponse): Promise<void>;
   /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
   clearNetwork(tabId: number): Promise<void>;
+  /** Mensagem `{target:'background'}` do offscreen (SPEC-0012); `false` quando ignorada. */
+  onOffscreenMessage(message: unknown, sender: { id?: string }): Promise<boolean>;
+  /** `downloads.onChanged` (SPEC-0012): conclui ou falha o job em `saving`. */
+  onDownloadChanged(delta: { id: number; state?: { current?: string } }): Promise<void>;
 }
 
 type PlaylistRead =
@@ -80,6 +91,16 @@ export function createService(deps: ServiceDeps): Service {
   const store = deps.store ?? createCandidateStore();
   /** candidateId -> correlationId da detecção que o produziu (atravessa detect -> download). */
   const correlations = new Map<string, string>();
+  const jobs: JobManager | undefined =
+    deps.jobStore && deps.offscreen
+      ? createJobManager({
+          store: deps.jobStore,
+          offscreen: deps.offscreen,
+          downloads: deps.downloads,
+          diagnostics,
+          extensionId: deps.extensionId,
+        })
+      : undefined;
 
   /** ⋃ crossOriginFrames − origem do frame principal − origens com permissão (`permissions.contains`). */
   async function findBlockedOrigins(
@@ -194,9 +215,22 @@ export function createService(deps: ServiceDeps): Service {
     return { ok: true, candidates, access: { blockedOrigins } };
   }
 
-  async function download(candidateId: string, fallbackId: string): Promise<DownloadResponse> {
+  /** Memória primeiro; depois o `NetworkStore` (o service worker pode ter reiniciado sem `detect`). */
+  async function findCandidate(candidateId: string): Promise<VideoCandidate | undefined> {
+    const known = store.find(candidateId);
+    if (known) {
+      return known;
+    }
+    return deps.network?.find(candidateId).catch(() => undefined);
+  }
+
+  async function download(
+    candidateId: string,
+    variantIndex: number | undefined,
+    fallbackId: string,
+  ): Promise<DownloadResponse> {
     const correlationId = correlations.get(candidateId) ?? fallbackId;
-    const candidate = store.find(candidateId);
+    const candidate = await findCandidate(candidateId);
     if (!candidate) {
       diagnostics.log('warn', 'download.not_found', correlationId, { candidateId });
       return { ok: false, error: 'CANDIDATE_NOT_FOUND' };
@@ -206,11 +240,15 @@ export function createService(deps: ServiceDeps): Service {
       providerId: candidate.providerId,
       mediaUrl: stripQuery(candidate.mediaUrl),
     };
+    // Segurança no servidor, nesta ordem: DRM, criptografia, ao vivo (SPEC-0012 §3).
     if (candidate.protection === 'drm') {
       diagnostics.log('warn', 'download.protected', correlationId, fields);
       return { ok: false, error: 'PROTECTED' };
     }
-    if (candidate.support !== 'downloadable' || candidate.kind === 'hls') {
+    if (candidate.kind === 'hls') {
+      return downloadHls(candidate, variantIndex, correlationId, fields);
+    }
+    if (candidate.support !== 'downloadable') {
       diagnostics.log('warn', 'download.unsupported', correlationId, fields);
       return { ok: false, error: 'UNSUPPORTED' };
     }
@@ -268,13 +306,98 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
-  /** Memória primeiro; depois o `NetworkStore` (o service worker pode ter reiniciado sem `detect`). */
-  async function findCandidate(candidateId: string): Promise<VideoCandidate | undefined> {
-    const known = store.find(candidateId);
-    if (known) {
-      return known;
+  type HlsRefusal = Extract<DownloadResponse, { ok: false }>;
+
+  /**
+   * Download de HLS (SPEC-0012). Nunca confia no estado guardado: re-busca e re-analisa a playlist da
+   * variante escolhida (mesma função de lista de permissão da SPEC-0011) e recusa criptografia/ao vivo.
+   */
+  async function downloadHls(
+    candidate: VideoCandidate,
+    variantIndex: number | undefined,
+    correlationId: string,
+    fields: Record<string, unknown>,
+  ): Promise<DownloadResponse> {
+    const refuse = (error: HlsRefusal['error'], event: string): DownloadResponse => {
+      diagnostics.log('warn', event, correlationId, { ...fields, error });
+      return { ok: false, error } as HlsRefusal;
+    };
+    if (!jobs) {
+      return refuse('UNSUPPORTED', 'download.unsupported');
     }
-    return deps.network?.find(candidateId).catch(() => undefined);
+    const { hls } = candidate;
+    // Candidato sem `hls` é desconhecido: nunca é assumido limpo (o popup resolve antes de baixar).
+    if (candidate.protection === 'encrypted') {
+      return refuse('ENCRYPTED', 'download.encrypted');
+    }
+    if (hls === undefined) {
+      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+    }
+    if (hls.encrypted) {
+      return refuse('ENCRYPTED', 'download.encrypted');
+    }
+    if (hls.live) {
+      return refuse('LIVE', 'download.live');
+    }
+
+    let playlistUrl = candidate.mediaUrl;
+    let label = 'original';
+    const chosen = variantIndex ?? 0;
+    if (hls.type === 'master') {
+      const variant = hls.variants[chosen];
+      if (!variant) {
+        return refuse('UNSUPPORTED', 'download.unsupported');
+      }
+      playlistUrl = variant.url;
+      label = variant.label;
+    }
+    if (!isHttp(playlistUrl)) {
+      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+    }
+
+    // Re-busca a playlist da variante escolhida: é ela (não o master) que decide.
+    let text: string;
+    try {
+      if (!deps.playlists) {
+        throw new Error('playlist indisponível');
+      }
+      text = await deps.playlists.fetchPlaylist(playlistUrl);
+    } catch {
+      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+    }
+    let info: HlsInfo;
+    let media: ReturnType<typeof parseMediaSegments>;
+    try {
+      info = parseHlsPlaylist(text, playlistUrl);
+      if (info.encrypted) {
+        return refuse('ENCRYPTED', 'download.encrypted');
+      }
+      if (info.type !== 'media') {
+        return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+      }
+      if (info.live) {
+        return refuse('LIVE', 'download.live');
+      }
+      media = parseMediaSegments(text, playlistUrl);
+    } catch {
+      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+    }
+
+    const created = await jobs.create({
+      candidateId: candidate.id,
+      providerId: candidate.providerId,
+      variantIndex: hls.type === 'master' ? chosen : 0,
+      filename: toFilename({ title: candidate.title, label, mediaUrl: candidate.mediaUrl }),
+      correlationId,
+      urls: media.urls,
+      ...(media.initUrl !== undefined && { initUrl: media.initUrl }),
+      fmp4: media.fmp4,
+    });
+    if (!created.ok) {
+      return refuse(created.error, 'download.refused');
+    }
+    diagnostics.count(candidate.providerId, 'downloadsStarted');
+    return { ok: true, jobId: created.jobId };
   }
 
   async function resolveHlsOnce(
@@ -400,15 +523,25 @@ export function createService(deps: ServiceDeps): Service {
         case 'detect':
           return detect(valid.tabId, correlationId);
         case 'download':
-          return download(valid.candidateId, correlationId);
+          return download(valid.candidateId, valid.variantIndex, correlationId);
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
         case 'resolveHls':
           return resolveHls(valid.candidateId, correlationId);
-        case 'job':
+        case 'job': {
+          const job = await jobs?.get(valid.jobId);
+          return job ? { ok: true, job } : { ok: false, error: 'JOB_NOT_FOUND' };
+        }
         case 'cancel':
-          throw new Error('NotImplemented');
+          return (await jobs?.cancel(valid.jobId))
+            ? { ok: true }
+            : { ok: false, error: 'JOB_NOT_FOUND' };
       }
+    },
+    onOffscreenMessage: (message, sender) =>
+      jobs ? jobs.onOffscreenMessage(message, sender) : Promise.resolve(false),
+    async onDownloadChanged(delta) {
+      await jobs?.onDownloadChanged(delta);
     },
     async onNetworkResponse(response) {
       if (!deps.network) {

@@ -50,13 +50,14 @@ export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> 
     let next = 0;
     let done = 0;
     let bytesDone = 0;
-    let settled = false;
+    const flags = { settled: false };
+    const isSettled = (): boolean => flags.settled;
 
     const finish = (error?: Error): void => {
-      if (settled) {
+      if (isSettled()) {
         return;
       }
-      settled = true;
+      flags.settled = true;
       external.removeEventListener('abort', onExternalAbort);
       if (error) {
         internal.abort();
@@ -73,13 +74,13 @@ export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> 
     async function fetchWithRetry(index: number): Promise<Uint8Array | undefined> {
       const url = urls[index] as string;
       for (let attempt = 0; ; attempt++) {
-        if (settled) {
+        if (isSettled()) {
           return undefined;
         }
         try {
           return await options.fetch(url, { signal: internal.signal });
         } catch {
-          if (settled) {
+          if (flags.settled) {
             return undefined;
           }
           if (attempt >= retries) {
@@ -88,7 +89,7 @@ export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> 
           try {
             await sleep(backoffMs(attempt), internal.signal);
           } catch {
-            if (settled) {
+            if (isSettled()) {
               return undefined;
             }
           }
@@ -97,10 +98,10 @@ export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> 
     }
 
     async function worker(): Promise<void> {
-      while (!settled && next < total) {
+      while (!isSettled() && next < total) {
         const index = next++;
         const bytes = await fetchWithRetry(index);
-        if (bytes === undefined || settled) {
+        if (bytes === undefined || isSettled()) {
           return;
         }
         results[index] = bytes;
