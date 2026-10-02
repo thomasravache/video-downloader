@@ -1,8 +1,10 @@
 import { providers } from 'virtual:providers';
 import { createDiagnostics } from '../../src/core/diagnostics';
+import { NetworkStore } from '../../src/core/network';
 import { createService } from '../../src/core/service';
 import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
+import { toNetworkResponse } from './network';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
   if (typeof value !== 'object' || value === null) {
@@ -22,10 +24,17 @@ function isPageSnapshot(value: unknown): value is PageSnapshot {
  * memória; o popup reconstrói tudo com uma nova detecção ao abrir (ADR-0006).
  */
 export default defineBackground(() => {
+  // `storage.session` vive só na memória do navegador e sobrevive à suspensão do service worker.
+  const network = new NetworkStore({
+    get: async (key) => (await browser.storage.session.get(key))[key],
+    set: (key, value) => browser.storage.session.set({ [key]: value }),
+    remove: (key) => browser.storage.session.remove(key),
+  });
   const service = createService({
     extensionId: browser.runtime.id,
     providers,
     diagnostics: createDiagnostics(),
+    network,
     scripting: {
       async collectVideos(tabId) {
         const injections = await browser.scripting.executeScript({
@@ -59,8 +68,30 @@ export default defineBackground(() => {
     },
   });
 
+  // Observação apenas (nunca bloqueante, nunca lê corpo). Registrados de forma síncrona, no topo
+  // do service worker, para que os eventos o acordem (ADR-0012, SPEC-0010).
+  const filter = { urls: ['http://*/*', 'https://*/*'] };
+  try {
+    browser.webRequest.onResponseStarted.addListener(
+      (details) => {
+        void service.onNetworkResponse(toNetworkResponse(details));
+      },
+      filter,
+      ['responseHeaders'],
+    );
+    browser.webRequest.onBeforeRequest.addListener(
+      (details) => {
+        void service.clearNetwork(details.tabId);
+      },
+      { ...filter, types: ['main_frame'] },
+    );
+  } catch {
+    // Sem `webRequest` (ex.: ambiente sem a API) a detecção continua só pelo DOM.
+  }
+
   browser.tabs.onRemoved.addListener((tabId) => {
     service.onTabRemoved(tabId);
+    void service.clearNetwork(tabId);
   });
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
