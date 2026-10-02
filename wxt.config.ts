@@ -26,6 +26,8 @@ export function resolveFlavor(mode: string): Flavor {
 export function buildManifest(flavor: Flavor): BuildManifest {
   return {
     manifest_version: 3,
+    // runtime.getContexts (offscreen, SPEC-0012) exige Chrome 116+.
+    minimum_chrome_version: '116',
     default_locale: 'pt_BR',
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
