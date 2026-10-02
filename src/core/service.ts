@@ -203,7 +203,7 @@ export function createService(deps: ServiceDeps): Service {
       diagnostics.log('warn', 'download.protected', correlationId, fields);
       return { ok: false, error: 'PROTECTED' };
     }
-    if (candidate.support !== 'downloadable') {
+    if (candidate.support !== 'downloadable' || candidate.kind === 'hls') {
       diagnostics.log('warn', 'download.unsupported', correlationId, fields);
       return { ok: false, error: 'UNSUPPORTED' };
     }
@@ -329,7 +329,11 @@ export function createService(deps: ServiceDeps): Service {
       ...(candidate.protection !== 'drm' && {
         protection: hls.encrypted ? ('encrypted' as const) : ('none' as const),
       }),
-      ...(hls.live && { support: 'unsupported-stream' as const }),
+      // Pelo resolve mais recente; `drm` fica como está. Só o download de HLS (SPEC-0012) usa 'downloadable'.
+      ...(candidate.protection !== 'drm' && {
+        support:
+          hls.live || hls.encrypted ? ('unsupported-stream' as const) : ('downloadable' as const),
+      }),
     };
     store.update(resolved);
     try {

@@ -19,7 +19,7 @@ export interface HlsInfo {
   variants: HlsVariant[];
   durationSec?: number;
   segmentCount?: number;
-  /** Qualquer EXT-X-KEY com METHOD ≠ NONE (inclui SAMPLE-AES) ou EXT-X-SESSION-KEY. */
+  /** Qualquer tag de chave que não seja exatamente `#EXT-X-KEY:METHOD=NONE` (lista de permissão). */
   encrypted: boolean;
   /** Sem EXT-X-ENDLIST. */
   live: boolean;
@@ -38,62 +38,26 @@ export class HlsParseError extends Error {
 
 export type HlsInfoValidation = { ok: true; value: HlsInfo } | { ok: false; error: string };
 
-const KEY_TAG = /^#EXT-X-(?:SESSION-)?KEY(?::(.*))?$/;
 const MAX_VARIANTS = 50;
-
-/** Divide uma lista de atributos nas vírgulas fora de aspas duplas. */
-function splitAttributes(list: string): string[] {
-  const parts: string[] = [];
-  let current = '';
-  let quoted = false;
-  for (const char of list) {
-    if (char === '"') {
-      quoted = !quoted;
-    } else if (char === ',' && !quoted) {
-      parts.push(current);
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  parts.push(current);
-  return parts;
-}
+const KEY_PREFIXES = ['#EXT-X-KEY', '#EXT-X-SESSION-KEY'];
+const CLEAN_KEY_LINE = '#EXT-X-KEY:METHOD=NONE';
 
 /**
- * Regra de dúvida: só um único atributo `METHOD` (nome com maiúsculas exatas) de valor `NONE` (sem
- * diferenciar maiúsculas) deixa a chave limpa; METHOD ausente, repetido, desconhecido, lista vazia ou
- * atributo malformado contam como criptografados.
+ * Lista de permissão sobre o texto bruto (o `m3u8-parser` ignora chaves sem URI e esquece uma chave AES
+ * depois de `METHOD=NONE`): cada ocorrência de `#EXT-X-KEY` ou `#EXT-X-SESSION-KEY` vai até o próximo
+ * `\n` (tolerando um único `\r` final) e só a linha exata `#EXT-X-KEY:METHOD=NONE` é limpa.
  */
-function keyIsEncrypted(attributeList: string): boolean {
-  const parts = splitAttributes(attributeList);
-  if (!parts.every((part) => /^[A-Za-z0-9-]+=/.test(part))) {
-    return true;
-  }
-  const methods = parts
-    .filter((part) => part.startsWith('METHOD='))
-    .map((part) => part.slice('METHOD='.length));
-  return methods.length !== 1 || methods[0]?.toUpperCase() !== 'NONE';
-}
-
-/**
- * Criptografia lida das linhas da playlist, não do parser: o `m3u8-parser` ignora chaves sem URI e
- * esquece uma chave AES depois de `METHOD=NONE`. Em caso de dúvida a playlist conta como criptografada.
- */
-function scanTags(lines: readonly string[]): { encrypted: boolean; fmp4: boolean } {
-  let encrypted = false;
-  let fmp4 = false;
-  for (const line of lines) {
-    if (line.startsWith('#EXT-X-MAP:')) {
-      fmp4 = true;
-      continue;
-    }
-    const key = KEY_TAG.exec(line);
-    if (key && keyIsEncrypted(key[1] ?? '')) {
-      encrypted = true;
+function hasEncryptedKey(text: string): boolean {
+  for (const prefix of KEY_PREFIXES) {
+    for (let at = text.indexOf(prefix); at >= 0; at = text.indexOf(prefix, at + prefix.length)) {
+      const end = text.indexOf('\n', at);
+      const line = text.slice(at, end < 0 ? text.length : end).replace(/\r$/, '');
+      if (line !== CLEAN_KEY_LINE) {
+        return true;
+      }
     }
   }
-  return { encrypted, fmp4 };
+  return false;
 }
 
 /** URL absoluta http(s) ou `undefined` (outros esquemas e URLs inválidas são descartados). */
@@ -164,7 +128,8 @@ export function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo {
     parser.push(text);
     parser.end();
     const { manifest } = parser;
-    const { encrypted, fmp4 } = scanTags(lines);
+    const encrypted = hasEncryptedKey(text);
+    const fmp4 = lines.some((line) => line.startsWith('#EXT-X-MAP:'));
     const segments = manifest.segments ?? [];
     const variants = variantsOf(manifest, baseUrl);
     if (variants.length > 0) {
