@@ -27,6 +27,7 @@ export function createOffscreenPort(): OffscreenPort {
       });
       await creating;
     },
+    isOpen,
     async send(command) {
       await browser.runtime.sendMessage(command);
     },

@@ -33,6 +33,8 @@ export interface OffscreenPort {
   ensure(): Promise<void>;
   /** Mensagem {target:'offscreen'} ao documento; resolve quando ele responde. */
   send(command: OffscreenCommand): Promise<void>;
+  /** O documento existe agora (`runtime.getContexts`). */
+  isOpen(): Promise<boolean>;
   /** Fecha o documento; idempotente. */
   close(): Promise<void>;
 }

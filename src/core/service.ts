@@ -68,9 +68,13 @@ export interface Service {
   /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
   clearNetwork(tabId: number): Promise<void>;
   /** Mensagem `{target:'background'}` do offscreen (SPEC-0012); `false` quando ignorada. */
-  onOffscreenMessage(message: unknown, sender: { id?: string }): Promise<boolean>;
+  onOffscreenMessage(message: unknown, sender: { id?: string; url?: string }): Promise<boolean>;
   /** `downloads.onChanged` (SPEC-0012): conclui ou falha o job em `saving`. */
-  onDownloadChanged(delta: { id: number; state?: { current?: string } }): Promise<void>;
+  onDownloadChanged(delta: {
+    id: number;
+    state?: { current?: string };
+    error?: { current?: string };
+  }): Promise<void>;
 }
 
 type PlaylistRead =

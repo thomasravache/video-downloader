@@ -123,13 +123,26 @@ export default defineBackground(() => {
   });
 
   // Download concluído/interrompido: fecha o job em `saving` (SPEC-0012). Registro síncrono, no topo.
-  try {
-    browser.downloads.onChanged.addListener((delta) => {
-      void service.onDownloadChanged(delta);
-    });
-  } catch (error) {
-    // Ambiente sem a API (ex.: fake de browser.*): o job não fecha por evento.
-    unavailable(error instanceof Error ? error.name : 'unknown');
+  // Só API ausente/não implementada (ex.: fake de browser.* do WXT) é tolerada; outra falha propaga.
+  const downloadsChanged = (
+    browser as { downloads?: { onChanged?: typeof browser.downloads.onChanged } }
+  ).downloads?.onChanged;
+  const downloadsUnavailable = (reason: string): void => {
+    diagnostics.log('warn', 'downloads.unavailable', diagnostics.newCorrelationId(), { reason });
+  };
+  if (downloadsChanged === undefined) {
+    downloadsUnavailable('no_api');
+  } else {
+    try {
+      downloadsChanged.addListener((delta) => {
+        void service.onDownloadChanged(delta);
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not implemented/i.test(error.message)) {
+        throw error;
+      }
+      downloadsUnavailable('not_implemented');
+    }
   }
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {

@@ -1,59 +1,38 @@
-import type { OffscreenCommand, OffscreenEvent } from '../../src/core/hls-download';
+import type { OffscreenEvent } from '../../src/core/hls-download';
+import { createCommandHandler, isCommand } from './commands';
 import { runOffscreenJob } from './run-job';
 
 /**
  * Documento offscreen (razão BLOBS, ADR-0013): baixa os segmentos, monta o MP4 e cria a blob URL.
- * Só fala com o background por `runtime` e só aceita comandos da própria extensão.
+ * Só fala com o background por `runtime` e só aceita comandos do contexto da própria extensão
+ * (nunca de content script: esses trazem `sender.tab`).
  */
-const controllers = new Map<string, AbortController>();
-
-function isCommand(message: unknown): message is OffscreenCommand {
-  if (typeof message !== 'object' || message === null) {
-    return false;
-  }
-  const { target, type, jobId } = message as Record<string, unknown>;
-  return (
-    target === 'offscreen' &&
-    typeof jobId === 'string' &&
-    (type === 'start' || type === 'cancel' || type === 'revoke')
-  );
-}
-
 function emit(jobId: string, event: OffscreenEvent): void {
   browser.runtime.sendMessage({ target: 'background', jobId, event }).catch(() => undefined);
 }
 
+const handle = createCommandHandler({
+  run: (start, signal) =>
+    runOffscreenJob(start, {
+      fetch: (input, init) => fetch(input, init),
+      signal,
+      emit: (event) => {
+        emit(start.jobId, event);
+      },
+    }).catch(() => {
+      emit(start.jobId, { type: 'failed', error: 'ASSEMBLY_FAILED' });
+    }),
+  revoke: (blobUrl) => {
+    URL.revokeObjectURL(blobUrl);
+  },
+});
+
 browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   // Mensagens para outros destinos (popup/background) não são deste documento: sem resposta.
-  if (sender.id !== browser.runtime.id || !isCommand(message)) {
+  if (sender.id !== browser.runtime.id || sender.tab !== undefined || !isCommand(message)) {
     return false;
   }
-  switch (message.type) {
-    case 'start': {
-      const controller = new AbortController();
-      controllers.set(message.jobId, controller);
-      void runOffscreenJob(message, {
-        fetch: (input, init) => fetch(input, init),
-        signal: controller.signal,
-        emit: (event) => {
-          emit(message.jobId, event);
-        },
-      })
-        .catch(() => {
-          emit(message.jobId, { type: 'failed', error: 'ASSEMBLY_FAILED' });
-        })
-        .finally(() => {
-          controllers.delete(message.jobId);
-        });
-      break;
-    }
-    case 'cancel':
-      controllers.get(message.jobId)?.abort();
-      break;
-    case 'revoke':
-      URL.revokeObjectURL(message.blobUrl);
-      break;
-  }
+  handle(message);
   sendResponse({ ok: true });
   return false;
 });

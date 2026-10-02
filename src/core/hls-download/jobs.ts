@@ -57,9 +57,13 @@ export interface JobManager {
   get(jobId: string): Promise<JobState | undefined>;
   cancel(jobId: string): Promise<boolean>;
   /** Mensagem `{target:'background', jobId, event}` vinda do offscreen. */
-  onOffscreenMessage(message: unknown, sender: { id?: string }): Promise<boolean>;
+  onOffscreenMessage(message: unknown, sender: { id?: string; url?: string }): Promise<boolean>;
   /** `downloads.onChanged`. */
-  onDownloadChanged(delta: { id: number; state?: { current?: string } }): Promise<void>;
+  onDownloadChanged(delta: {
+    id: number;
+    state?: { current?: string };
+    error?: { current?: string };
+  }): Promise<void>;
 }
 
 const isActive = (job: JobState): boolean =>
@@ -67,6 +71,22 @@ const isActive = (job: JobState): boolean =>
   job.state === 'running' ||
   job.state === 'assembling' ||
   job.state === 'saving';
+
+const OFFSCREEN_PAGE = '/offscreen.html';
+
+/** Página do offscreen DESTA extensão (`<esquema>-extension://<id>/offscreen.html`). */
+function isOffscreenUrl(url: string, extensionId: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol.endsWith('-extension:') &&
+      parsed.host === extensionId &&
+      parsed.pathname === OFFSCREEN_PAGE
+    );
+  } catch {
+    return false;
+  }
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -184,6 +204,28 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
     }
   }
 
+  /** Falha o job ativo cujo documento offscreen sumiu (nada a revogar: a blob URL morreu com ele). */
+  async function reclaimOrphans(records: Records): Promise<void> {
+    const active = Object.values(records).filter((record) => isActive(record.job));
+    if (active.length === 0 || (await isOffscreenOpen())) {
+      return;
+    }
+    for (const record of active) {
+      delete record.blobUrl;
+      apply(record, { type: 'fail', error: 'ASSEMBLY_FAILED' });
+      finish(record);
+    }
+  }
+
+  /** Falha ao consultar é tratada como "aberto": não derruba job por engano. */
+  async function isOffscreenOpen(): Promise<boolean> {
+    try {
+      return await offscreen.isOpen();
+    } catch {
+      return true;
+    }
+  }
+
   function prune(records: Records): void {
     const terminal = Object.entries(records)
       .filter(([, record]) => !isActive(record.job))
@@ -196,6 +238,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
   return {
     create(plan) {
       return mutate(async (records): Promise<CreateJobResult> => {
+        await reclaimOrphans(records);
         const active = Object.values(records).filter((record) => isActive(record.job));
         if (active.some((record) => record.job.candidateId === plan.candidateId)) {
           return { ok: false, error: 'JOB_ALREADY_RUNNING' };
@@ -245,7 +288,14 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
 
     async get(jobId) {
       await queue;
-      return (await load())[jobId]?.job;
+      const job = (await load())[jobId]?.job;
+      if (job === undefined || !isActive(job) || (await isOffscreenOpen())) {
+        return job;
+      }
+      return mutate(async (records) => {
+        await reclaimOrphans(records);
+        return records[jobId]?.job;
+      });
     },
 
     cancel(jobId) {
@@ -275,7 +325,12 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
     },
 
     async onOffscreenMessage(message, sender) {
-      if (sender.id !== deps.extensionId || !isRecord(message)) {
+      if (
+        sender.id !== deps.extensionId ||
+        typeof sender.url !== 'string' ||
+        !isOffscreenUrl(sender.url, deps.extensionId) ||
+        !isRecord(message)
+      ) {
         return false;
       }
       const jobId = message['jobId'];
@@ -286,11 +341,14 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
       return mutate(async (records) => {
         const record = records[jobId];
         if (!record) {
-          if (event.type === 'ready') {
-            await offscreen
-              .send({ target: 'offscreen', type: 'revoke', jobId, blobUrl: event.blobUrl })
-              .catch(() => undefined);
-          }
+          // Job desconhecido: o offscreen não deve continuar trabalhando para ele.
+          await offscreen
+            .send(
+              event.type === 'ready'
+                ? { target: 'offscreen', type: 'revoke', jobId, blobUrl: event.blobUrl }
+                : { target: 'offscreen', type: 'cancel', jobId },
+            )
+            .catch(() => undefined);
           return false;
         }
         switch (event.type) {
@@ -360,11 +418,14 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
         if (!record) {
           return;
         }
+        // Cancelado pelo próprio usuário no navegador não é falha.
         apply(
           record,
           current === 'complete'
             ? { type: 'complete' }
-            : { type: 'fail', error: 'DOWNLOAD_FAILED' },
+            : delta.error?.current === 'USER_CANCELED'
+              ? { type: 'cancel' }
+              : { type: 'fail', error: 'DOWNLOAD_FAILED' },
         );
         finish(record);
         await revoke(record);
