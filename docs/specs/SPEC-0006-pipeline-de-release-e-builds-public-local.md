@@ -179,7 +179,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 208 ms); test exit 0 (Duration  24.62s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.66s (tests 85%, transform 11%, setup 2%, import 2%)); test_e2e exit 0 (23 passed (21.2s)); arch_test exit 0 (✔ no dependency violations found (20 modules, 33 dependencies cruised)); security_scan exit 0 ([90m12:06PM[0m [32mINF[0m [1mno leaks found[0m) — d901b57 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
 | G6 Deploy | PASS | MANUAL: STAGING (rc): tag v0.1.0-rc.1 sobre d5bd8e4 (main), run release 37026591561: verify-version, build, flavor-guard, smoke e github-release success; Release prerelease com extension-public-0.1.0-rc.1.zip e extension-local-0.1.0-rc.1.zip (manifests conferidos: MV3, version 0.1.0 / version_name 0.1.0-rc.1, permissões activeTab+scripting+downloads+storage, sem host_permissions); job webstore em waiting no environment webstore (revisor: thomasravache), conforme IT-02 (SDD_REMOTE_RELEASE_TAG=v0.1.0-rc.1: 2/2 PASS). Envio real à Web Store pendente: conta de desenvolvedor e secrets CWS_* ainda não existem (pré-requisito externo, ver docs/runbook.md seção 2). Produção pendente de confirmação do Thomas | 2026-10-02 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 152b563 | 2026-10-02 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
