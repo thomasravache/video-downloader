@@ -205,7 +205,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 203 ms); test exit 0 (Duration  27.83s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 149 ms); coverage exit 0 (================================================================================) — 20c2a99 | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)) — 20c2a99 | 2026-10-02 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01; delta 20c2a99 (IT-06) = correção exata recomendada pelo reviewer, conferida pelo Architect (diff de 1 arquivo, testes verdes) — 20c2a99 | 2026-10-02 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 181 ms); test exit 0 (Duration  23.23s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.43s (tests 74%, transform 17%, setup 4%, import 3%, worker 1%)); test_e2e exit 0 (34 passed (26.0s)); arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)); security_scan exit 0 ([90m4:43PM[0m [32mINF[0m [1mno leaks found[0m) — 77dabb0 | 2026-10-02 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
