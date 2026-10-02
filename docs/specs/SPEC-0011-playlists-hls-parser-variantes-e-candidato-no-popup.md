@@ -205,8 +205,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/21]⎯) — b55d080 | 2026-10-02 |
-| G2 Green | PASS | build exit 0 (✔ Finished in 202 ms); test exit 0 (Duration  25.42s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 138 ms); coverage exit 0 (================================================================================) — 302082c | 2026-10-02 |
-| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)) — 302082c | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 206 ms); test exit 0 (Duration  26.97s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 144 ms); coverage exit 0 (================================================================================) — 25ac22b | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)) — 25ac22b | 2026-10-02 |
 | G4 Review | FAIL | reviewer-agent a3eaef7d (2ª rodada): CHANGES_REQUESTED @ 302082c — 2 major: tokenizador de aspas ainda esconde METHOD=AES-128 (aspa solta em valor sem aspas, aspa sem fechar, U+2028/2029 fazem a linha da chave ser ignorada; confirmado com ffmpeg/hls.js) + 4 minor | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
