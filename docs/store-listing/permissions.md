@@ -1,5 +1,7 @@
 # Finalidade única e justificativa das permissões
 
+> **Draft until reconciled:** rascunho até ser conferido contra o `manifest.json` real (permissões `activeTab`, `scripting`, `downloads`, `storage` chegam com a SPEC-0005); ver `docs/runbook.md`, seção 3, antes da primeira submissão.
+
 Campos do painel do desenvolvedor (Privacy practices). Redigidos em inglês porque a revisão da loja é feita nesse idioma; tradução resumida ao final.
 
 ## Single purpose

@@ -1,5 +1,7 @@
 # Política de privacidade / Privacy policy
 
+> **Draft until reconciled:** rascunho até ser conferido contra o `manifest.json` real (permissões `activeTab`, `scripting`, `downloads`, `storage` chegam com a SPEC-0005); ver `docs/runbook.md`, seção 3, antes da primeira submissão.
+
 Última atualização / Last updated: 2026-09-30
 
 ## Português (pt-BR)

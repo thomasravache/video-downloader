@@ -52,6 +52,8 @@ Enquanto não houver conta/item, o job `webstore` fica bloqueado (impedimento ex
 
 ## 3. Verificação manual do `activeTab` (G6)
 
+Antes da primeira submissão (G6), **reconcilie** `docs/store-listing/permissions.md` e `docs/privacy-policy.md` com o `manifest.json` real do build `public` (`.output/chrome-mv3-public/manifest.json`): as permissões `activeTab`, `scripting`, `downloads` e `storage` chegam com a SPEC-0005. Cada permissão do manifest precisa ter justificativa e menção na política, e nenhuma justificativa pode citar permissão ausente do manifest. Até lá, os dois documentos são rascunho (cabeçalho "draft until reconciled").
+
 Após instalar o zip (rc do staging ou `local`):
 
 1. Abra uma página de demonstração com vídeo sem DRM e **não** clique no ícone: confirme que a extensão não lê a página (sem indicação de atividade).
@@ -61,12 +63,21 @@ Após instalar o zip (rc do staging ou `local`):
 
 ## 4. Rollback
 
-A loja não aceita versão menor. Para voltar ao comportamento anterior:
+A loja não aceita versão menor, e o commit de uma tag antiga já é ancestral da `main`: um PR criado a partir da tag boa carregaria só o bump de versão, e taguear o commit antigo falha com `VERSION_MISMATCH`. O rollback é, portanto, um **novo commit na `main` que restaura a árvore boa**:
 
-1. `git switch -c fix/rollback <tag-anterior-boa>`; altere a versão em `package.json` para a próxima (`X.Y.(Z+1)`) e faça o merge via PR na `main` no estado da versão boa (o commit da tag precisa estar na `main`).
-2. Tag `vX.Y.(Z+1)` pela mesma pipeline (seção 1) e aprovação no environment `webstore`.
-3. Build `local`: reinstalar o zip da GitHub Release anterior.
-4. Se a versão ruim ainda estiver em revisão/staging, cancele-a no Developer Dashboard.
+1. Parta da `main` atual: `git switch main && git pull && git switch -c fix/rollback-X.Y.(Z+1)`.
+2. Restaure o código bom, por uma das formas:
+   - `git revert <commits-ruins>` (um `revert` por commit; use `-m 1` para merge commits); ou
+   - `git checkout <tag-boa> -- .` (restaura a árvore da versão boa; remova com `git rm` o que só existe na versão ruim).
+3. Altere `version` em `package.json` para `X.Y.(Z+1)` (maior que a versão ruim já enviada) e commite.
+4. Abra o PR para a `main` e faça o merge (merge commit).
+5. Crie a tag `vX.Y.(Z+1)` **sobre o commit da `main` que contém o código restaurado** (seção 1) e acompanhe a pipeline e a aprovação no environment `webstore`.
+6. Build `local`: reinstalar o zip da GitHub Release anterior.
+7. Se a versão ruim ainda estiver em revisão/staging, cancele-a no Developer Dashboard.
+
+## 4.1 Upload feito, publicação falhou
+
+Se o `webstore` enviou o zip (upload) mas a etapa de publicação falhou, o Re-run do job falha já no upload, porque a loja recusa a versão como já enviada. Publique a versão enviada pelo Developer Dashboard, ou gere uma nova tag (versão maior) e rode a pipeline de novo.
 
 ## 5. Testes remotos (IT-02)
 
