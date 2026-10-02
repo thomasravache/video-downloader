@@ -1,6 +1,7 @@
+import type { PermissionsPort } from './access';
 import type { ScriptingPort } from './contracts';
 
-export type { ScriptingPort };
+export type { PermissionsPort, ScriptingPort };
 
 /** Porta para `browser.downloads`; rejeita quando o download não pode começar. */
 export interface DownloadPort {

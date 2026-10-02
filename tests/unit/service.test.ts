@@ -1,6 +1,8 @@
 /**
  * Contrato usado (SPEC-0005:IT-01..IT-03 sobre as portas): src/core/service.ts
- *   createService({ extensionId, providers, scripting, downloads, tabs, diagnostics })
+ *   createService({ extensionId, providers, scripting, downloads, tabs, permissions, diagnostics })
+ *   (SPEC-0009: `scripting.collectVideos` devolve FrameSnapshot[]; `permissions` é PermissionsPort;
+ *   `detect` responde também `access: { blockedOrigins }`)
  *     -> { handle(message, sender), onTabRemoved(tabId) }
  */
 import { describe, expect, it, vi } from 'vitest';
@@ -15,10 +17,11 @@ const snapshot: PageSnapshot = {
   pageUrl: 'https://site.example.test/aula',
   pageTitle: 'Aula',
   videos: [{ src: MEDIA, currentSrc: MEDIA, sources: [], hasMediaKeys: false, encrypted: false }],
+  crossOriginFrames: [],
 };
 
 function setup(providers: Provider[] = [generic]) {
-  const collectVideos = vi.fn().mockResolvedValue(snapshot);
+  const collectVideos = vi.fn().mockResolvedValue([{ frameId: 0, snapshot }]);
   const download = vi.fn().mockResolvedValue(9);
   const service = createService({
     extensionId: SELF,
@@ -26,6 +29,10 @@ function setup(providers: Provider[] = [generic]) {
     scripting: { collectVideos },
     downloads: { download },
     tabs: { getUrl: () => Promise.resolve(snapshot.pageUrl) },
+    permissions: {
+      contains: () => Promise.resolve(false),
+      request: () => Promise.resolve(false),
+    },
     diagnostics: createDiagnostics(),
   });
   return { service, collectVideos, download };
@@ -50,6 +57,7 @@ describe('service', () => {
     expect(await service.handle({ type: 'detect', tabId: 1 }, { id: SELF })).toEqual({
       ok: true,
       candidates: [],
+      access: { blockedOrigins: [] },
     });
   });
 

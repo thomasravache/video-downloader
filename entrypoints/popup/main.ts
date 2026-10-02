@@ -4,7 +4,9 @@ import type {
   DownloadResponse,
   VideoCandidate,
 } from '../../src/core/contracts';
-import { renderCandidates, setStatus, showMessage } from './view';
+import { requestAccess } from '../../src/core/access';
+import type { PermissionsPort } from '../../src/core/access';
+import { renderAccess, renderCandidates, setStatus, showAccessDenied, showMessage } from './view';
 import type { ViewText } from './view';
 
 const t = (key: string, ...substitutions: string[]): string =>
@@ -16,10 +18,20 @@ const text: ViewText = {
   badgeUnsupported: t('badgeUnsupported'),
   download: t('buttonDownload'),
   downloadNamed: (title) => t('buttonDownloadNamed', title),
+  accessNeeded: t('accessNeeded'),
+  grantAccess: t('buttonGrantAccess'),
+  accessDenied: t('accessDenied'),
+};
+
+/** `browser.permissions` do próprio popup: `permissions.request` exige o gesto do usuário (ADR-0012). */
+const permissions: PermissionsPort = {
+  contains: (origins) => browser.permissions.contains({ origins }),
+  request: (origins) => browser.permissions.request({ origins }),
 };
 
 const title = document.getElementById('title');
 const content = document.getElementById('content');
+const access = document.getElementById('access');
 const footerStatus = document.getElementById('footer-status');
 const copyButton = document.getElementById('copy-diagnostics');
 
@@ -73,8 +85,24 @@ async function download(candidate: VideoCandidate, button: HTMLButtonElement): P
   }
 }
 
+function grantAccess(origins: string[], button: HTMLButtonElement): void {
+  if (!access) {
+    return;
+  }
+  button.disabled = true;
+  // Chamada direta no handler do clique: preserva o gesto do usuário.
+  void requestAccess(permissions, origins).then(({ granted }) => {
+    if (granted) {
+      void detect();
+    } else {
+      button.disabled = false;
+      showAccessDenied(access, text.accessDenied);
+    }
+  });
+}
+
 async function detect(): Promise<void> {
-  if (!content) {
+  if (!content || !access) {
     return;
   }
   showMessage(content, t('popupSearching'), 'popup-loading');
@@ -88,8 +116,21 @@ async function detect(): Promise<void> {
         });
   content.setAttribute('aria-busy', 'false');
 
+  renderAccess(
+    access,
+    response?.ok === true ? response.access.blockedOrigins : [],
+    text,
+    (button) => {
+      if (response?.ok === true) {
+        grantAccess(response.access.blockedOrigins, button);
+      }
+    },
+  );
+
   if (response?.ok === true) {
-    if (response.candidates.length === 0) {
+    if (response.candidates.length === 0 && response.access.blockedOrigins.length > 0) {
+      content.replaceChildren();
+    } else if (response.candidates.length === 0) {
       showMessage(content, t('popupEmpty'), 'empty-state');
     } else {
       renderCandidates(content, response.candidates, text, (candidate, button) => {

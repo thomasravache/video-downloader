@@ -60,3 +60,5 @@ Testes de autorização (acesso negado) nas specs; checklist de segurança no G4
 
 ## Mais Informações
 Referências neutras: OWASP ASVS, OWASP Top 10. Chrome — Declare permissions / activeTab / optional permissions: https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions (não verificado nesta data). Política da Web Store: permissões mínimas (consultado 2026-09-30).
+
+> Nota 2026-10-02: a regra de host permissions ("sem `<all_urls>` em `host_permissions`") foi refinada pelo ADR-0012 (acesso amplo no build `local`; por site, em tempo de uso, no `public`). O restante deste ADR continua valendo.

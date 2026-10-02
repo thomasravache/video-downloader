@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import type { Server } from 'node:http';
+import type { RequestListener, Server } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../fixtures');
@@ -19,9 +19,12 @@ export interface FixtureServer {
   close: () => Promise<void>;
 }
 
-/** Servidor estático de e2e/fixtures/, escutando APENAS em 127.0.0.1 (porta efêmera). */
+/**
+ * Servidor estático de e2e/fixtures/, escutando APENAS no loopback (127.0.0.1 e, se houver, ::1 na
+ * mesma porta efêmera, pois `localhost` pode resolver para ::1 primeiro).
+ */
 export async function startFixtureServer(): Promise<FixtureServer> {
-  const server: Server = createServer((req, res) => {
+  const handler: RequestListener = (req, res) => {
     let pathname: string;
     try {
       pathname = decodeURIComponent(new URL(req.url ?? '/', `http://${HOST}`).pathname);
@@ -40,7 +43,8 @@ export async function startFixtureServer(): Promise<FixtureServer> {
       'content-length': statSync(file).size,
     });
     createReadStream(file).pipe(res);
-  });
+  };
+  const server: Server = createServer(handler);
 
   await new Promise<void>((done, fail) => {
     server.once('error', fail);
@@ -50,13 +54,26 @@ export async function startFixtureServer(): Promise<FixtureServer> {
   if (address === null || typeof address === 'string') {
     throw new Error('fixture server sem porta');
   }
+  // Melhor esforço: sem IPv6 no ambiente, o navegador cai para 127.0.0.1.
+  const server6: Server = createServer(handler);
+  const listening6 = await new Promise<boolean>((done) => {
+    server6.once('error', () => {
+      done(false);
+    });
+    server6.listen(address.port, '::1', () => {
+      done(true);
+    });
+  });
+  const closeServer = (target: Server) =>
+    new Promise<void>((done) => {
+      target.close(() => {
+        done();
+      });
+    });
   return {
     url: `http://${HOST}:${String(address.port)}/`,
-    close: () =>
-      new Promise<void>((done) => {
-        server.close(() => {
-          done();
-        });
-      }),
+    close: async () => {
+      await Promise.all([closeServer(server), ...(listening6 ? [closeServer(server6)] : [])]);
+    },
   };
 }

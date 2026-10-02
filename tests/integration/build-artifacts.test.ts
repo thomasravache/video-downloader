@@ -3,6 +3,9 @@
  * saída; por isso ficam no MESMO arquivo (execução serial) e fazem builds reais.
  *
  *  - IT-04: `pnpm build` -> .output/chrome-mv3-{public,local}/manifest.json
+ *  - SPEC-0009:IT-05 (ADR-0012): no mesmo build, local tem host_permissions http(s) (http + https, qualquer host)
+ *    e nenhuma optional_host_permissions; public tem optional_host_permissions iguais e nenhuma
+ *    host_permissions; ambos com exatamente as permissões da SPEC-0005
  *  - CT-01: wxt build com PROVIDERS_EXTRA_DIR=tests/fixtures/providers (provider `skeleton-local-only`,
  *    flavors:['local']) e saída em CT_OUT_DIR (tests/integration/support/wxt.contract.config.ts):
  *      * o bundle public não contém 'skeleton-local-only'; o local contém;
@@ -61,12 +64,14 @@ describe('manifesto dos builds reais', () => {
     }
   };
 
-  it('SPEC-0005:IT-04 o manifest de public e local não tem host_permissions, <all_urls> nem CSP customizada', () => {
+  it('SPEC-0005:IT-04 o manifest de public não tem host_permissions e nenhum flavor tem <all_urls> nem CSP customizada', () => {
     build();
+    expect(
+      readManifest(join(ROOT, '.output', 'chrome-mv3-public'))['host_permissions'],
+    ).toBeUndefined();
     for (const flavor of flavors) {
       const dir = join(ROOT, '.output', `chrome-mv3-${flavor}`);
       const manifest = readManifest(dir);
-      expect(manifest['host_permissions'], flavor).toBeUndefined();
       expect(manifest['content_security_policy'], flavor).toBeUndefined();
       expect(JSON.stringify(manifest), flavor).not.toContain('<all_urls>');
     }
@@ -79,6 +84,45 @@ describe('manifesto dos builds reais', () => {
       expect([...((manifest['permissions'] as string[] | undefined) ?? [])].sort(), flavor).toEqual(
         ['activeTab', 'downloads', 'scripting', 'storage'],
       );
+    }
+  }, 600_000);
+});
+
+describe('permissões de host por flavor (ADR-0012)', () => {
+  const HOST_PATTERNS = ['http://*/*', 'https://*/*'];
+  const SPEC_0005_PERMISSIONS = ['activeTab', 'downloads', 'scripting', 'storage'];
+  let built = false;
+  const build = () => {
+    if (!built) {
+      const r = sh('pnpm', ['build']);
+      expect(r.code, r.out).toBe(0);
+      built = true;
+    }
+  };
+  const manifestOf = (flavor: (typeof flavors)[number]) =>
+    readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
+  const sorted = (value: unknown) => [...((value as string[] | undefined) ?? [])].sort();
+
+  it('SPEC-0009:IT-05 o manifest local tem host_permissions http(s) e nenhuma optional_host_permissions', () => {
+    build();
+    const manifest = manifestOf('local');
+
+    expect(sorted(manifest['host_permissions'])).toEqual(HOST_PATTERNS);
+    expect(manifest['optional_host_permissions']).toBeUndefined();
+  }, 600_000);
+
+  it('SPEC-0009:IT-05 o manifest public tem optional_host_permissions http(s) e nenhuma host_permissions', () => {
+    build();
+    const manifest = manifestOf('public');
+
+    expect(sorted(manifest['optional_host_permissions'])).toEqual(HOST_PATTERNS);
+    expect(manifest['host_permissions']).toBeUndefined();
+  }, 600_000);
+
+  it('SPEC-0009:IT-05 os dois flavors mantêm as permissões da SPEC-0005 e nenhuma outra', () => {
+    build();
+    for (const flavor of flavors) {
+      expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual(SPEC_0005_PERMISSIONS);
     }
   }, 600_000);
 });

@@ -80,5 +80,17 @@
   },
   "statusDiagnosticsFailed": {
     "message": "Não foi possível copiar o diagnóstico"
+  },
+  "accessNeeded": {
+    "message": "Esta página tem players em outros sites:",
+    "description": "Título do bloco de acesso por site; segue a lista de origens"
+  },
+  "buttonGrantAccess": {
+    "message": "Permitir acesso",
+    "description": "Pede ao Chrome acesso às origens listadas"
+  },
+  "accessDenied": {
+    "message": "Acesso não concedido. Os vídeos desses sites não serão detectados.",
+    "description": "Usuário negou o acesso"
   }
 }

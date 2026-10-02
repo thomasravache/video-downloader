@@ -19,6 +19,7 @@ function page(video: Partial<PageSnapshot['videos'][number]>): PageSnapshot {
     videos: [
       { src: null, currentSrc: '', sources: [], hasMediaKeys: false, encrypted: false, ...video },
     ],
+    crossOriginFrames: [],
   };
 }
 
@@ -76,7 +77,10 @@ describe('provider generic: extractCandidates', () => {
 
   it('SPEC-0005:UT-02 página sem vídeos não gera candidatos', () => {
     expect(
-      extractCandidates({ pageUrl: 'https://x.test/', pageTitle: 'x', videos: [] }, 1),
+      extractCandidates(
+        { pageUrl: 'https://x.test/', pageTitle: 'x', videos: [], crossOriginFrames: [] },
+        1,
+      ),
     ).toEqual([]);
   });
 });

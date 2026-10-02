@@ -15,6 +15,8 @@ function candidate(tabId: number, id: string): VideoCandidate {
     mediaUrl: `https://cdn.example.test/${id}.mp4`,
     protection: 'none',
     support: 'downloadable',
+    frameId: 0,
+    frameUrl: 'https://site.example.test/',
   };
 }
 
