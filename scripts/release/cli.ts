@@ -7,7 +7,18 @@ import { verifyVersion, versionFromTag } from './version.ts';
 import { releaseToStore, type WebstoreCreds } from './webstore.ts';
 
 const ROOT = resolve(import.meta.dirname, '../..');
-const SECRET_ENV = ['CWS_CLIENT_SECRET', 'CWS_REFRESH_TOKEN', 'CWS_CLIENT_ID'];
+const SECRET_ENV = [
+  'CWS_CLIENT_ID',
+  'CWS_CLIENT_SECRET',
+  'CWS_REFRESH_TOKEN',
+  'CWS_PUBLISHER_ID',
+  'CWS_EXTENSION_ID',
+];
+
+/** Lista única de segredos para todo caminho de erro (o access token é mascarado dentro de webstore.ts). */
+function secretValues(): string[] {
+  return SECRET_ENV.map((name) => process.env[name] ?? '');
+}
 
 function usage(): never {
   throw new Error(
@@ -62,7 +73,6 @@ async function main(argv: string[]): Promise<void> {
 }
 
 main(process.argv.slice(2)).catch((error: unknown) => {
-  const secrets = SECRET_ENV.map((name) => process.env[name] ?? '');
-  console.error(formatError(error, secrets));
+  console.error(formatError(error, secretValues()));
   process.exit(1);
 });
