@@ -1,13 +1,19 @@
 import type {
+  CancelResponse,
   DetectResponse,
   DiagnosticsResponse,
   DownloadResponse,
+  JobResponse,
   ResolveHlsResponse,
   VideoCandidate,
 } from '../../src/core/contracts';
 import { requestAccess } from '../../src/core/access';
 import type { PermissionsPort } from '../../src/core/access';
+import { validateJobResponse } from '../../src/core/hls-download';
 import {
+  candidateLabel,
+  createJobView,
+  isTerminalJob,
   renderAccess,
   renderCandidates,
   renderHlsResult,
@@ -15,7 +21,7 @@ import {
   showAccessDenied,
   showMessage,
 } from './view';
-import type { ViewText } from './view';
+import type { HlsContext, ViewText } from './view';
 
 const t = (key: string, ...substitutions: string[]): string =>
   browser.i18n.getMessage(key as never, substitutions);
@@ -37,6 +43,16 @@ const text: ViewText = {
   hlsErrorParse: t('hlsErrorParse'),
   hlsErrorGeneric: t('hlsErrorGeneric'),
   duration: (formatted) => t('hlsDuration', formatted),
+  progressLabel: t('jobProgressLabel'),
+  cancelDownload: t('buttonCancelDownload'),
+  retryDownload: t('buttonRetryDownload'),
+  redownload: t('buttonRedownload'),
+  jobAssembling: t('jobAssembling'),
+  jobSaving: t('jobSaving'),
+  jobCanceled: t('jobCanceled'),
+  jobSegments: (done, total) => t('jobSegments', String(done), String(total)),
+  jobSaved: (filename) => t('jobSaved', filename),
+  jobError: (error) => t(`jobError${error ?? 'ASSEMBLY_FAILED'}`),
   number: (value) =>
     new Intl.NumberFormat(browser.i18n.getUILanguage(), { maximumFractionDigits: 1 }).format(value),
 };
@@ -80,10 +96,100 @@ function downloadError(response: Exclude<DownloadResponse, { ok: true }>): strin
       return t('errorProtected');
     case 'UNSUPPORTED':
       return t('errorUnsupported');
+    case 'HLS_NOT_RESOLVED':
+      return t('errorHlsNotResolved');
+    case 'ENCRYPTED':
+      return t('jobErrorENCRYPTED');
+    case 'LIVE':
+      return t('jobErrorLIVE');
+    case 'JOB_ALREADY_RUNNING':
+      return t('errorJobRunning');
+    case 'TOO_MANY_JOBS':
+      return t('errorTooManyJobs');
     case 'INVALID_MESSAGE':
     default:
       return t('errorGeneric');
   }
+}
+
+const POLL_MS = 400;
+const wait = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/** Download de HLS: cria o job, mostra o progresso (polling ≥ 2×/s) e permite cancelar. */
+function startHls(
+  candidateId: string,
+  variantIndex: number,
+  area: HTMLElement,
+  select: HTMLSelectElement | undefined,
+): void {
+  let jobId: string | undefined;
+  const view = createJobView(
+    text,
+    () => {
+      if (jobId !== undefined) {
+        void browser.runtime
+          .sendMessage<unknown, CancelResponse | undefined>({ type: 'cancel', jobId })
+          .catch(() => undefined);
+      }
+    },
+    () => {
+      startHls(candidateId, variantIndex, area, select);
+    },
+  );
+  area.replaceChildren(view.element);
+  if (select) {
+    select.disabled = true;
+  }
+
+  void (async () => {
+    try {
+      const started = await browser.runtime.sendMessage<unknown, DownloadResponse | undefined>({
+        type: 'download',
+        candidateId,
+        variantIndex,
+      });
+      if (started?.ok !== true || !('jobId' in started)) {
+        view.fail(started && !started.ok ? downloadError(started) : t('errorGeneric'));
+        return;
+      }
+      jobId = started.jobId;
+      for (;;) {
+        const response = await browser.runtime.sendMessage<unknown, JobResponse | undefined>({
+          type: 'job',
+          jobId,
+        });
+        const valid = validateJobResponse(response);
+        if (!valid.ok || !valid.value.ok) {
+          view.fail(t('errorGeneric'));
+          return;
+        }
+        view.update(valid.value.job);
+        if (isTerminalJob(valid.value.job)) {
+          return;
+        }
+        await wait(POLL_MS);
+      }
+    } catch {
+      view.fail(t('errorGeneric'));
+    } finally {
+      if (select) {
+        select.disabled = false;
+      }
+    }
+  })();
+}
+
+function hlsContext(candidate: VideoCandidate): HlsContext {
+  return {
+    candidateId: candidate.id,
+    label: candidateLabel(candidate),
+    onStart: (variantIndex, area, select) => {
+      startHls(candidate.id, variantIndex, area, select);
+    },
+  };
 }
 
 async function download(candidate: VideoCandidate, button: HTMLButtonElement): Promise<void> {
@@ -133,7 +239,7 @@ function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]):
       })
       .catch(() => undefined)
       .then((response) => {
-        renderHlsResult(container, candidate.id, response, text);
+        renderHlsResult(container, candidate.id, response, text, hlsContext(candidate));
       });
   }
 }
@@ -170,9 +276,15 @@ async function detect(): Promise<void> {
     } else if (response.candidates.length === 0) {
       showMessage(content, t('popupEmpty'), 'empty-state');
     } else {
-      renderCandidates(content, response.candidates, text, (candidate, button) => {
-        void download(candidate, button);
-      });
+      renderCandidates(
+        content,
+        response.candidates,
+        text,
+        (candidate, button) => {
+          void download(candidate, button);
+        },
+        hlsContext,
+      );
       resolvePlaylists(content, response.candidates);
     }
   } else if (response?.error === 'RESTRICTED_PAGE') {

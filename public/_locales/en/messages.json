@@ -109,5 +109,78 @@
   },
   "hlsErrorGeneric": {
     "message": "Could not read the playlist. Reopen the popup and try again."
+  },
+  "jobProgressLabel": {
+    "message": "Download progress"
+  },
+  "buttonCancelDownload": {
+    "message": "Cancel"
+  },
+  "buttonRetryDownload": {
+    "message": "Try again"
+  },
+  "buttonRedownload": {
+    "message": "Download again"
+  },
+  "jobAssembling": {
+    "message": "Assembling the file…"
+  },
+  "jobSaving": {
+    "message": "Saving the file…"
+  },
+  "jobCanceled": {
+    "message": "Download canceled"
+  },
+  "jobSegments": {
+    "message": "$DONE$ of $TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "12"
+      },
+      "total": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "jobSaved": {
+    "message": "Saved as $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Lesson - 720p.mp4"
+      }
+    }
+  },
+  "jobErrorFETCH_FAILED": {
+    "message": "Could not download every part of the video. Try again."
+  },
+  "jobErrorTOO_LARGE": {
+    "message": "The video is too large to assemble (1.5 GB limit)."
+  },
+  "jobErrorUNSUPPORTED_CODEC": {
+    "message": "This video uses an audio or video format that is not supported yet."
+  },
+  "jobErrorASSEMBLY_FAILED": {
+    "message": "Could not assemble the video file."
+  },
+  "jobErrorDOWNLOAD_FAILED": {
+    "message": "Chrome could not save the file."
+  },
+  "jobErrorENCRYPTED": {
+    "message": "This video is encrypted and cannot be downloaded."
+  },
+  "jobErrorLIVE": {
+    "message": "Live streams are not supported."
+  },
+  "errorHlsNotResolved": {
+    "message": "Could not read this video's playlist. Reopen the popup and try again."
+  },
+  "errorJobRunning": {
+    "message": "This video is already being downloaded."
+  },
+  "errorTooManyJobs": {
+    "message": "There are already 2 downloads in progress. Wait for one to finish."
   }
 }
