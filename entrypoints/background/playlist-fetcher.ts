@@ -24,6 +24,8 @@ const MAX_BYTES = 1024 * 1024;
 const ALLOWED_TYPES = new Set([
   'application/vnd.apple.mpegurl',
   'application/x-mpegurl',
+  'audio/mpegurl',
+  'audio/x-mpegurl',
   'application/octet-stream',
 ]);
 
