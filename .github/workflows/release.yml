@@ -36,7 +36,6 @@ jobs:
         run: node scripts/release/cli.ts verify-version "$TAG"
       - name: Conferir que o commit da tag está na main
         run: |
-          git fetch --no-tags origin main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor "$TAG_SHA" origin/main; then
             echo "::error::O commit da tag $TAG não é alcançável a partir de origin/main"
             exit 1
@@ -129,8 +128,17 @@ jobs:
           done
           # O harness só recompila se a saída for mais velha que as fontes; a restauração marca como atual.
           find .output -exec touch {} +
+          # Impressão digital (caminho, mtime e tamanho) para provar, depois do E2E, que nada foi recompilado.
+          find .output -type f -printf '%p %T@ %s\n' | sort | sha256sum > "${RUNNER_TEMP}/output.sha"
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - name: Garantir que o E2E não recompilou os builds
+        run: |
+          find .output -type f -printf '%p %T@ %s\n' | sort | sha256sum > "${RUNNER_TEMP}/output.after.sha"
+          if ! cmp -s "${RUNNER_TEMP}/output.sha" "${RUNNER_TEMP}/output.after.sha"; then
+            echo "::error::O .output mudou durante o E2E: houve recompilação, o smoke não testou os zips da release"
+            exit 1
+          fi
 
   github-release:
     name: github-release
