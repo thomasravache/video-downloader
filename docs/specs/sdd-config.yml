@@ -114,9 +114,11 @@ h1_policy: chat
 # per-wave: o humano aprova cada onda integrada (gate SPEC-X H2 --by <nome>).
 # auto-on-green: o humano autorizou, uma vez, considerar H2 aprovado quando G5 = PASS (gate SPEC-X H2 --run).
 # Deploy em PRODUÇÃO nunca é coberto por esta política: sempre confirmação explícita por release.
-h2_policy: per-wave
-h2_policy_approved_by: ""
-h2_policy_approved_at: ""
+# 2026-10-02: Thomas autorizou no chat mergear PRs à medida que a CI ficar verde e seguir a opção recomendada nas dúvidas.
+# Não cobre: tags de release (rc ou estável), publicação na Web Store, H1 de specs novas.
+h2_policy: auto-on-green
+h2_policy_approved_by: thomas
+h2_policy_approved_at: 2026-10-02
 
 # --- Pull requests ---
 # Título gerado por `spec_graph.py pr` (Conventional Commits). Campos: {conv} {type} {title} {id} {scope}

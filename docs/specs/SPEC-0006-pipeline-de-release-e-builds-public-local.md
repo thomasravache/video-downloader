@@ -10,7 +10,7 @@ parent: SPEC-0001
 depends_on: [SPEC-0004]
 consumes_contract: [SPEC-0005@1]
 contract_version: 1
-touches: [tsconfig.json, vitest.config.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
+touches: [tsconfig.json, vitest.config.ts, tests/harness/arch.test.ts, tests/harness/arch-gaps.test.ts, tests/fixtures/providers/release-*/**, .github/workflows/release.yml, scripts/release/**, tests/release/**, docs/privacy-policy.md, docs/runbook.md, docs/store-listing/**]
 adrs: [ADR-0010, ADR-0011, ADR-0004, ADR-0006]
 external: []
 size: M
@@ -173,7 +173,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/71]⎯) — 127ef64 | 2026-09-30 |
-| G2 Green | PASS | build exit 0 (✔ Finished in 166 ms); test exit 0 (Duration  17.99s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 128 ms); coverage exit 0 (================================================================================) — 6663870 | 2026-09-30 |
+| G2 Green | FAIL | build exit 0 (✔ Finished in 187 ms); test exit 1 (⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯); lint exit 0 (✔ Finished in 144 ms); coverage exit 1 (⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯) — 6d06dc5 | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — 6663870 | 2026-09-30 |
 | G4 Review | FAIL | reviewer-agent ab7e7390: CHANGES_REQUESTED @ 6663870 — 1 major (runbook: rollback não funciona) + 7 minor (flavor-guard fail-open e match frouxo, smoke sem asserção de não-rebuild, redact inconsistente, docs vs manifest, fetch redundante, re-run do webstore) | 2026-09-30 |
 | G5 Integração & CI | PENDING | | |
@@ -185,6 +185,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
 | IMP-01 | 2026-09-30 | G1 | spec | Contrato da Chrome Web Store API baseado na v1.1 (publishTarget trustedTesters, uploadState FAILURE, sem publisherId); a API vigente é a v2 (docs oficiais: v1 arquivada desde out/2025): upload POST /upload/v2/publishers/{p}/items/{i}:upload com uploadState SUCCEEDED\|IN_PROGRESS\|FAILED; publish com publishType DEFAULT_PUBLISH\|STAGED_PUBLISH; exige publisherId | Consulta à documentação oficial e ao discovery document v2 (2026-09-30) | Architect (emenda; ratificação do Thomas no H2) | Emenda 1 (API) — cliente Web Store v2; ratificação no H2 da onda 3 | 2026-09-30 |
+| IMP-02 | 2026-10-02 | G2 | trabalho | TEST_DEFECT: providersWithFixture() em tests/release/flavor-guard.test.ts cria not-a-provider/readme.txt (subdiretório sem provider.json) e espera que seja ignorado, contradizendo a Emenda 2 (falha fechada: INVALID_PROVIDER_MANIFEST) e os testes de endurecimento | Implementer implementou o endurecimento (patch no scratchpad) e passa todos os testes novos; só os 4 testes antigos que usam o helper falham | Test-writer (remover not-a-provider/readme.txt do helper) |  |  |
+| IMP-03 | 2026-10-02 | G2 | spec | pnpm test deixa src/providers/ vazio (tests/harness/arch*.test.ts criam src/providers/__arch_tmp__-* e removem só as subpastas); a 2ª execução e o pnpm coverage falham no flavor-guard endurecido (NO_PROVIDERS_FOUND/diretório vazio). Suíte não idempotente | Reproduzido: 1ª execução passa, 2ª falha; rmdir src/providers manual restaura | Architect (emenda de escopo) + Test-writer (limpeza nos testes de arquitetura) | Emenda 3 (escopo) — limpeza do diretório-pai nos testes de arquitetura | 2026-10-02 |
 
 ## 14. Relatório de Entrega
 
@@ -220,3 +222,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | 1 (escopo) | 2026-09-30 | `touches` inclui `tsconfig.json` (incluir `scripts/`) e `vitest.config.ts` (incluir `tests/release/**`); scripts executados com Node 24 nativo em vez de `tsx` | o harness da SPEC-0003 só enxerga os diretórios que já existiam; evita uma dependência fora dos ADRs | SPEC-0005 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
 | 1 (API) | 2026-09-30 | cliente da Chrome Web Store passa da API v1.1 para a v2 (`publisherId`, `uploadState SUCCEEDED/IN_PROGRESS/FAILED`, `publishType STAGED_PUBLISH/DEFAULT_PUBLISH`; rc = staged, estável = default); novo secret `CWS_PUBLISHER_ID`; `touches` inclui `tests/fixtures/providers/release-*/**` | a documentação oficial (developer.chrome.com/docs/webstore/api, consultada em 2026-09-30) declara a v2 vigente e a v1 arquivada desde out/2025; `trustedTesters` não existe na v2 | ADR-0004 (texto do staging) | pendente de ratificação do Thomas no H2 da onda 3 |
 | 2 (revisão) | 2026-09-30 | flavor-guard falha fechado (diretório sem manifesto, zero manifestos), id por token inteiro com formato mínimo, e rejeita `.map` e caminhos `src/providers/<local>` no bundle público; correção do procedimento de rollback no runbook; asserção de não-rebuild no smoke | achados do Reviewer (G4): o guard é a única barreira do ADR-0011 e falhava aberto; o rollback descrito não funcionava | nenhuma | pendente de ratificação do Thomas no H2 da onda 3 |
+| 3 (escopo) | 2026-10-02 | `touches` inclui `tests/harness/arch.test.ts` e `arch-gaps.test.ts` (SPEC-0003) para que a limpeza dos testes de arquitetura remova também o diretório-pai (`src/providers/`) que eles criam | `pnpm test` deixava `src/providers/` vazio e o flavor-guard (falha fechada) quebrava na 2ª execução e no `pnpm coverage`; defeito de poluição de teste | SPEC-0003 (testes, sem mudança de comportamento) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
