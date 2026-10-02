@@ -123,9 +123,14 @@ export default defineBackground(() => {
   });
 
   // Download concluído/interrompido: fecha o job em `saving` (SPEC-0012). Registro síncrono, no topo.
-  browser.downloads.onChanged.addListener((delta) => {
-    void service.onDownloadChanged(delta);
-  });
+  try {
+    browser.downloads.onChanged.addListener((delta) => {
+      void service.onDownloadChanged(delta);
+    });
+  } catch (error) {
+    // Ambiente sem a API (ex.: fake de browser.*): o job não fecha por evento.
+    unavailable(error instanceof Error ? error.name : 'unknown');
+  }
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     const target =
