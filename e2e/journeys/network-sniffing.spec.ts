@@ -31,41 +31,102 @@ function savedStreams(downloadsDir: string): number {
   ).length;
 }
 
+/**
+ * Espera o observador de rede da extensão estar ativo. Logo após o Chromium carregar a extensão, os
+ * listeners de `webRequest` do service worker ainda não valem para as primeiras requisições (a
+ * captura da primeira página some, a seguinte é gravada). A sonda busca uma mídia de fixture numa
+ * aba descartável até a captura aparecer em `storage.session`; só então a jornada começa.
+ */
+async function waitForNetworkObserver(
+  context: BrowserContext,
+  serviceWorker: Worker,
+  fixturesUrl: string,
+): Promise<void> {
+  const probe = await context.newPage();
+  await probe.goto(`${fixturesUrl}pages/no-video.html`);
+  const probeTabId = await tabIdOf(probe, serviceWorker);
+  await expect
+    .poll(
+      async () => {
+        await probe.evaluate(async () => {
+          await (await fetch(`/media/stream.mp4?probe=${String(Date.now())}`)).arrayBuffer();
+        });
+        return (await storedCaptureUrls(serviceWorker, probeTabId)).length;
+      },
+      {
+        timeout: 15_000,
+        intervals: [250, 500, 1_000],
+        message: 'observador de rede (webRequest) da extensão ativo',
+      },
+    )
+    .toBeGreaterThan(0);
+  await probe.close();
+}
+
 /** Abre a página, espera o fetch dela terminar e devolve a página e o id da aba. */
 async function openFetchingPage(
   context: BrowserContext,
   serviceWorker: Worker,
-  url: string,
+  fixturesUrl: string,
+  path: string,
 ): Promise<{ page: Page; tabId: number }> {
+  await waitForNetworkObserver(context, serviceWorker, fixturesUrl);
   const page = await context.newPage();
-  await page.goto(url);
+  await page.goto(`${fixturesUrl}${path}`);
   await expect(page.locator('body')).toHaveAttribute('data-fetched', 'done');
   return { page, tabId: await tabIdOf(page, serviceWorker) };
 }
 
-/** Recarrega o popup até haver ao menos `minItems` itens (o service worker grava a rede de forma assíncrona). */
-async function popupWithItems(
-  context: BrowserContext,
-  extensionId: string,
+interface StoredCapture {
+  candidate: { mediaUrl: string };
+}
+
+/** URLs de mídia gravadas em `storage.session` (`vd:net:<tabId>`) pela detecção por rede. */
+async function storedCaptureUrls(serviceWorker: Worker, tabId: number): Promise<string[]> {
+  const stored = await serviceWorker.evaluate(
+    async (key) => {
+      const chromeApi = (
+        globalThis as unknown as {
+          chrome: { storage: { session: { get(k: string): Promise<Record<string, unknown>> } } };
+        }
+      ).chrome;
+      return (await chromeApi.storage.session.get(key))[key];
+    },
+    `vd:net:${String(tabId)}`,
+  );
+  return Array.isArray(stored) ? (stored as StoredCapture[]).map((e) => e.candidate.mediaUrl) : [];
+}
+
+/**
+ * Espera, de forma determinística, a captura de rede estar gravada: o popup roda a detecção uma
+ * única vez ao abrir, então abri-lo antes da gravação daria uma lista sem o item de rede.
+ */
+async function waitForStoredCapture(
+  serviceWorker: Worker,
   tabId: number,
-  minItems: number,
-): Promise<Page> {
-  const popup = await openPopupForTab(context, extensionId, tabId);
+  urlSuffix: string,
+): Promise<void> {
   await expect
     .poll(
-      async () => {
-        await popup.reload();
-        await popup
-          .getByTestId('candidate-item')
-          .first()
-          .waitFor({ timeout: 1_500 })
-          .catch(() => undefined);
-        return popup.getByTestId('candidate-item').count();
+      async () =>
+        (await storedCaptureUrls(serviceWorker, tabId)).filter((url) => url.endsWith(urlSuffix))
+          .length,
+      {
+        timeout: 15_000,
+        message: `captura de rede *${urlSuffix} gravada para a aba ${String(tabId)}`,
       },
-      { timeout: 15_000 },
     )
-    .toBeGreaterThanOrEqual(minItems);
-  return popup;
+    .toBe(1);
+}
+
+/** Espera a captura de rede da aba ser limpa (navegação para outra página). */
+async function waitForClearedCapture(serviceWorker: Worker, tabId: number): Promise<void> {
+  await expect
+    .poll(async () => (await storedCaptureUrls(serviceWorker, tabId)).length, {
+      timeout: 15_000,
+      message: `captura de rede da aba ${String(tabId)} limpa após a navegação`,
+    })
+    .toBe(0);
 }
 
 async function seriousViolations(popup: Page) {
@@ -84,10 +145,12 @@ test.describe('detecção por rede', () => {
     const { tabId } = await openFetchingPage(
       context,
       serviceWorker,
-      `${fixturesUrl}pages/mse-network.html`,
+      fixturesUrl,
+      'pages/mse-network.html',
     );
 
-    const popup = await popupWithItems(context, extensionId, tabId, 1);
+    await waitForStoredCapture(serviceWorker, tabId, '/media/stream.mp4');
+    const popup = await openPopupForTab(context, extensionId, tabId);
 
     const downloadable = popup
       .getByTestId('candidate-item')
@@ -110,10 +173,12 @@ test.describe('detecção por rede', () => {
     const { tabId } = await openFetchingPage(
       context,
       serviceWorker,
-      `${fixturesUrl}pages/hls-network.html`,
+      fixturesUrl,
+      'pages/hls-network.html',
     );
 
-    const popup = await popupWithItems(context, extensionId, tabId, 1);
+    await waitForStoredCapture(serviceWorker, tabId, '/hls/playlist.m3u8');
+    const popup = await openPopupForTab(context, extensionId, tabId);
 
     const item = popup.getByTestId('candidate-item');
     await expect(item).toHaveCount(1);
@@ -132,12 +197,15 @@ test.describe('detecção por rede', () => {
     const { page, tabId } = await openFetchingPage(
       context,
       serviceWorker,
-      `${fixturesUrl}pages/mse-network.html`,
+      fixturesUrl,
+      'pages/mse-network.html',
     );
-    const popup = await popupWithItems(context, extensionId, tabId, 1);
+    await waitForStoredCapture(serviceWorker, tabId, '/media/stream.mp4');
+    const popup = await openPopupForTab(context, extensionId, tabId);
     await expect(popup.getByTestId('download-button')).toHaveCount(1);
 
     await page.goto(`${fixturesUrl}pages/no-video.html`);
+    await waitForClearedCapture(serviceWorker, tabId);
     await popup.reload();
 
     await expect(popup.getByTestId('empty-state')).toBeVisible();
