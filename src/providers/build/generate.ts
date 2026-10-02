@@ -7,9 +7,13 @@ export interface ProviderEntry extends ProviderManifest {
 
 const GENERIC_ID = 'generic';
 
-/** Gera o código de `virtual:providers` só com os providers do flavor; `generic` por último. */
+/**
+ * Gera o código de `virtual:providers`; `generic` por último.
+ * `public`: só os providers que declaram `public`. `local` é o superconjunto (providers extras
+ * além dos públicos), então inclui todos — o que nunca pode vazar é `local` para o build `public`.
+ */
 export function generateRegistrySource(entries: ProviderEntry[], flavor: Flavor): string {
-  const included = entries.filter((entry) => entry.flavors.includes(flavor));
+  const included = entries.filter((entry) => flavor === 'local' || entry.flavors.includes(flavor));
   const ordered = [
     ...included.filter((entry) => entry.id !== GENERIC_ID),
     ...included.filter((entry) => entry.id === GENERIC_ID),
