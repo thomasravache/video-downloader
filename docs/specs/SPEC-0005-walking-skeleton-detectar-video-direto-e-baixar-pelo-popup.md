@@ -215,8 +215,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — ? | 2026-09-30 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/24]⎯) — ad36e26 | 2026-10-02 |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 191 ms); test exit 0 (Duration  21.21s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 143 ms); coverage exit 0 (================================================================================) — ce4e141 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (20 modules, 33 dependencies cruised)) — ce4e141 | 2026-10-02 |
 | G4 Review | PENDING | | |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
@@ -261,3 +261,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-09-30 | `touches` inclui `package.json`/`pnpm-lock.yaml` (única dependência nova: `@axe-core/playwright`, já exigida no §7.6), `.dependency-cruiser.cjs` (o módulo virtual `virtual:providers` precisa de exceção em `not-to-unresolvable`, sem afrouxar as regras do ADR-0001) e `e2e/support/**` | necessidades descobertas ao planejar a onda 3 contra o harness real da SPEC-0003 | SPEC-0006 (nenhuma: arquivos distintos) | pendente de ratificação do Thomas no H2 da onda 3 |
 | 1 (teste) | 2026-09-30 | E2E e IT-06 rodam contra cópia do build com `host_permissions` para `http://127.0.0.1/*` adicionada só pelo harness; popup aceita `?tabId=<n>`; `data-testid` fixados; `activeTab` verificado manualmente no G6 | `activeTab` só é concedido por clique real do usuário; probe no Chromium real provou que `?tabId=` e `action.openPopup()` não obtêm o grant | SPEC-0006 (nenhuma) | thomas (escolha da opção 1 no chat, 2026-09-30) |
+| 2 (esclarecimento) | 2026-10-02 | o registro do flavor `local` inclui todos os providers (superset do `public`); o `public` inclui só os que declaram `public`, com `generic` por último | o teste UT-05 e o README definem o `local` como superset; a leitura estrita deixaria um provider `public`-only fora do build local | SPEC-0006 (flavor-guard lê o mesmo `provider.json`; sem efeito) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |

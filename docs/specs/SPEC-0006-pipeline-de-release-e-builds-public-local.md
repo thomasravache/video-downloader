@@ -175,7 +175,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/71]⎯) — 127ef64 | 2026-09-30 |
 | G2 Green | PASS | build exit 0 (✔ Finished in 175 ms); test exit 0 (Duration  21.10s (tests 98%, import 1%)); lint exit 0 (✔ Finished in 149 ms); coverage exit 0 (================================================================================) — efed85d | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (3 modules, 0 dependencies cruised)) — efed85d | 2026-10-02 |
-| G4 Review | FAIL | reviewer-agent ab7e7390: CHANGES_REQUESTED @ 6663870 — 1 major (runbook: rollback não funciona) + 7 minor (flavor-guard fail-open e match frouxo, smoke sem asserção de não-rebuild, redact inconsistente, docs vs manifest, fetch redundante, re-run do webstore) | 2026-09-30 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent ae497dd9 (2ª rodada): APPROVED @ efed85d (0 blocker/major, 3 minor; achados da 1ª rodada todos corrigidos; API v2 conferida) — efed85d | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
