@@ -3,8 +3,10 @@ import type { CandidateStore } from './candidates';
 import type {
   DetectResponse,
   FrameSnapshot,
+  CancelResponse,
   DiagnosticsResponse,
   DownloadResponse,
+  JobResponse,
   ResolveHlsResponse,
   Provider,
   VideoCandidate,
@@ -27,7 +29,12 @@ import type {
 } from './ports';
 
 export type ServiceResponse =
-  DetectResponse | DownloadResponse | DiagnosticsResponse | ResolveHlsResponse;
+  | DetectResponse
+  | DownloadResponse
+  | DiagnosticsResponse
+  | ResolveHlsResponse
+  | JobResponse
+  | CancelResponse;
 
 export interface ServiceDeps {
   extensionId: string;
@@ -398,6 +405,9 @@ export function createService(deps: ServiceDeps): Service {
           return { ok: true, entries: diagnostics.snapshot() };
         case 'resolveHls':
           return resolveHls(valid.candidateId, correlationId);
+        case 'job':
+        case 'cancel':
+          throw new Error('NotImplemented');
       }
     },
     async onNetworkResponse(response) {

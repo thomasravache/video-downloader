@@ -81,6 +81,7 @@ function downloadError(response: Exclude<DownloadResponse, { ok: true }>): strin
     case 'UNSUPPORTED':
       return t('errorUnsupported');
     case 'INVALID_MESSAGE':
+    default:
       return t('errorGeneric');
   }
 }

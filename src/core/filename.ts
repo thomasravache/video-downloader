@@ -2,6 +2,8 @@ export interface FilenameInput {
   title?: string;
   mediaUrl: string;
   mimeType?: string;
+  /** Rótulo da qualidade HLS (SPEC-0012): o nome vira `<título> - <rótulo>.mp4`. */
+  label?: string;
   /** Relógio injetável; padrão: agora. Usado só no fallback `video-<data>.mp4`. */
   now?: Date;
 }

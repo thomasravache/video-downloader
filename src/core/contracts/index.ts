@@ -2,6 +2,7 @@
 
 import { validateHlsInfo } from '../hls';
 import type { HlsInfo } from '../hls';
+import type { JobState } from '../hls-download/job';
 
 export type Flavor = 'public' | 'local';
 
@@ -83,10 +84,19 @@ export interface Provider extends ProviderManifest {
 }
 
 export type DetectMessage = { type: 'detect'; tabId: number };
-export type DownloadMessage = { type: 'download'; candidateId: string };
+/** `variantIndex` (SPEC-0012): posição em `HlsInfo.variants`; padrão 0 (a maior). */
+export type DownloadMessage = { type: 'download'; candidateId: string; variantIndex?: number };
 export type DiagnosticsMessage = { type: 'diagnostics' };
 export type ResolveHlsMessage = { type: 'resolveHls'; candidateId: string };
-export type Message = DetectMessage | DownloadMessage | DiagnosticsMessage | ResolveHlsMessage;
+export type JobMessage = { type: 'job'; jobId: string };
+export type CancelMessage = { type: 'cancel'; jobId: string };
+export type Message =
+  | DetectMessage
+  | DownloadMessage
+  | DiagnosticsMessage
+  | ResolveHlsMessage
+  | JobMessage
+  | CancelMessage;
 
 export interface LogEntry {
   ts: string;
@@ -175,8 +185,20 @@ export function validateDetectResponse(input: unknown): DetectResponseValidation
 
 export type DownloadResponse =
   | { ok: true; downloadId: number }
+  /** HLS (SPEC-0012): começou um job. */
+  | { ok: true; jobId: string }
   | { ok: false; error: 'CANDIDATE_NOT_FOUND' | 'PROTECTED' | 'UNSUPPORTED' | 'INVALID_MESSAGE' }
+  | {
+      ok: false;
+      error: 'HLS_NOT_RESOLVED' | 'ENCRYPTED' | 'LIVE' | 'JOB_ALREADY_RUNNING' | 'TOO_MANY_JOBS';
+    }
   | { ok: false; error: 'DOWNLOAD_FAILED'; reason: string };
+
+export type JobResponse =
+  { ok: true; job: JobState } | { ok: false; error: 'JOB_NOT_FOUND' | 'INVALID_MESSAGE' };
+
+export type CancelResponse =
+  { ok: true } | { ok: false; error: 'JOB_NOT_FOUND' | 'INVALID_MESSAGE' };
 
 export type ResolveHlsResponse =
   | { ok: true; hls: HlsInfo }
