@@ -202,9 +202,9 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — b3992e6 (árvore suja) | 2026-10-02 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/29]⎯) — eeb8c56 | 2026-10-02 |
-| G2 Green | PASS | build exit 0 (✔ Finished in 201 ms); test exit 0 (Duration  26.40s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 150 ms); coverage exit 0 (================================================================================) — f472a01 | 2026-10-02 |
-| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)) — f472a01 | 2026-10-02 |
-| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01 (0 blocker/major, 3 minor; webRequest acorda o service worker suspenso, provado no Chromium real; mutações detectadas) — f472a01 | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 203 ms); test exit 0 (Duration  27.83s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 149 ms); coverage exit 0 (================================================================================) — 20c2a99 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)) — 20c2a99 | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01; delta 20c2a99 (IT-06) = correção exata recomendada pelo reviewer, conferida pelo Architect (diff de 1 arquivo, testes verdes) — 20c2a99 | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
