@@ -6,7 +6,7 @@
 
 - `pnpm install` · `pnpm dev` · `pnpm build` (gera `.output/chrome-mv3-{public,local}`)
 - `pnpm lint && pnpm format:check && pnpm typecheck` (gate de qualidade)
-- `pnpm exec vitest run tests/tooling` (testes atuais; `pnpm test`/`arch` são stubs até a SPEC-0003)
+- `pnpm test` · `pnpm test:integration` · `pnpm test:e2e [--flavor public|local]` · `pnpm arch` · `pnpm coverage`
 
 ## Convenções
 

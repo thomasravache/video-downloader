@@ -4,8 +4,8 @@
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 12 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 2, implemented 3
+- Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, implemented 5
 - Impedimentos: **0 aberto(s)**, 6 resolvido(s)
 
 ## Cobertura de Pilares
@@ -31,25 +31,23 @@ Perfil: **padrao**
 
 | Jornada | Situação | Specs |
 |---|---|---|
-| Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | planejada | SPEC-0005 |
+| Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005 |
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0005, SPEC-0006  
+**Em andamento:** —  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0005 | Walking skeleton: detectar vídeo direto e baixar pelo popup | full/M | in-progress | 🔄 em andamento |  |
-| 2 | SPEC-0006 | Pipeline de release e builds public/local | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0005 |
-| 2 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0005 |
+| 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
 
 ## Épicos
 
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
-| SPEC-0001 | Fundação da extensão de download de vídeos | approved | 3/6 implementadas |
+| SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
 
 ## Grafo de Dependências
 
@@ -59,18 +57,8 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 flowchart LR
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
-    S0003["SPEC-0003<br/>Harness de testes (unitário, integração…"]:::implemented
-    S0004["SPEC-0004<br/>Pipeline de CI no GitHub Actions"]:::implemented
-    S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::inprogress
-    S0006["SPEC-0006<br/>Pipeline de release e builds public/loc…"]:::inprogress
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
   end
-  S0002 --> S0003
-  S0002 --> S0004
-  S0003 --> S0005
-  S0004 --> S0005
-  S0004 --> S0006
-  S0005 -. contrato v1 .-> S0006
   S0002 --> S0007
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
@@ -87,8 +75,8 @@ flowchart LR
 | [SPEC-0002](SPEC-0002-repositorio-e-tooling-wxt-typescript.md) | Repositório e tooling (WXT + TypeScript) | full | foundation | implemented | 2026-09-30 | SPEC-0001 | — | — |
 | [SPEC-0003](SPEC-0003-harness-de-testes-unitario-integracao-e2e-com-extensao-carre.md) | Harness de testes (unitário, integração, E2E com extensão carregada, arquitetura) | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
 | [SPEC-0004](SPEC-0004-pipeline-de-ci-no-github-actions.md) | Pipeline de CI no GitHub Actions | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
-| [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | in-progress | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
-| [SPEC-0006](SPEC-0006-pipeline-de-release-e-builds-public-local.md) | Pipeline de release e builds public/local | full | foundation | in-progress | 2026-09-30 | SPEC-0001 | SPEC-0004 | SPEC-0005@1 |
+| [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
+| [SPEC-0006](SPEC-0006-pipeline-de-release-e-builds-public-local.md) | Pipeline de release e builds public/local | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0004 | SPEC-0005@1 |
 | [SPEC-0007](SPEC-0007-endurecer-selecao-de-flavor-e-tipar-flavor.md) | Endurecer seleção de flavor e tipar FLAVOR | lite | fix | proposed | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
 
 ## ADRs
