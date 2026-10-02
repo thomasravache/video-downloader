@@ -77,7 +77,7 @@ export function simulateOffscreen(
     });
     const results = await onMessage.trigger(
       { target: 'background', jobId, event },
-      { id: bg.ownId },
+      { id: bg.ownId, url: `chrome-extension://${bg.ownId}/offscreen.html` },
       respond,
     );
     const promised = results.find((r) => r instanceof Promise) as Promise<unknown> | undefined;
