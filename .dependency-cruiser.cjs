@@ -78,6 +78,13 @@ module.exports = {
       to: { path: '^virtual:providers$' },
     },
     {
+      name: 'm3u8-parser-only-in-core',
+      comment: 'ADR-0013: m3u8-parser (parse puro de HLS) só pode ser importado por src/core.',
+      severity: 'error',
+      from: { pathNot: '^src/core/' },
+      to: { path: '(^|/)node_modules/m3u8-parser(/|$)' },
+    },
+    {
       name: 'no-circular',
       comment: 'Ciclos de importação são proibidos.',
       severity: 'error',

@@ -28,6 +28,8 @@ export interface SessionStoragePort {
   get(key: string): Promise<unknown>;
   set(key: string, value: unknown): Promise<void>;
   remove(key: string): Promise<void>;
+  /** Todas as chaves guardadas; permite achar um candidato sem conhecer a aba. */
+  keys?(): Promise<string[]>;
 }
 
 const SEGMENT_EXTENSIONS = new Set(['ts', 'm4s', 'aac', 'm4a', 'mp3', 'vtt']);
@@ -125,7 +127,8 @@ interface StoredEntry {
   candidate: VideoCandidate;
 }
 
-const keyOf = (tabId: number): string => `vd:net:${String(tabId)}`;
+const KEY_PREFIX = 'vd:net:';
+const keyOf = (tabId: number): string => `${KEY_PREFIX}${String(tabId)}`;
 
 /** Repositório por aba sobre `storage.session` (chave `vd:net:<tabId>`, máx. 50 itens). */
 export class NetworkStore {
@@ -151,11 +154,49 @@ export class NetworkStore {
   add(tabId: number, candidate: VideoCandidate): Promise<void> {
     return this.serial(async () => {
       const key = withoutFragment(candidate.mediaUrl);
-      const kept = (await this.read(tabId)).filter(
-        (entry) => withoutFragment(entry.candidate.mediaUrl) !== key,
-      );
-      const next = [{ at: this.now(), candidate }, ...kept].slice(0, MAX_PER_TAB);
+      const entries = await this.read(tabId);
+      const previous = entries.find((entry) => withoutFragment(entry.candidate.mediaUrl) === key);
+      const kept = entries.filter((entry) => entry !== previous);
+      // Reobservar uma playlist já resolvida não pode apagar o que `resolveHls` descobriu.
+      const { hls, protection, support } = previous?.candidate ?? {};
+      const stored: VideoCandidate =
+        hls && protection && support ? { ...candidate, hls, protection, support } : candidate;
+      const next = [{ at: this.now(), candidate: stored }, ...kept].slice(0, MAX_PER_TAB);
       await this.port.set(keyOf(tabId), next);
+    });
+  }
+
+  /** Atualiza o candidato guardado (mesmo id) sem mudar a ordem; ausente é ignorado. */
+  update(tabId: number, candidate: VideoCandidate): Promise<void> {
+    return this.serial(async () => {
+      const entries = await this.read(tabId);
+      const at = entries.findIndex((entry) => entry.candidate.id === candidate.id);
+      if (at < 0) {
+        return;
+      }
+      const current = entries[at];
+      if (current) {
+        entries[at] = { at: current.at, candidate };
+        await this.port.set(keyOf(tabId), entries);
+      }
+    });
+  }
+
+  /** Acha um candidato pelo id em qualquer aba (o service worker pode ter reiniciado). */
+  find(candidateId: string): Promise<VideoCandidate | undefined> {
+    return this.serial(async () => {
+      for (const key of (await this.port.keys?.()) ?? []) {
+        if (!key.startsWith(KEY_PREFIX)) {
+          continue;
+        }
+        const raw = await this.port.get(key);
+        const entries = Array.isArray(raw) ? (raw as StoredEntry[]) : [];
+        const found = entries.find((entry) => entry.candidate.id === candidateId);
+        if (found) {
+          return found.candidate;
+        }
+      }
+      return undefined;
     });
   }
 
@@ -169,18 +210,28 @@ export class NetworkStore {
   }
 }
 
-/** DOM ∪ rede, sem repetir a mesma URL (sem fragmento); o candidato do DOM prevalece. */
+/**
+ * DOM ∪ rede, sem repetir a mesma URL (sem fragmento); o candidato do DOM prevalece, exceto um `file`
+ * do DOM contra um `hls` da rede (a rede viu a playlist de verdade).
+ */
 export function mergeCandidates(
   dom: VideoCandidate[],
   network: VideoCandidate[],
 ): VideoCandidate[] {
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const merged: VideoCandidate[] = [];
   for (const candidate of [...dom, ...network]) {
     const key = withoutFragment(candidate.mediaUrl);
-    if (!seen.has(key)) {
-      seen.add(key);
+    const at = seen.get(key);
+    if (at === undefined) {
+      seen.set(key, merged.length);
       merged.push(candidate);
+    } else if (
+      candidate.source === 'network' &&
+      candidate.kind === 'hls' &&
+      merged[at]?.kind === 'file'
+    ) {
+      merged[at] = candidate;
     }
   }
   return merged;

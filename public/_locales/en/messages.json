@@ -79,5 +79,35 @@
   },
   "accessDenied": {
     "message": "Access not granted. Videos from those sites will not be detected."
+  },
+  "badgeEncrypted": {
+    "message": "Protected (encrypted)"
+  },
+  "badgeLive": {
+    "message": "Live streams are not supported"
+  },
+  "hlsLoading": {
+    "message": "Reading playlist…"
+  },
+  "hlsQuality": {
+    "message": "Quality"
+  },
+  "hlsDuration": {
+    "message": "Duration: $DURATION$",
+    "placeholders": {
+      "duration": {
+        "content": "$1",
+        "example": "12:34"
+      }
+    }
+  },
+  "hlsErrorFetch": {
+    "message": "Could not read this video's playlist."
+  },
+  "hlsErrorParse": {
+    "message": "This video's playlist is not valid."
+  },
+  "hlsErrorGeneric": {
+    "message": "Could not read the playlist. Reopen the popup and try again."
   }
 }

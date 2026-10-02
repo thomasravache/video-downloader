@@ -92,5 +92,43 @@
   "accessDenied": {
     "message": "Acesso não concedido. Os vídeos desses sites não serão detectados.",
     "description": "Usuário negou o acesso"
+  },
+  "badgeEncrypted": {
+    "message": "Protegido (criptografado)",
+    "description": "Selo de HLS criptografado; sem download"
+  },
+  "badgeLive": {
+    "message": "Transmissão ao vivo não suportada",
+    "description": "Selo de HLS ao vivo (sem EXT-X-ENDLIST)"
+  },
+  "hlsLoading": {
+    "message": "Lendo playlist…",
+    "description": "Esqueleto enquanto a playlist HLS é lida"
+  },
+  "hlsQuality": {
+    "message": "Qualidade",
+    "description": "Rótulo do seletor de qualidade do HLS"
+  },
+  "hlsDuration": {
+    "message": "Duração: $DURATION$",
+    "description": "Duração total da playlist HLS",
+    "placeholders": {
+      "duration": {
+        "content": "$1",
+        "example": "12:34"
+      }
+    }
+  },
+  "hlsErrorFetch": {
+    "message": "Não foi possível ler a playlist deste vídeo.",
+    "description": "Falha de rede ao buscar a playlist HLS"
+  },
+  "hlsErrorParse": {
+    "message": "A playlist deste vídeo não é válida.",
+    "description": "Conteúdo da playlist HLS inválido"
+  },
+  "hlsErrorGeneric": {
+    "message": "Não foi possível ler a playlist. Reabra o popup e tente de novo.",
+    "description": "Erro inesperado ao resolver o HLS"
   }
 }

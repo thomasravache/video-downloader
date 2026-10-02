@@ -5,6 +5,7 @@ import { createService } from '../../src/core/service';
 import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
 import { toNetworkResponse } from './network';
+import { createPlaylistFetcher } from './playlist-fetcher';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
   if (typeof value !== 'object' || value === null) {
@@ -30,12 +31,14 @@ export default defineBackground(() => {
     get: async (key) => (await browser.storage.session.get(key))[key],
     set: (key, value) => browser.storage.session.set({ [key]: value }),
     remove: (key) => browser.storage.session.remove(key),
+    keys: async () => Object.keys(await browser.storage.session.get(null)),
   });
   const service = createService({
     extensionId: browser.runtime.id,
     providers,
     diagnostics,
     network,
+    playlists: createPlaylistFetcher(),
     scripting: {
       async collectVideos(tabId) {
         const injections = await browser.scripting.executeScript({
