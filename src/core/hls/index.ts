@@ -38,8 +38,39 @@ export class HlsParseError extends Error {
 
 export type HlsInfoValidation = { ok: true; value: HlsInfo } | { ok: false; error: string };
 
-const KEY_TAG = /^#EXT-X-(?:SESSION-)?KEY:(.*)$/;
-const METHOD = /(?:^|,)METHOD=([^,]*)/;
+const KEY_TAG = /^#EXT-X-(?:SESSION-)?KEY(?::(.*))?$/;
+const MAX_VARIANTS = 50;
+
+/** Divide uma lista de atributos nas vírgulas fora de aspas duplas. */
+function splitAttributes(list: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (const char of list) {
+    if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current);
+  return parts;
+}
+
+/**
+ * Regra de dúvida: só um único atributo `METHOD` (nome com maiúsculas exatas) de valor `NONE` (sem
+ * diferenciar maiúsculas) deixa a chave limpa; METHOD ausente, repetido, desconhecido ou lista vazia
+ * contam como criptografados.
+ */
+function keyIsEncrypted(attributeList: string): boolean {
+  const methods = splitAttributes(attributeList)
+    .filter((part) => part.startsWith('METHOD='))
+    .map((part) => part.slice('METHOD='.length));
+  return methods.length !== 1 || methods[0]?.toUpperCase() !== 'NONE';
+}
 
 /**
  * Criptografia lida das linhas da playlist, não do parser: o `m3u8-parser` ignora chaves sem URI e
@@ -54,20 +85,21 @@ function scanTags(lines: readonly string[]): { encrypted: boolean; fmp4: boolean
       continue;
     }
     const key = KEY_TAG.exec(line);
-    if (key) {
-      const method = METHOD.exec(key[1] ?? '')?.[1]
-        ?.trim()
-        .replace(/^"|"$/g, '');
-      if (method !== 'NONE') {
-        encrypted = true;
-      }
+    if (key && keyIsEncrypted(key[1] ?? '')) {
+      encrypted = true;
     }
   }
   return { encrypted, fmp4 };
 }
 
-function absolute(uri: string, baseUrl: string): string {
-  return new URL(uri, baseUrl).href;
+/** URL absoluta http(s) ou `undefined` (outros esquemas e URLs inválidas são descartados). */
+function absoluteHttp(uri: string, baseUrl: string): string | undefined {
+  try {
+    const { href, protocol } = new URL(uri, baseUrl);
+    return protocol === 'http:' || protocol === 'https:' ? href : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function label(bandwidth: number, height: number | undefined): string {
@@ -81,6 +113,10 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
     if (typeof playlist.uri !== 'string' || playlist.uri === '') {
       return [];
     }
+    const url = absoluteHttp(playlist.uri, baseUrl);
+    if (url === undefined) {
+      return [];
+    }
     const attributes = playlist.attributes ?? {};
     const bandwidth =
       typeof attributes.BANDWIDTH === 'number' && Number.isFinite(attributes.BANDWIDTH)
@@ -89,7 +125,7 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
     const { width, height } = attributes.RESOLUTION ?? {};
     return [
       {
-        url: absolute(playlist.uri, baseUrl),
+        url,
         bandwidth,
         ...(typeof width === 'number' && width > 0 && { width }),
         ...(typeof height === 'number' && height > 0 && { height }),
@@ -100,6 +136,7 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
   // `sort` é estável: variantes de mesma banda mantêm a ordem do arquivo.
   return found
     .sort((a, b) => b.bandwidth - a.bandwidth)
+    .slice(0, MAX_VARIANTS)
     .map((variant, index) => ({
       index,
       ...variant,
