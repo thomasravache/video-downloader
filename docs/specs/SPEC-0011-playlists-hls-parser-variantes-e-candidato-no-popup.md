@@ -58,7 +58,7 @@ Quando a rede revela uma playlist HLS (`.m3u8`), a extensão a **lê e interpret
 
 ## 5. Requisitos Não-Funcionais
 - **Desempenho e escala:** playlist ≤ 1 MiB e timeout de 10 s por requisição; `parseHlsPlaylist` de 5.000 segmentos < 50 ms — UT-02, IT-02.
-- **Segurança:** só `http(s)`; redireciona no máximo 3 vezes; nenhuma URL vinda do conteúdo da playlist é seguida nesta spec além da playlist da melhor variante (que precisa ser do mesmo tipo `http(s)`); respostas gigantes ou não-texto são recusadas — IT-02.
+- **Segurança:** só `http(s)`; `fetch` segue os redirecionamentos pelo navegador (`redirect: 'follow'`, limite próprio do Chrome) e a resposta só é aceita se a URL final (`response.url`) for `http(s)` — o teto de 3 redirecionamentos foi retirado por não ser implementável em service worker (Emenda 1); nenhuma URL vinda do conteúdo da playlist é seguida nesta spec além da playlist da melhor variante (que precisa ser do mesmo tipo `http(s)`); respostas gigantes ou não-texto são recusadas — IT-02.
 - **Privacidade e dados pessoais:** URLs e tokens só em memória/`storage.session`; logs sem query; nenhuma requisição além das playlists observadas — IT-03.
 - **Disponibilidade e resiliência:** falha de rede/parse vira erro tratado no popup (`HLS_FETCH_FAILED`/`HLS_PARSE_FAILED`), sem travar a lista — IT-01.
 - **Acessibilidade (UI):** `quality-select` com rótulo, operável por teclado, anunciado por leitores de tela; axe sem violações — E2E-01.
@@ -69,7 +69,7 @@ Quando a rede revela uma playlist HLS (`.m3u8`), a extensão a **lê e interpret
 
 ```ts
 // src/core/hls — HlsInfo (versão 1)
-interface HlsVariant { index: number; url: string; bandwidth: number; width?: number; height?: number; codecs?: string; label: string }
+interface HlsVariant { index: number;   /* posição na lista ORDENADA por banda decrescente: 0 = maior qualidade; é o `variantIndex` da SPEC-0012 */ url: string; bandwidth: number; width?: number; height?: number; codecs?: string; label: string }
 interface HlsInfo {
   type: 'master' | 'media';
   variants: HlsVariant[];            // master: da maior para a menor banda; media: [] (a própria playlist é a única qualidade)
@@ -85,7 +85,7 @@ function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo     // lança 
 // Mensagem: {type:'resolveHls', candidateId} →
 { ok:true, hls: HlsInfo }                                   // master: encrypted/live/duração refletem a playlist da melhor variante
 | { ok:false, error:'CANDIDATE_NOT_FOUND' | 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED' }
-// Limites do fetch: 10 s, 1 MiB, ≤ 3 redirecionamentos, só http(s), só text/* ou application/(vnd.apple.mpegurl|x-mpegurl|octet-stream)
+// Limites do fetch: 10 s, 1 MiB, redirecionamentos seguidos pelo navegador com URL final http(s), só http(s), só text/* ou application/(vnd.apple.mpegurl|x-mpegurl|octet-stream)
 
 // VideoCandidate (v4, aditiva): hls?: HlsInfo; protection: 'none' | 'drm' | 'encrypted'
 //   hls.encrypted → protection 'encrypted' (sem ação de download); hls.live → support 'unsupported-stream'
@@ -111,7 +111,9 @@ function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo     // lança 
 | fMP4 | `EXT-X-MAP` | `fmp4: true` | UT-02 |
 | Playlist inválida | vazia / HTML | `HLS_PARSE_FAILED` | UT-05, IT-01 |
 | Falha de rede | timeout/404 | `HLS_FETCH_FAILED` no popup | IT-01, IT-02 |
-| Limites | > 1 MiB, tipo errado, > 3 redirecionamentos | recusado | IT-02 |
+| Limites | > 1 MiB, tipo errado, URL final não http(s) | recusado | IT-02 |
+| Redirecionamento comum | playlist redireciona (1 a vários) para outra URL http(s) | seguido; a resposta final é lida | IT-02 |
+| Estado do candidato | após `resolveHls` de playlist criptografada / ao vivo / válida | `detect` devolve o candidato com `hls`, `protection: 'encrypted'` (criptografada), `support: 'unsupported-stream'` (ao vivo) ou `hls` resolvido (válida) | IT-04 |
 | Master → variante | master não mostra criptografia | busca a playlist da melhor variante | IT-01 |
 | Candidato inexistente | id desconhecido | `CANDIDATE_NOT_FOUND` | IT-01 |
 | Privacidade | URL com `?token=` | logs sem query; só as playlists são requisitadas | IT-03 |
@@ -130,7 +132,8 @@ function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo     // lança 
 
 ### 7.3 Testes de Integração
 - **IT-01** — Com o background real, `fakeBrowser` e um `PlaylistFetcherPort` apontado para o servidor de fixtures, `resolveHls` devolve `HlsInfo` para um master (buscando a playlist da melhor variante para `encrypted/live/duração`), `HLS_PARSE_FAILED` para conteúdo inválido, `HLS_FETCH_FAILED` para 404/timeout e `CANDIDATE_NOT_FOUND` para id desconhecido.
-- **IT-02** — Com o fetcher real contra o servidor de fixtures, respostas > 1 MiB, de tipo inesperado, com mais de 3 redirecionamentos ou com esquema não http(s) são recusadas; timeout de 10 s é respeitado (relógio injetado).
+- **IT-02** — Com o fetcher real contra o servidor de fixtures, respostas > 1 MiB, de tipo inesperado, cujo redirecionamento termine em esquema não http(s) ou com esquema não http(s) são recusadas; redirecionamentos para outra URL http(s) são seguidos; timeout de 10 s é respeitado (relógio injetado).
+- **IT-04** — Com o background real, depois de `resolveHls` bem-sucedido, uma nova chamada de `detect` devolve o mesmo candidato com `hls` preenchido; se `hls.encrypted` o candidato tem `protection: 'encrypted'` (e nenhuma ação de download), se `hls.live` tem `support: 'unsupported-stream'`; um `resolveHls` com falha não altera o candidato (Emenda 1).
 - **IT-03** — Com o logger real, depois de `resolveHls` com URL de `?token=...`, o diagnóstico não contém `token=`, e o servidor de fixtures só recebeu requisições às URLs de playlist.
 
 ### 7.4 Testes de Contrato
@@ -207,6 +210,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-10-02 | G1 | spec | Teto de 3 redirecionamentos não implementável em service worker (redirect:'manual' devolve resposta opaca sem Location); a spec não define o armazenamento do HlsInfo no candidato (necessário à recusa server-side da SPEC-0012); HlsVariant.index sem semântica | Teste-writer validou com fetcher de referência em Node (passa), mas o navegador não permite contar redirecionamentos | Architect (emenda) + Test-writer | Emenda 1 (revisão do plano): redirecionamentos, HlsVariant.index e estado do candidato | 2026-10-02 |
 
 ## 14. Relatório de Entrega
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
@@ -248,3 +252,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (dependência) | 2026-10-02 | `depends_on: [SPEC-0010]` passa a `consumes_contract: [SPEC-0010@1]` | a dependência real é o código/contrato já integrado na `main` (SPEC-0010 com G5 e H2); o fechamento (G6 manual e G7) das specs do épico acontece em lote numa única rc no fim, pois a verificação manual exige o Thomas | SPEC-0010 (sem efeito no contrato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
+| 1 (revisão do plano) | 2026-10-02 | (a) o teto de 3 redirecionamentos é substituído por: o navegador segue os redirecionamentos e a URL final precisa ser `http(s)`; (b) `HlsVariant.index` = posição na lista ordenada por banda decrescente (0 = maior); (c) `resolveHls` grava o `HlsInfo` no candidato guardado (`hls`, `protection: 'encrypted'`, `support: 'unsupported-stream'` para ao vivo), novo IT-04 | (a) `fetch` em service worker com `redirect: 'manual'` devolve resposta opaca sem destino, então contar redirecionamentos não é implementável; (b) a SPEC-0012 usa o índice como `variantIndex`; (c) a SPEC-0012 recusa criptografado e ao vivo no servidor com base no estado do candidato | SPEC-0012 (consome `HlsInfo` e o estado do candidato) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |
