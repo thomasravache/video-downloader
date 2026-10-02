@@ -49,6 +49,14 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
   if (segments.length === 0) {
     throw new HlsParseError();
   }
+  // Faixas de bytes (EXT-X-BYTERANGE / BYTERANGE do EXT-X-MAP) exigiriam requisições Range; baixar o
+  // arquivo inteiro as ignoraria e geraria um MP4 corrompido. Fora do escopo: recusa.
+  const hasRange = (segment: (typeof segments)[number]): boolean =>
+    (segment as { byterange?: unknown }).byterange !== undefined ||
+    (segment.map as { byterange?: unknown } | undefined)?.byterange !== undefined;
+  if (segments.some(hasRange)) {
+    throw new HlsParseError();
+  }
   const urls = segments.map((segment) => {
     if (typeof segment.uri !== 'string' || segment.uri === '') {
       throw new HlsParseError();
