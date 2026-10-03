@@ -1,7 +1,8 @@
 import type { ResolveHlsResponse, VideoCandidate } from '../../src/core/contracts';
 import type { HlsInfo } from '../../src/core/hls';
+import type { CandidateGroup } from '../../src/core/candidates';
 import type { JobState } from '../../src/core/hls-download';
-import { audioIncludedText } from './audio';
+import { audioIncludedText, audioOptions } from './audio';
 
 export interface ViewText {
   listLabel: string;
@@ -16,6 +17,10 @@ export interface ViewText {
   badgeLive: string;
   hlsLoading: string;
   hlsQuality: string;
+  /** Rótulo do seletor de áudio (SPEC-0015). */
+  audioLabel: string;
+  /** "Outras fontes (N)" (SPEC-0015). */
+  relatedSources(count: number): string;
   hlsErrorFetch: string;
   hlsErrorParse: string;
   hlsErrorGeneric: string;
@@ -114,7 +119,12 @@ function sourceLabel(mediaUrl: string): string {
 export interface HlsContext {
   candidateId: string;
   label: string;
-  onStart(variantIndex: number, area: HTMLElement, select: HTMLSelectElement | undefined): void;
+  onStart(
+    variantIndex: number,
+    audioIndex: number | undefined,
+    area: HTMLElement,
+    selects: HTMLSelectElement[],
+  ): void;
 }
 
 const hlsSlotId = (candidateId: string): string => `hls-${candidateId}`;
@@ -169,6 +179,17 @@ function qualitySelect(hls: HlsInfo, candidateKey: string, text: ViewText): HTML
     option.selected = position === 0;
     select.append(option);
   });
+  field.append(label, select);
+  return field;
+}
+
+function audioField(slotId: string, text: ViewText): HTMLElement {
+  const field = element('div', 'field');
+  const label = element('label', 'field-label', text.audioLabel);
+  const select = element('select', 'select');
+  select.id = `audio-${slotId}`;
+  select.dataset['testid'] = 'audio-select';
+  label.htmlFor = select.id;
   field.append(label, select);
   return field;
 }
@@ -303,23 +324,46 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
     parts.push(field);
   }
   const select = field?.querySelector('select') ?? undefined;
-  // SPEC-0014: avisa que o arquivo vai incluir o áudio separado da variante escolhida (só texto).
+  // SPEC-0015: seletor "Áudio" só quando o grupo da variante escolhida tem mais de uma faixa; opções
+  // recalculadas ao trocar a qualidade. Com uma faixa fica o aviso "Inclui áudio" da SPEC-0014 (só texto).
+  const audioBox = audioField(slot.id, text);
+  const audioSelect = audioBox.querySelector('select') as HTMLSelectElement;
   const audioNote = element('p', 'status');
   audioNote.dataset['testid'] = 'audio-included';
-  const refreshAudioNote = (): void => {
-    const note = audioIncludedText(hls, Number(select?.value ?? 0), (name) =>
-      text.audioIncluded(name),
+  const refreshAudio = (): void => {
+    const variant = Number(select?.value ?? 0);
+    const options = audioOptions(hls, variant);
+    audioSelect.replaceChildren(
+      ...options.map((entry) => {
+        const option = element('option', undefined, entry.label);
+        option.value = String(entry.index);
+        option.selected = entry.default;
+        return option;
+      }),
     );
+    audioBox.hidden = options.length === 0;
+    const note =
+      options.length > 0
+        ? undefined
+        : audioIncludedText(hls, variant, (name) => text.audioIncluded(name));
     audioNote.textContent = note ?? '';
     audioNote.hidden = note === undefined;
   };
-  refreshAudioNote();
-  select?.addEventListener('change', refreshAudioNote);
-  parts.push(audioNote);
+  refreshAudio();
+  select?.addEventListener('change', refreshAudio);
+  parts.push(audioBox, audioNote);
   const area = element('div', 'job-area');
   const button = downloadButton(context, text);
   button.addEventListener('click', () => {
-    context.onStart(Number(select?.value ?? 0), area, select);
+    const audioIndex = audioBox.hidden ? undefined : Number(audioSelect.value);
+    context.onStart(
+      Number(select?.value ?? 0),
+      audioIndex,
+      area,
+      [select, audioBox.hidden ? undefined : audioSelect].filter(
+        (item): item is HTMLSelectElement => item !== undefined,
+      ),
+    );
   });
   area.append(button);
   slot.replaceChildren(...parts, area);
@@ -363,6 +407,7 @@ function renderCard(
   const label = candidateLabel(candidate);
   const item = element('li', 'card');
   item.dataset['testid'] = 'candidate-item';
+  item.dataset['candidateId'] = candidate.id;
   item.append(element('p', 'card-title', label));
 
   const meta = element('div', 'card-meta');
@@ -415,7 +460,7 @@ function renderCard(
 
 export function renderCandidates(
   container: HTMLElement,
-  candidates: VideoCandidate[],
+  groups: CandidateGroup[],
   text: ViewText,
   onDownload: (candidate: VideoCandidate, button: HTMLButtonElement) => void,
   hlsContext: (candidate: VideoCandidate) => HlsContext,
@@ -424,9 +469,57 @@ export function renderCandidates(
   list.dataset['testid'] = 'candidate-list';
   list.setAttribute('aria-label', text.listLabel);
   list.append(
-    ...candidates.map((candidate) => renderCard(candidate, text, onDownload, hlsContext)),
+    ...groups.flatMap((group) =>
+      [group.primary, ...group.related].map((candidate) =>
+        renderCard(candidate, text, onDownload, hlsContext),
+      ),
+    ),
   );
   container.replaceChildren(list);
+  applyGroups(container, groups, text);
+}
+
+/**
+ * Posiciona os cartões (já no DOM) conforme os grupos: o primary no nível da lista e os `related` dentro de
+ * `<details data-testid="related-sources">` fechado por padrão, sob o primary (SPEC-0015). Só MOVE os nós,
+ * então o estado dos cartões (resolve, progresso, seleção) e o `open` do details são preservados.
+ */
+export function applyGroups(
+  container: HTMLElement,
+  groups: CandidateGroup[],
+  text: ViewText,
+): void {
+  const list = container.querySelector<HTMLElement>('[data-testid="candidate-list"]');
+  if (!list) {
+    return;
+  }
+  const cards = new Map<string, HTMLElement>();
+  for (const node of container.querySelectorAll<HTMLElement>('li[data-candidate-id]')) {
+    cards.set(node.dataset['candidateId'] ?? '', node);
+  }
+  for (const group of groups) {
+    const card = cards.get(group.primary.id);
+    if (!card) {
+      continue;
+    }
+    list.append(card);
+    let details = card.querySelector<HTMLDetailsElement>(':scope > details.related');
+    if (group.related.length === 0) {
+      details?.remove();
+      continue;
+    }
+    if (!details) {
+      details = element('details', 'related');
+      details.dataset['testid'] = 'related-sources';
+      details.append(element('summary', 'related-summary'), element('ul', 'list'));
+      card.append(details);
+    }
+    (details.querySelector('summary') as HTMLElement).textContent = text.relatedSources(
+      group.related.length,
+    );
+    const inner = details.querySelector('ul') as HTMLElement;
+    inner.append(...group.related.flatMap((candidate) => cards.get(candidate.id) ?? []));
+  }
 }
 
 /** Bloco "acesso necessário" (origens de iframe sem permissão + botão); vazio esconde o bloco. */

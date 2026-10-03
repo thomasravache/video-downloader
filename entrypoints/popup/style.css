@@ -288,3 +288,17 @@ body {
   background: var(--info-bg);
   color: var(--info-fg);
 }
+
+.related {
+  margin-top: 4px;
+}
+
+.related-summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.related[open] > .list {
+  margin-top: 8px;
+}

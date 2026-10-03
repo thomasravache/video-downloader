@@ -8,10 +8,11 @@ import type {
   VideoCandidate,
 } from '../../src/core/contracts';
 import { requestAccess } from '../../src/core/access';
-import { hideRedundantCandidates } from '../../src/core/candidates';
+import { groupCandidates, hideRedundantCandidates } from '../../src/core/candidates';
 import type { PermissionsPort } from '../../src/core/access';
 import { validateJobResponse } from '../../src/core/hls-download';
 import {
+  applyGroups,
   candidateLabel,
   createJobView,
   isTerminalJob,
@@ -40,6 +41,8 @@ const text: ViewText = {
   badgeLive: t('badgeLive'),
   hlsLoading: t('hlsLoading'),
   hlsQuality: t('hlsQuality'),
+  audioLabel: t('audioLabel'),
+  relatedSources: (count) => t('relatedSources', String(count)),
   hlsErrorFetch: t('hlsErrorFetch'),
   hlsErrorParse: t('hlsErrorParse'),
   hlsErrorGeneric: t('hlsErrorGeneric'),
@@ -124,8 +127,9 @@ const wait = (ms: number): Promise<void> =>
 function startHls(
   candidateId: string,
   variantIndex: number,
+  audioIndex: number | undefined,
   area: HTMLElement,
-  select: HTMLSelectElement | undefined,
+  selects: HTMLSelectElement[],
 ): void {
   let jobId: string | undefined;
   const view = createJobView(
@@ -138,11 +142,11 @@ function startHls(
       }
     },
     () => {
-      startHls(candidateId, variantIndex, area, select);
+      startHls(candidateId, variantIndex, audioIndex, area, selects);
     },
   );
   area.replaceChildren(view.element);
-  if (select) {
+  for (const select of selects) {
     select.disabled = true;
   }
 
@@ -152,6 +156,7 @@ function startHls(
         type: 'download',
         candidateId,
         variantIndex,
+        ...(audioIndex !== undefined && { audioIndex }),
       });
       if (started?.ok !== true || !('jobId' in started)) {
         view.fail(started && !started.ok ? downloadError(started) : t('errorGeneric'));
@@ -177,7 +182,7 @@ function startHls(
     } catch {
       view.fail(t('errorGeneric'));
     } finally {
-      if (select) {
+      for (const select of selects) {
         select.disabled = false;
       }
     }
@@ -188,8 +193,8 @@ function hlsContext(candidate: VideoCandidate): HlsContext {
   return {
     candidateId: candidate.id,
     label: candidateLabel(candidate),
-    onStart: (variantIndex, area, select) => {
-      startHls(candidate.id, variantIndex, area, select);
+    onStart: (variantIndex, audioIndex, area, selects) => {
+      startHls(candidate.id, variantIndex, audioIndex, area, selects);
     },
   };
 }
@@ -230,6 +235,7 @@ function grantAccess(origins: string[], button: HTMLButtonElement): void {
 
 /** Uma mensagem `resolveHls` por cartão HLS ainda sem `hls`; cada falha fica no próprio cartão. */
 function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]): void {
+  const current = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   for (const candidate of candidates) {
     if (candidate.kind !== 'hls' || candidate.hls || candidate.protection === 'drm') {
       continue;
@@ -242,6 +248,11 @@ function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]):
       .catch(() => undefined)
       .then((response) => {
         renderHlsResult(container, candidate.id, response, text, hlsContext(candidate));
+        if (response?.ok === true) {
+          // SPEC-0015: a master resolvida passa a reivindicar variantes/arquivos; reagrupa (só move cartões).
+          current.set(candidate.id, { ...candidate, hls: response.hls });
+          applyGroups(container, groupCandidates([...current.values()]), text);
+        }
       });
   }
 }
@@ -278,17 +289,17 @@ async function detect(): Promise<void> {
     } else if (response.candidates.length === 0) {
       showMessage(content, t('popupEmpty'), 'empty-state');
     } else {
-      const candidates = hideRedundantCandidates(response.candidates);
+      const groups = groupCandidates(response.candidates);
       renderCandidates(
         content,
-        candidates,
+        groups,
         text,
         (candidate, button) => {
           void download(candidate, button);
         },
         hlsContext,
       );
-      resolvePlaylists(content, candidates);
+      resolvePlaylists(content, hideRedundantCandidates(response.candidates));
     }
   } else if (response?.error === 'RESTRICTED_PAGE') {
     showMessage(content, t('popupRestricted'), 'restricted-state');
