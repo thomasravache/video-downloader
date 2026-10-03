@@ -65,6 +65,7 @@ function transmux(segments: readonly Uint8Array[]): Uint8Array {
 }
 
 const CONTAINERS = ['moov', 'trak', 'mdia', 'minf', 'stbl'];
+const MARKERS = ['sinf', 'schm', 'encv', 'enca'];
 
 function typeAt(bytes: Uint8Array, at: number): string {
   return String.fromCharCode(
@@ -75,27 +76,42 @@ function typeAt(bytes: Uint8Array, at: number): string {
   );
 }
 
-/** Localiza todas as caixas `stsd` descendo só pelos contêineres conhecidos. */
-function findStsd(bytes: Uint8Array, start: number, end: number, found: [number, number][]): void {
+/**
+ * As caixas de `start` a `end` são legíveis (tamanhos de 32/64 bits ou "até o fim", sem passar do limite,
+ * cobrindo o trecho todo)? Desce pelos contêineres conhecidos. Qualquer inconsistência devolve `false`.
+ */
+function boxesReadable(bytes: Uint8Array, start: number, end: number): boolean {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  for (let at = start; at + 8 <= end;) {
-    const size = view.getUint32(at);
-    if (size < 8 || at + size > end) {
-      return;
+  let at = start;
+  while (at < end) {
+    if (at + 8 > end) {
+      return false;
     }
-    const type = typeAt(bytes, at);
-    if (type === 'stsd') {
-      found.push([at, at + size]);
-    } else if (CONTAINERS.includes(type)) {
-      findStsd(bytes, at + 8, at + size, found);
+    let size = view.getUint32(at);
+    let header = 8;
+    if (size === 1) {
+      if (at + 16 > end) {
+        return false;
+      }
+      size = Number(view.getBigUint64(at + 8));
+      header = 16;
+    } else if (size === 0) {
+      size = end - at;
+    }
+    if (!Number.isSafeInteger(size) || size < header || at + size > end) {
+      return false;
+    }
+    if (CONTAINERS.includes(typeAt(bytes, at)) && !boxesReadable(bytes, at + header, at + size)) {
+      return false;
     }
     at += size;
   }
+  return at === end && start < end;
 }
 
-function includesTag(bytes: Uint8Array, from: number, to: number, tag: string): boolean {
+function includesTag(bytes: Uint8Array, tag: string): boolean {
   const codes = Array.from(tag, (c) => c.charCodeAt(0));
-  for (let at = from; at + 4 <= to; at++) {
+  for (let at = 0; at + 4 <= bytes.byteLength; at++) {
     if (codes.every((code, i) => bytes[at + i] === code)) {
       return true;
     }
@@ -103,17 +119,13 @@ function includesTag(bytes: Uint8Array, from: number, to: number, tag: string): 
   return false;
 }
 
-/** O init declara amostras criptografadas (`encv`/`enca` ou caixas `sinf`/`schm` na `stsd`)? */
-function initIsEncrypted(init: Uint8Array): boolean {
-  const entries: [number, number][] = [];
-  findStsd(init, 0, init.byteLength, entries);
-  return entries.some(
-    ([from, to]) =>
-      includesTag(init, from, to, 'sinf') ||
-      includesTag(init, from, to, 'schm') ||
-      includesTag(init, from, to, 'encv') ||
-      includesTag(init, from, to, 'enca'),
-  );
+/**
+ * O init declara (ou pode declarar) amostras criptografadas? Falha FECHADO: procura os marcadores
+ * `sinf`/`schm`/`encv`/`enca` em qualquer ponto do init, qualquer que seja o aninhamento ou o tamanho de
+ * caixa (inclusive `moov` de 64 bits), e um init cujas caixas não podem ser lidas conta como criptografado.
+ */
+export function initIsEncrypted(init: Uint8Array): boolean {
+  return !boxesReadable(init, 0, init.byteLength) || MARKERS.some((tag) => includesTag(init, tag));
 }
 
 /** fMP4: `init` + segmentos concatenados (init primeiro). Rejeita com `AssemblyError` (ENCRYPTED se o init tem sinf/schm). */

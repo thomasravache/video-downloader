@@ -1,11 +1,11 @@
 # Índice de Specs
 
-> Gerado por `spec_graph.py index` em 2026-10-02 — não edite manualmente.
+> Gerado por `spec_graph.py index` em 2026-10-03 — não edite manualmente.
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 15 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 2, in-progress 5, implemented 5
+- Validação (G0): **0 erro(s), 16 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, approved 1, in-progress 6, implemented 5
 - Impedimentos: **0 aberto(s)**, 7 resolvido(s)
 
 ## Cobertura de Pilares
@@ -21,7 +21,7 @@ Perfil: **padrao**
 | Fluxo de mudança | coberto | ADR-0005 |
 | Segredos e dados sensíveis | coberto | ADR-0006 |
 | Identidade e acesso | coberto | ADR-0007, ADR-0012 |
-| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013 |
+| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013, ADR-0014 |
 | Observabilidade | coberto | ADR-0009 |
 | Resiliência e recuperação | dispensado | extensão 100% local, sem servidor nem dados persistentes de valor; retomada/falha de download tratada nas specs de feature |
 | Dados e migrações | dispensado | sem banco; só preferências em chrome.storage — migração de schema de preferências coberta por teste na spec que introduzir a primeira mudança |
@@ -37,7 +37,7 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -49,7 +49,7 @@ Perfil: **padrao**
 | 4 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011 |
 | 5 | SPEC-0013 | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
-| 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
+| 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
 
 ## Épicos
@@ -76,7 +76,7 @@ flowchart LR
     S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::inprogress
     S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::inprogress
     S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::inprogress
-    S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::approved
+    S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::approved
   end
   S0002 --> S0007
@@ -115,7 +115,7 @@ flowchart LR
 | [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
 | [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1 |
 | [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
-| [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
+| [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
 
 ## ADRs
@@ -135,4 +135,4 @@ flowchart LR
 | [ADR-0011](../adr/ADR-0011-providers-por-site-e-builds-public-local.md) | Providers por site e builds public/local | accepted | dependency-cruiser (fronteiras) + teste sobre dist/public que falha se contiver provider local (SPEC-0006:IT-01) |
 | [ADR-0012](../adr/ADR-0012-permissoes-por-flavor-acesso-amplo-no-local-por-site-no-publ.md) | Permissões por flavor: acesso amplo no local, por site no público | accepted | teste de integração sobre o manifest.json gerado de cada flavor (SPEC-0009:IT-05) + teste de que o bundle público não declara host_permissions |
 | [ADR-0013](../adr/ADR-0013-montagem-de-hls-m3u8-parser-e-mux-js-em-offscreen-document.md) | Montagem de HLS: m3u8-parser e mux.js em offscreen document | accepted | teste de arquitetura: m3u8-parser só em src/core; mux.js só no offscreen (dependency-cruiser); versões fixadas no package.json (ADR-0008) |
-| [ADR-0014](../adr/ADR-0014-juncao-de-trilhas-mp4-video-e-audio-com-mediabunny-no-offscr.md) | Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen | proposed | teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); testes de build de licença (SPEC-0014:UT-06/UT-07); prova de conceito da SPEC-0014 (fase 1) com ffprobe |
+| [ADR-0014](../adr/ADR-0014-juncao-de-trilhas-mp4-video-e-audio-com-mediabunny-no-offscr.md) | Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen | accepted | teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); testes de build de licença (SPEC-0014:UT-06/UT-07); prova de conceito da SPEC-0014 (fase 1) com ffprobe |

@@ -203,5 +203,15 @@
   },
   "errorTooManyJobs": {
     "message": "Já há 2 downloads em andamento. Aguarde um terminar."
+  },
+  "audioIncluded": {
+    "message": "Inclui áudio: $NAME$",
+    "description": "Aviso no cartão HLS quando o download vai juntar uma faixa de áudio separada",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "English"
+      }
+    }
   }
 }

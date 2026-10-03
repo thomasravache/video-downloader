@@ -11,6 +11,24 @@ export interface HlsVariant {
   height?: number;
   codecs?: string;
   label: string;
+  /** AUDIO="grupo" da STREAM-INF (SPEC-0014). */
+  audioGroup?: string;
+}
+
+/** Faixa de áudio de `#EXT-X-MEDIA:TYPE=AUDIO` com URI (SPEC-0014); extensão ADITIVA de HlsInfo. */
+export interface HlsAudioTrack {
+  /** Posição na lista devolvida. */
+  index: number;
+  /** GROUP-ID. */
+  groupId: string;
+  /** NAME, sem caracteres de controle, no máximo 80 caracteres. */
+  name: string;
+  /** LANGUAGE, no máximo 16 caracteres. */
+  language?: string;
+  /** DEFAULT=YES. */
+  default: boolean;
+  /** URI resolvida; só http(s). */
+  url: string;
 }
 
 export interface HlsInfo {
@@ -25,6 +43,8 @@ export interface HlsInfo {
   live: boolean;
   /** EXT-X-MAP presente. */
   fmp4: boolean;
+  /** Faixas de áudio separadas da master (máx. 20); ausente se não há faixa com URI (SPEC-0014). */
+  audio?: HlsAudioTrack[];
 }
 
 /** Playlist vazia ou inválida. */
@@ -39,6 +59,10 @@ export class HlsParseError extends Error {
 export type HlsInfoValidation = { ok: true; value: HlsInfo } | { ok: false; error: string };
 
 const MAX_VARIANTS = 50;
+const MAX_AUDIO_TRACKS = 20;
+const MAX_NAME = 80;
+const MAX_LANGUAGE = 16;
+const MAX_GROUP_ID = 200;
 // `#EXT-X-FAXS-CM` (DRM Adobe, obsoleta) também nunca é limpa (SPEC-0012).
 const KEY_PREFIXES = ['#EXT-X-KEY', '#EXT-X-SESSION-KEY', '#EXT-X-FAXS-CM'];
 const CLEAN_KEY_LINE = '#EXT-X-KEY:METHOD=NONE';
@@ -71,6 +95,65 @@ function absoluteHttp(uri: string, baseUrl: string): string | undefined {
   }
 }
 
+/** Controle (C0/C1) e formatação Unicode (`Cf`: bidi, largura zero): invisíveis e usados para disfarçar texto. */
+const HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\p{Cf}]/gu;
+
+/** Texto de atributo sem caracteres invisíveis, com espaços normalizados, aparado e truncado (sem partir um par substituto). */
+function cleanText(value: string, max: number): string {
+  const text = value.replace(HIDDEN_CHARS, '').replace(/\s+/g, ' ').trim().slice(0, max);
+  return /[\ud800-\udbff]$/.test(text) ? text.slice(0, -1) : text;
+}
+
+/** Lista de atributos de uma tag (`CHAVE=valor,CHAVE="texto, com vírgula"`); trecho malformado encerra a leitura. */
+function parseAttributes(list: string): Map<string, string> {
+  const attributes = new Map<string, string>();
+  const pair = /^([A-Za-z0-9-]+)=(?:"([^"]*)"|([^,"]*))(?:,|$)/;
+  for (let rest = list; rest !== '';) {
+    const match = pair.exec(rest);
+    if (match === null) {
+      break;
+    }
+    if (!attributes.has(match[1] as string)) {
+      attributes.set(match[1] as string, match[2] ?? match[3] ?? '');
+    }
+    rest = rest.slice(match[0].length);
+  }
+  return attributes;
+}
+
+/** Faixas de `#EXT-X-MEDIA:TYPE=AUDIO` com URI http(s) (linhas brutas: o parser colapsaria NAMEs repetidos). */
+function audioTracksOf(lines: string[], baseUrl: string): HlsAudioTrack[] {
+  const tracks: HlsAudioTrack[] = [];
+  for (const line of lines) {
+    if (tracks.length >= MAX_AUDIO_TRACKS) {
+      break;
+    }
+    if (!line.startsWith('#EXT-X-MEDIA:')) {
+      continue;
+    }
+    const attributes = parseAttributes(line.slice('#EXT-X-MEDIA:'.length));
+    const uri = attributes.get('URI');
+    const groupId = cleanText(attributes.get('GROUP-ID') ?? '', MAX_GROUP_ID);
+    if (attributes.get('TYPE') !== 'AUDIO' || groupId === '' || uri === undefined || uri === '') {
+      continue;
+    }
+    const url = absoluteHttp(uri, baseUrl);
+    if (url === undefined) {
+      continue;
+    }
+    const language = cleanText(attributes.get('LANGUAGE') ?? '', MAX_LANGUAGE);
+    tracks.push({
+      index: tracks.length,
+      groupId,
+      name: cleanText(attributes.get('NAME') ?? '', MAX_NAME) || 'Audio',
+      ...(language !== '' && { language }),
+      default: attributes.get('DEFAULT') === 'YES',
+      url,
+    });
+  }
+  return tracks;
+}
+
 function label(bandwidth: number, height: number | undefined): string {
   return height !== undefined && height > 0
     ? `${String(height)}p`
@@ -92,6 +175,8 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
         ? attributes.BANDWIDTH
         : 0;
     const { width, height } = attributes.RESOLUTION ?? {};
+    const audioGroup =
+      typeof attributes.AUDIO === 'string' ? cleanText(attributes.AUDIO, MAX_GROUP_ID) : '';
     return [
       {
         url,
@@ -99,6 +184,7 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
         ...(typeof width === 'number' && width > 0 && { width }),
         ...(typeof height === 'number' && height > 0 && { height }),
         ...(typeof attributes.CODECS === 'string' && { codecs: attributes.CODECS }),
+        ...(audioGroup !== '' && { audioGroup }),
       },
     ];
   });
@@ -134,7 +220,15 @@ export function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo {
     const segments = manifest.segments ?? [];
     const variants = variantsOf(manifest, baseUrl);
     if (variants.length > 0) {
-      return { type: 'master', variants, encrypted, live: false, fmp4 };
+      const audio = audioTracksOf(lines, baseUrl);
+      return {
+        type: 'master',
+        variants,
+        encrypted,
+        live: false,
+        fmp4,
+        ...(audio.length > 0 && { audio }),
+      };
     }
     if (segments.length === 0) {
       throw new HlsParseError();
@@ -171,7 +265,25 @@ function isVariant(value: unknown): boolean {
     typeof value['label'] === 'string' &&
     optional(value['width'], isNumber) &&
     optional(value['height'], isNumber) &&
-    optional(value['codecs'], (v) => typeof v === 'string')
+    optional(value['codecs'], (v) => typeof v === 'string') &&
+    optional(value['audioGroup'], (v) => typeof v === 'string')
+  );
+}
+
+const isHttpUrl = (value: unknown): boolean =>
+  typeof value === 'string' && absoluteHttp(value, 'http://x/') === value;
+
+function isAudioTrack(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value['index'] === 'number' &&
+    Number.isInteger(value['index']) &&
+    value['index'] >= 0 &&
+    typeof value['groupId'] === 'string' &&
+    typeof value['name'] === 'string' &&
+    optional(value['language'], (v) => typeof v === 'string') &&
+    typeof value['default'] === 'boolean' &&
+    isHttpUrl(value['url'])
   );
 }
 
@@ -197,6 +309,10 @@ export function validateHlsInfo(input: unknown): HlsInfoValidation {
   }
   if (!optional(input['durationSec'], isNumber) || !optional(input['segmentCount'], isNumber)) {
     return { ok: false, error: 'durationSec e segmentCount devem ser números' };
+  }
+  const audio = input['audio'];
+  if (!optional(audio, (v) => Array.isArray(v) && (v as unknown[]).every(isAudioTrack))) {
+    return { ok: false, error: 'audio inválido (index, groupId, name, default e url http(s))' };
   }
   return { ok: true, value: input as unknown as HlsInfo };
 }

@@ -21,6 +21,10 @@ export interface TrackInfo {
   height: number;
   timescale: number;
   durationSec: number;
+  /** Idioma ISO-639-2/T do `mdhd` ('und' quando indefinido). */
+  language: string;
+  /** Amostras da trilha: `stsz` (progressivo) + `trun` de todos os fragmentos (SPEC-0014). */
+  sampleCount: number;
 }
 
 export interface Mp4Info {
@@ -112,7 +116,8 @@ export function inspectMp4(bytes: Uint8Array): Mp4Info {
   const allTypes = new Set<string>();
   collectTypes(bytes, top, allTypes);
   const moov = top.find((b) => b.type === 'moov');
-  const tracks: (TrackInfo & { mdhdDuration: number })[] = [];
+  const tracks: (Omit<TrackInfo, 'sampleCount'> & { mdhdDuration: number; stszCount: number })[] =
+    [];
   const trexDefaults = new Map<number, number>();
   if (moov) {
     for (const trak of children(bytes, moov, 'trak')) {
@@ -135,7 +140,16 @@ export function inspectMp4(bytes: Uint8Array): Mp4Info {
         : dv.getUint32(mdhd.payload + 16);
       const unknown = rawDuration === 0 || rawDuration === 0xffffffff;
       const handler = String.fromCharCode(...bytes.subarray(hdlr.payload + 8, hdlr.payload + 12));
+      const packed = dv.getUint16(mdhd.payload + (m1 ? 32 : 20));
+      const language = String.fromCharCode(
+        ...[10, 5, 0].map((shift) => ((packed >> shift) & 0x1f) + 0x60),
+      );
+      const minf = child(bytes, mdia, 'minf');
+      const stbl = minf && child(bytes, minf, 'stbl');
+      const stsz = stbl && child(bytes, stbl, 'stsz');
       tracks.push({
+        language,
+        stszCount: stsz ? dv.getUint32(stsz.payload + 8) : 0,
         trackId,
         handler,
         width,
@@ -154,6 +168,7 @@ export function inspectMp4(bytes: Uint8Array): Mp4Info {
   }
   // Fragmentos: soma das durações das amostras por trilha.
   const fragmentTicks = new Map<number, number>();
+  const fragmentSamples = new Map<number, number>();
   for (const moof of top.filter((b) => b.type === 'moof')) {
     for (const traf of children(bytes, moof, 'traf')) {
       const tfhd = child(bytes, traf, 'tfhd');
@@ -179,13 +194,15 @@ export function inspectMp4(bytes: Uint8Array): Mp4Info {
           ticks += tf & 0x100 ? dv.getUint32(p + i * stride) : defaultDuration;
         }
         fragmentTicks.set(trackId, (fragmentTicks.get(trackId) ?? 0) + ticks);
+        fragmentSamples.set(trackId, (fragmentSamples.get(trackId) ?? 0) + count);
       }
     }
   }
-  const result: TrackInfo[] = tracks.map(({ mdhdDuration, ...track }) => {
+  const result: TrackInfo[] = tracks.map(({ mdhdDuration, stszCount, ...track }) => {
     const ticks = fragmentTicks.get(track.trackId) ?? 0;
     return {
       ...track,
+      sampleCount: stszCount + (fragmentSamples.get(track.trackId) ?? 0),
       durationSec: mdhdDuration > 0 ? track.durationSec : ticks / track.timescale,
     };
   });

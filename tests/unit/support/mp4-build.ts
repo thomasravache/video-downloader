@@ -33,6 +33,18 @@ export function encryptionSinf(): Uint8Array {
  * (moov/trak/mdia/minf/stbl/stsd/avc1 -> encv), atualizando o tamanho de todas as caixas ancestrais.
  */
 export function withEncryptionBox(init: Uint8Array): Uint8Array {
+  return withEncryptionBoxIn(init, 'avc1', 'encv');
+}
+
+/**
+ * Como `withEncryptionBox`, para qualquer entrada de amostra: `entry` ('avc1' vídeo, 'mp4a' áudio) vira
+ * `encrypted` ('encv'/'enca') e recebe o `sinf`/`schm` (SPEC-0014).
+ */
+export function withEncryptionBoxIn(
+  init: Uint8Array,
+  entry: string,
+  encrypted: string,
+): Uint8Array {
   const path = ['moov', 'trak', 'mdia', 'minf', 'stbl', 'stsd'];
   const extra = encryptionSinf();
   const ancestors: { start: number }[] = [];
@@ -43,8 +55,8 @@ export function withEncryptionBox(init: Uint8Array): Uint8Array {
     ancestors.push(found);
     boxes = readBoxes(init, found.payload + (type === 'stsd' ? 8 : 0), found.end);
   }
-  const target = boxes.find((b) => b.type === 'avc1');
-  if (!target) throw new Error('init sem avc1');
+  const target = boxes.find((b) => b.type === entry);
+  if (!target) throw new Error(`init sem ${entry}`);
   const out = new Uint8Array(init.byteLength + extra.byteLength);
   out.set(init.subarray(0, target.end), 0);
   out.set(extra, target.end);
@@ -53,7 +65,7 @@ export function withEncryptionBox(init: Uint8Array): Uint8Array {
   for (const ancestor of [...ancestors, target]) {
     dv.setUint32(ancestor.start, dv.getUint32(ancestor.start) + extra.byteLength);
   }
-  // avc1 -> encv (entrada de amostra criptografada).
-  out.set(ascii('encv'), target.start + 4);
+  // Entrada de amostra criptografada (avc1 -> encv, mp4a -> enca).
+  out.set(ascii(encrypted), target.start + 4);
   return out;
 }
