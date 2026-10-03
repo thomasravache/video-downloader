@@ -1,7 +1,7 @@
 ---
 id: ADR-0014
 title: "Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen"
-status: proposed
+status: accepted
 origin: decision
 date: 2026-10-02
 pillars: [dependencias]

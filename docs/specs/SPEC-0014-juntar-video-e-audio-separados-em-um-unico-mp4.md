@@ -218,10 +218,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 2482d6e (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/41]⎯) — aee8b1c | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 272 ms); test exit 0 (Duration  40.13s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 145 ms); coverage exit 0 (================================================================================) — f28b0d0 | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (51 modules, 109 dependencies cruised)) — f28b0d0 | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs M1,M3,M4,M6,M7 e limite de 512 MiB corrigidos (79d3eb7..fb5f277); limitacao conhecida: grupo AUDIO sem faixa utilizavel cai no caminho legado (sem som), igual ao comportamento anterior — fb5f277 | 2026-10-03 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
