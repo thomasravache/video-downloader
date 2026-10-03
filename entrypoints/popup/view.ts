@@ -1,6 +1,7 @@
 import type { ResolveHlsResponse, VideoCandidate } from '../../src/core/contracts';
 import type { HlsInfo } from '../../src/core/hls';
 import type { JobState } from '../../src/core/hls-download';
+import { audioIncludedText } from './audio';
 
 export interface ViewText {
   listLabel: string;
@@ -19,6 +20,8 @@ export interface ViewText {
   hlsErrorParse: string;
   hlsErrorGeneric: string;
   duration(formatted: string): string;
+  /** "Inclui áudio: <nome>" (SPEC-0014). */
+  audioIncluded(name: string): string;
   progressLabel: string;
   cancelDownload: string;
   retryDownload: string;
@@ -300,6 +303,19 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
     parts.push(field);
   }
   const select = field?.querySelector('select') ?? undefined;
+  // SPEC-0014: avisa que o arquivo vai incluir o áudio separado da variante escolhida (só texto).
+  const audioNote = element('p', 'status');
+  audioNote.dataset['testid'] = 'audio-included';
+  const refreshAudioNote = (): void => {
+    const note = audioIncludedText(hls, Number(select?.value ?? 0), (name) =>
+      text.audioIncluded(name),
+    );
+    audioNote.textContent = note ?? '';
+    audioNote.hidden = note === undefined;
+  };
+  refreshAudioNote();
+  select?.addEventListener('change', refreshAudioNote);
+  parts.push(audioNote);
   const area = element('div', 'job-area');
   const button = downloadButton(context, text);
   button.addEventListener('click', () => {

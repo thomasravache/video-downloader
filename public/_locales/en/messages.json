@@ -182,5 +182,15 @@
   },
   "errorTooManyJobs": {
     "message": "There are already 2 downloads in progress. Wait for one to finish."
+  },
+  "audioIncluded": {
+    "message": "Includes audio: $NAME$",
+    "description": "Note on the HLS card when the download will merge a separate audio track",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "English"
+      }
+    }
   }
 }
