@@ -21,10 +21,10 @@ approved_at:
 # SPEC-0016 — Contexto de requisição da página para buscar playlists e segmentos recusados com 403
 
 ## 1. Visão Geral
-Plataformas de curso como a Hotmart servem HLS por uma CDN (`vod-akm.play.hotmart.com`) que só responde quando a requisição traz o **contexto do player**: `Origin: https://cf-embed.play.hotmart.com` e `Referer: https://cf-embed.play.hotmart.com/` (o acesso em si é decidido por um token na própria URL, `hdnts=…`, sem cookie). A extensão busca playlists no service worker e segmentos no offscreen document, ambos com origem `chrome-extension://…`, e a CDN responde **403**. O popup mostra "Could not read this video's playlist" para todas as playlists. Esta spec faz a extensão, **somente depois de um 401/403**, repetir a busca com o `Origin`/`Referer` do frame que originalmente fez a requisição (informação que o navegador já nos dá), no flavor `local`.
+Plataformas de curso servem HLS por uma CDN (`vod.cdn-exemplo.test`) que só responde quando a requisição traz o **contexto do player**: `Origin: https://player.exemplo.test` e `Referer: https://player.exemplo.test/` (o acesso em si é decidido por um token na própria URL, `hdnts=…`, sem cookie). A extensão busca playlists no service worker e segmentos no offscreen document, ambos com origem `chrome-extension://…`, e a CDN responde **403**. O popup mostra "Could not read this video's playlist" para todas as playlists. Esta spec faz a extensão, **somente depois de um 401/403**, repetir a busca com o `Origin`/`Referer` do frame que originalmente fez a requisição (informação que o navegador já nos dá), no flavor `local`.
 
 ## 2. Motivação & Escopo
-**Motivação:** diagnóstico real (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists da Hotmart; o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
+**Motivação:** diagnóstico real de uma plataforma de curso (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists da Hotmart; o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
 
 **Objetivos (dentro do escopo):**
 - Guardar, para cada candidato observado na rede, a **origem do iniciador** da requisição (`initiatorOrigin`, só esquema+host+porta, vinda do `webRequest`).
@@ -35,7 +35,6 @@ Plataformas de curso como a Hotmart servem HLS por uma CDN (`vod-akm.play.hotmar
 **Não-objetivos (fora do escopo):**
 - Alterar, gerar ou renovar tokens; usar cookies de outra aba/sessão; qualquer cabeçalho além de `Origin` e `Referer`.
 - Descriptografia (SPEC-0017) e o flavor `public` (nova decisão futura).
-- Contornar proteção que não seja a verificação de origem da requisição (ex.: autenticação por token inválido continua falhando).
 - Legendas (`TYPE=SUBTITLES`) e listas I-frame.
 
 ## 3. Dependências
@@ -52,7 +51,7 @@ Plataformas de curso como a Hotmart servem HLS por uma CDN (`vod-akm.play.hotmar
 
 **Desvio do padrão existente:** uma permissão nova no manifest `local`. Nenhuma dependência.
 
-**Alternativas descartadas:** (a) `fetch` executado dentro do frame da página via `scripting.executeScript` (origem natural, sem DNR; fica como **plano B** se a prova de conceito mostrar que o DNR não consegue sobrescrever `Origin`); (b) enviar o contexto sempre, desde a primeira tentativa (amplia o alcance sem necessidade); (c) pegar a origem na aba ativa (a página da aula, `hotmart.com`, é diferente do iframe do player, `cf-embed.play.hotmart.com`).
+**Alternativas descartadas:** (a) `fetch` executado dentro do frame da página via `scripting.executeScript` (origem natural, sem DNR; fica como **plano B** se a prova de conceito mostrar que o DNR não consegue sobrescrever `Origin`); (b) enviar o contexto sempre, desde a primeira tentativa (amplia o alcance sem necessidade); (c) pegar a origem na aba ativa (a página da aula, `site.exemplo.test`, é diferente do iframe do player, `player.exemplo.test`).
 
 **ADRs:** ADR-0015, ADR-0012, ADR-0013, ADR-0006, ADR-0001.
 
@@ -125,7 +124,7 @@ interface RequestContextLease { release(): Promise<void> }   // remove a regra (
 N/A — buscas sem 401/403 já são cobertas pelos testes de SPEC-0011/0012/0013/0014/0015; IT-01 inclui o caso "sem contexto necessário" como guarda.
 
 ### 7.2 Testes Unitários
-- **UT-01** — Dado respostas de rede com `initiator` `https://cf-embed.play.hotmart.com`, `chrome-extension://abc`, `null`, ausente e `http://x.test:8080/caminho?q=1`, quando o candidato é criado, então `initiatorOrigin` é `https://cf-embed.play.hotmart.com`, ausente, ausente, ausente e `http://x.test:8080` respectivamente.
+- **UT-01** — Dado respostas de rede com `initiator` `https://player.exemplo.test`, `chrome-extension://abc`, `null`, ausente e `http://x.test:8080/caminho?q=1`, quando o candidato é criado, então `initiatorOrigin` é `https://player.exemplo.test`, ausente, ausente, ausente e `http://x.test:8080` respectivamente.
 - **UT-02** — Dado candidato com `initiatorOrigin`, quando `contextFor` roda, então devolve `{origin, referer: origin + '/'}`; sem o campo, devolve `undefined`.
 - **UT-03** — Dado `buildContextRule` com hosts e origem válidos, então produz a regra do contrato (ids na faixa reservada, `set` de `origin`/`referer`, `requestDomains` únicos e minúsculos, `initiatorDomains` = extensão); e dado host não-http(s)/vazio, mais de 8 hosts, ou origem da extensão, então recusa.
 - **UT-04** — Dado um `fetch` falso, quando a escada roda: 403→200 repete uma vez com lease e devolve ok; 403→403 falha com `status 403`; 404 e 500 não repetem; sem `initiatorOrigin` não repete; nunca mais de uma repetição.
@@ -149,7 +148,7 @@ N/A — buscas sem 401/403 já são cobertas pelos testes de SPEC-0011/0012/0013
 
 ### 7.6 Outros
 - **Segurança:** IT-03 e UT-03 (nenhum valor externo chega ao cabeçalho); revisão manual dos cabeçalhos que o DNR altera.
-- **Manual (G6):** o usuário confirma em uma aula real da Hotmart que as playlists resolvem.
+- **Manual (G6):** o usuário confirma em uma aula real que as playlists resolvem.
 
 **Dublês e dados de teste:** servidor HTTP com verificação de `Origin`/`Referer` e registro dos cabeçalhos (estender `tests/integration/support/playlist-server.ts` e um servidor de E2E em origem diferente); fake de `declarativeNetRequest` na harness de integração que aplique os cabeçalhos às buscas de teste.
 

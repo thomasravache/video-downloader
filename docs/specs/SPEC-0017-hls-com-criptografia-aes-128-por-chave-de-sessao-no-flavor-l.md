@@ -21,10 +21,10 @@ approved_at:
 # SPEC-0017 — HLS com criptografia AES-128 por chave de sessão no flavor local
 
 ## 1. Visão Geral
-Hoje qualquer tag de chave diferente de `#EXT-X-KEY:METHOD=NONE` faz o vídeo aparecer como "protegido" e ser recusado. O ADR-0015 (aceito em 2026-10-03) permite uma exceção estreita: **HLS `METHOD=AES-128` com a chave entregue por URI ao player da própria sessão do usuário, só no flavor `local`**. Esta spec implementa essa exceção (a plataforma de teste é a Hotmart: master com `EXT-X-SESSION-KEY:METHOD=AES-128` e chave em URL assinada). O download busca a chave na URL da playlist, descriptografa cada segmento no offscreen com WebCrypto e segue o fluxo normal de montagem. DRM de verdade, outros métodos/formatos de chave e o flavor `public` continuam recusando.
+Hoje qualquer tag de chave diferente de `#EXT-X-KEY:METHOD=NONE` faz o vídeo aparecer como "protegido" e ser recusado. O ADR-0015 (aceito em 2026-10-03) permite uma exceção estreita: **HLS `METHOD=AES-128` com a chave entregue por URI ao player da própria sessão do usuário**. Nesta spec a funcionalidade existe só no flavor `local`; o alcance por build é decisão do Thomas e fica fora do ADR. Esta spec implementa essa exceção (caso real de uma plataforma de curso: master com `EXT-X-SESSION-KEY:METHOD=AES-128` e chave em URL assinada). O download busca a chave na URL da playlist, descriptografa cada segmento no offscreen com WebCrypto e segue o fluxo normal de montagem. DRM de verdade, outros métodos/formatos de chave e o flavor `public` continuam recusando.
 
 ## 2. Motivação & Escopo
-**Motivação:** teste manual na Hotmart (2026-10-03): a master traz `EXT-X-SESSION-KEY:METHOD=AES-128,URI="https://contentplayer.hotmart.com/…key?hdntl=…"`; o usuário toca o vídeo na própria conta e pediu poder baixá-lo (aprovado no ADR-0015, começando só pelo `local`).
+**Motivação:** teste manual numa plataforma de curso (2026-10-03): a master traz `EXT-X-SESSION-KEY:METHOD=AES-128,URI="https://keys.cdn-exemplo.test/…key?hdntl=…"`; o usuário toca o vídeo na própria conta e pediu poder baixá-lo (aprovado no ADR-0015, começando só pelo `local`).
 
 **Objetivos (dentro do escopo):**
 - Classificar chaves com **allowlist estrita**: `METHOD=NONE` (limpo) e `METHOD=AES-128` com atributos exatamente permitidos; tudo mais continua "protegido".
@@ -38,7 +38,7 @@ Hoje qualquer tag de chave diferente de `#EXT-X-KEY:METHOD=NONE` faz o vídeo ap
 **Não-objetivos (fora do escopo):**
 - Qualquer DRM: Widevine, PlayReady, FairPlay (`KEYFORMAT` ≠ identity), `SAMPLE-AES`/CENC, `EXT-X-FAXS-CM`, páginas com `MediaKeys`/EME.
 - Obter a chave por outro meio que não a URI da playlist; reutilizar token de outra aula/sessão; persistir ou enviar chaves a qualquer lugar.
-- Flavor `public` (exige novo ADR); legendas e listas I-frame.
+- Flavor `public` (decisão futura do Thomas); legendas e listas I-frame.
 - Descriptografia em streaming (cada segmento é descriptografado inteiro em memória).
 
 ## 3. Dependências
@@ -53,7 +53,7 @@ Hoje qualquer tag de chave diferente de `#EXT-X-KEY:METHOD=NONE` faz o vídeo ap
 
 **Justificativa:** a fronteira "só no `local`" vira propriedade do build (código ausente), não de um `if` em tempo de execução; o núcleo continua puro; a segurança reaproveita o fluxo de recusa já revisado.
 
-**Desvio do padrão existente:** um mecanismo de flavor para módulos que não são providers (módulos virtuais novos), coberto pelo ADR-0015 (regra 2) e pelo precedente do ADR-0011.
+**Desvio do padrão existente:** um mecanismo de flavor para módulos que não são providers (módulos virtuais novos), coberto pelo precedente do ADR-0011 (flavor por módulo) e pela decisão de escopo desta spec (só `local` por ora).
 
 **Alternativas descartadas:** `if (flavor === 'local')` em tempo de execução (o código iria no zip da loja); entregar os bytes da chave ao service worker e ao estado do job (amplia onde o segredo vive); biblioteca de AES em JS (WebCrypto basta).
 
@@ -187,7 +187,7 @@ N/A — a allowlist atual e o `badge-encrypted` já são cobertos pelos testes d
 
 ### 7.6 Outros
 - **Segurança:** fuzz da allowlist (UT-01) com semente fixa mais um conjunto de regressão; revisão manual pelo Reviewer dos pontos "dúvida ⇒ protegido".
-- **Manual (G6):** o usuário testa uma aula real da Hotmart na rc.
+- **Manual (G6):** o usuário testa uma aula real na rc.
 
 **Dublês e dados de teste:** fixtures `e2e/fixtures/hls/aes128/**` (chave de teste fixa e IV conhecidos, gerados por `ffmpeg -hls_key_info_file`, comando em `generate-video.sh`); helper de cifra com `node:crypto` nos testes; servidor de playlists com rota de chave.
 
