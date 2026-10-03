@@ -528,18 +528,29 @@ export function createService(deps: ServiceDeps): Service {
       // relacionáveis; o áudio padrão do grupo da melhor variante (SPEC-0014) é sempre buscado.
       const defaultAudio = chooseAudio(first.info, 0);
       const relatable = await hasRelatableCandidates(candidate);
+      // As extras (só para `mediaResources`) vão apenas à origem da master; fora dela são ignoradas.
+      const masterOrigin = originOf(candidate.mediaUrl);
+      const sameOrigin = (url: string): boolean => originOf(url) === masterOrigin;
       const audioTracks: HlsAudioTrack[] = [];
       if (typeof defaultAudio === 'object') {
         audioTracks.push(defaultAudio);
       }
       if (relatable) {
         for (const track of first.info.audio ?? []) {
-          if (audioTracks.length < MAX_EXTRA_PLAYLISTS && !audioTracks.includes(track)) {
+          if (
+            audioTracks.length < MAX_EXTRA_PLAYLISTS &&
+            !audioTracks.includes(track) &&
+            sameOrigin(track.url)
+          ) {
             audioTracks.push(track);
           }
         }
       }
-      const extraVariants = relatable ? first.info.variants.slice(1, MAX_EXTRA_PLAYLISTS) : [];
+      const extraVariants = relatable
+        ? first.info.variants
+            .slice(1, MAX_EXTRA_PLAYLISTS)
+            .filter((variant) => sameOrigin(variant.url))
+        : [];
       const [second, ...others] = await Promise.all([
         readPlaylist(best.url),
         ...audioTracks.map((track) => readPlaylist(track.url)),
@@ -559,7 +570,7 @@ export function createService(deps: ServiceDeps): Service {
       const audioEncrypted = audioRead?.ok === true && audioRead.info.encrypted;
       const mediaResources = deriveMediaResources(
         [second, ...others].flatMap((read) => {
-          if (!read.ok || read.info.type !== 'media' || read.info.encrypted) {
+          if (!read.ok || read.info.type !== 'media' || read.info.encrypted || read.info.live) {
             return [];
           }
           try {
