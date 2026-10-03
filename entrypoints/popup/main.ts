@@ -46,6 +46,7 @@ const text: ViewText = {
   hlsErrorFetch: t('hlsErrorFetch'),
   hlsErrorParse: t('hlsErrorParse'),
   hlsErrorGeneric: t('hlsErrorGeneric'),
+  hlsErrorExpired: t('hlsErrorExpired'),
   duration: (formatted) => t('hlsDuration', formatted),
   audioIncluded: (name) => t('audioIncluded', name),
   progressLabel: t('jobProgressLabel'),

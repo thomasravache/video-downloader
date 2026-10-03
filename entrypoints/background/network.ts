@@ -6,6 +6,8 @@ interface RequestDetails {
   statusCode: number;
   tabId: number;
   frameId: number;
+  /** SPEC-0016: origem do frame iniciador (`webRequest`), quando o navegador informa. */
+  initiator?: string;
   responseHeaders?: { name: string; value?: string }[];
 }
 

@@ -33,6 +33,7 @@ import type {
   OffscreenPort,
   PermissionsPort,
   PlaylistFetcherPort,
+  RequestContextPort,
   ScriptingPort,
   TabsPort,
 } from './ports';
@@ -62,6 +63,8 @@ export interface ServiceDeps {
   /** Jobs de download HLS (SPEC-0012): estado em `storage.session` e documento offscreen. */
   jobStore?: JobStoragePort;
   offscreen?: OffscreenPort;
+  /** Contexto de requisição da página (SPEC-0016); ausente (flavor public) = sem repetição com contexto. */
+  requestContext?: RequestContextPort;
 }
 
 export interface Service {

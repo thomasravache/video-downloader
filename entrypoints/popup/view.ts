@@ -25,6 +25,8 @@ export interface ViewText {
   hlsErrorFetch: string;
   hlsErrorParse: string;
   hlsErrorGeneric: string;
+  /** SPEC-0016: o servidor recusou (401/403); o link pode ter expirado. */
+  hlsErrorExpired: string;
   duration(formatted: string): string;
   /** "Inclui áudio: <nome>" (SPEC-0014). */
   audioIncluded(name: string): string;

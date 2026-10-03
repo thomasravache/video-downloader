@@ -70,6 +70,8 @@ export interface VideoCandidate {
   source: CandidateSource;
   /** v4 (SPEC-0011): preenchido depois de `resolveHls`. */
   hls?: HlsInfo;
+  /** SPEC-0016: origem (esquema+host+porta) do frame que fez a requisição; ausente se desconhecida. */
+  initiatorOrigin?: string;
 }
 
 export interface DetectContext {
@@ -211,7 +213,17 @@ export type ResolveHlsResponse =
   | {
       ok: false;
       error: 'CANDIDATE_NOT_FOUND' | 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED' | 'INVALID_MESSAGE';
+      /** SPEC-0016: status HTTP quando o erro é `HLS_FETCH_FAILED` por resposta HTTP. */
+      status?: number;
     };
+
+export type ResolveHlsResponseValidation =
+  { ok: true; value: ResolveHlsResponse } | { ok: false; error: string };
+
+/** Valida a resposta de `resolveHls` (SPEC-0016:CT-01). */
+export function validateResolveHlsResponse(_input: unknown): ResolveHlsResponseValidation {
+  throw new Error('NotImplemented: validateResolveHlsResponse (SPEC-0016)');
+}
 
 export type DiagnosticsResponse =
   { ok: true; entries: LogEntry[] } | { ok: false; error: 'INVALID_MESSAGE' };

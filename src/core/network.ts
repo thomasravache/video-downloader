@@ -15,6 +15,8 @@ export interface NetworkResponse {
   contentType?: string;
   /** De Content-Length ou do total de Content-Range. */
   contentLength?: number;
+  /** SPEC-0016: valor cru de `details.initiator` (origem do frame que fez a requisição). */
+  initiator?: string;
 }
 
 export interface NetworkClassification {
