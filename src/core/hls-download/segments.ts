@@ -2,6 +2,12 @@
 import { HlsParseError } from '../hls';
 import { Parser } from 'm3u8-parser';
 
+/** Faixa de bytes de um recurso (SPEC-0013): inteiros seguros, `length >= 1`, `offset >= 0`. */
+export interface ByteRange {
+  offset: number;
+  length: number;
+}
+
 export interface MediaSegments {
   /** URLs absolutas http(s) dos segmentos, na ordem da playlist. */
   urls: string[];
@@ -10,6 +16,10 @@ export interface MediaSegments {
   /** Soma das durações (EXTINF) em segundos. */
   durationSec: number;
   fmp4: boolean;
+  /** Mesmo tamanho e ordem de `urls`; presente só se algum segmento tem BYTERANGE (SPEC-0013). */
+  ranges?: (ByteRange | undefined)[];
+  /** BYTERANGE do EXT-X-MAP, com offset resolvido (SPEC-0013). */
+  initRange?: ByteRange;
 }
 
 function absoluteHttp(uri: string, baseUrl: string): string {

@@ -62,3 +62,8 @@ export function createCandidateStore(): CandidateStore {
     removeTab,
   };
 }
+
+/** Esconde candidatos `blob:` sem o que baixar quando há outra fonte (SPEC-0013). Ainda sem implementação. */
+export function hideRedundantCandidates(_candidates: VideoCandidate[]): VideoCandidate[] {
+  throw new Error('NotImplemented: hideRedundantCandidates (SPEC-0013)');
+}

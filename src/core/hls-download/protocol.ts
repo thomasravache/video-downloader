@@ -1,5 +1,6 @@
 /** Protocolo background <-> offscreen (SPEC-0012). Só tipos. */
 import type { JobError } from './errors';
+import type { ByteRange } from './segments';
 
 export interface OffscreenStart {
   target: 'offscreen';
@@ -10,6 +11,10 @@ export interface OffscreenStart {
   /** EXT-X-MAP (fMP4), quando houver. */
   initUrl?: string;
   fmp4: boolean;
+  /** Faixas alinhadas a `urls` (SPEC-0013); se presente, `length === urls.length`. */
+  ranges?: (ByteRange | undefined)[];
+  /** Faixa do `initUrl` (SPEC-0013); só com `initUrl`. */
+  initRange?: ByteRange;
 }
 export interface OffscreenCancel {
   target: 'offscreen';
