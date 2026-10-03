@@ -245,18 +245,19 @@ export async function runOffscreenJob(
       if (initIsEncrypted(videoInit) || initIsEncrypted(audioInit)) {
         throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
       }
-      const videoSegments = await fetchTrack(request, 0);
-      const audioSegments = await fetchTrack(audio, request.urls.length);
+      // Cada trilha vira um Blob assim que baixada; os pedaços em memória são soltos (sem cópia extra).
+      const videoBlob = new Blob([videoInit, ...(await fetchTrack(request, 0))] as BlobPart[]);
+      const audioBlob = new Blob([
+        audioInit,
+        ...(await fetchTrack(audio, request.urls.length)),
+      ] as BlobPart[]);
       if (job.signal.aborted) {
         throw new DOMException('aborted', 'AbortError');
       }
       deps.emit({ type: 'assembling' });
       // Importação dinâmica: a biblioteca de mídia só carrega quando há áudio separado (ADR-0014).
       const { assembleMerged } = await import('./merge');
-      const merged = await assembleMerged(
-        { init: videoInit, segments: videoSegments },
-        { init: audioInit, segments: audioSegments },
-      );
+      const merged = await assembleMerged({ blob: videoBlob }, { blob: audioBlob });
       if (isAborted(job.signal)) {
         return;
       }

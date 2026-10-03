@@ -4,25 +4,24 @@
  * Os pacotes são copiados (sem recodificar) das duas fontes para um MP4 de duas trilhas.
  */
 import {
-  ALL_FORMATS,
   BlobSource,
   BufferTarget,
   EncodedAudioPacketSource,
   EncodedPacketSink,
   EncodedVideoPacketSource,
   Input,
+  MP4,
   Mp4OutputFormat,
   Output,
 } from 'mediabunny';
 import type { EncodedPacket } from 'mediabunny';
 import { AssemblyError } from '../../src/core/hls-download';
 
-export interface MergeTrack {
-  /** Init (`moov`) do fMP4 da trilha. */
-  init: Uint8Array;
-  /** Fragmentos (`moof`+`mdat`) na ordem. */
-  segments: readonly Uint8Array[];
-}
+/**
+ * Trilha fMP4: init (`moov`) + fragmentos (`moof`+`mdat`) na ordem, ou já um `blob` com tudo concatenado
+ * (o chamador solta os pedaços logo que o Blob existe, para não manter duas cópias na memória).
+ */
+export type MergeTrack = { init: Uint8Array; segments: readonly Uint8Array[] } | { blob: Blob };
 
 interface Pending {
   packet: EncodedPacket;
@@ -36,8 +35,11 @@ export async function assembleMerged(video: MergeTrack, audio: MergeTrack): Prom
   try {
     const open = (track: MergeTrack): Input => {
       const input = new Input({
-        source: new BlobSource(new Blob([track.init, ...track.segments] as BlobPart[])),
-        formats: ALL_FORMATS,
+        source: new BlobSource(
+          'blob' in track ? track.blob : new Blob([track.init, ...track.segments] as BlobPart[]),
+        ),
+        // Só MP4 (as duas trilhas são fMP4): não carrega os demais demuxers.
+        formats: [MP4],
       });
       inputs.push(input);
       return input;
