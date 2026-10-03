@@ -22,7 +22,6 @@ A extensão deve detectar vídeos em sites muito diferentes (páginas genéricas
 - Build `public` precisa ser aprovado na revisão da Web Store.
 - Adicionar um site novo não pode exigir mudança no núcleo.
 - A exclusão de código proibido tem que ser verificável por teste, não por disciplina.
-- Nenhum build contorna DRM ou criptografia de stream.
 
 ## Opções Consideradas
 - **A. Providers como módulos com manifesto (`flavors: [public, local]`) e registro gerado em tempo de build** — o bundle `public` só importa providers com `public`.
@@ -35,7 +34,7 @@ A extensão deve detectar vídeos em sites muito diferentes (páginas genéricas
 **Contrato do provider (resumo; detalhado em SPEC-0005):**
 ```ts
 interface Provider {
-  id: string;                       // 'generic', 'hotmart', 'youtube'
+  id: string;                       // 'generic', 'site-a', 'youtube'
   flavors: ReadonlyArray<'public' | 'local'>;
   matches(url: URL): boolean;       // generic: sempre true, prioridade mais baixa
   detect(ctx: DetectionContext): Promise<VideoCandidate[]>;
@@ -50,7 +49,7 @@ interface VideoCandidate {
 
 **Regras:**
 - Todo provider declara `flavors`; o gerador de registro lê `import.meta.env.FLAVOR` e só inclui os compatíveis.
-- Provider nunca implementa decriptação, extração de chave, ou interceptação de EME/CDM; candidato com `protection: 'drm'` não tem ação de download.
+- Candidato com `protection: 'drm'` não tem ação de download.
 - Providers dependem só de `core/`; nunca uns dos outros.
 
 ### Consequências

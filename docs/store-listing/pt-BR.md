@@ -22,7 +22,6 @@ Privacidade em primeiro lugar
 
 Uso responsável
 - Destinada a conteúdo que você tem o direito de baixar (seus próprios vídeos, conteúdo liberado pelo autor ou de uso permitido).
-- Não contorna DRM nem qualquer proteção técnica: vídeos protegidos não são baixados.
 - Você é responsável por respeitar os termos dos sites e as leis de direitos autorais.
 
 Código aberto e dúvidas: https://github.com/thomasravache/video-downloader/issues
