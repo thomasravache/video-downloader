@@ -10,7 +10,8 @@
  *  - a página marca `document.body.dataset.fetched = 'done'` quando o fetch termina;
  *  - popup.html?tabId=<n>: `candidate-item`, `download-button`, `badge-unsupported`, `empty-state`;
  *    o item de rede MP4 tem o selo "MP4" e botão Baixar; o item HLS tem o selo "HLS" e
- *    `badge-unsupported`, sem `download-button`; o item `blob:` do DOM continua listado como
+ *    `badge-unsupported`, sem `download-button` (SPEC-0012: HLS VOD limpo e resolvido ganha `download-button`
+ *    e perde `badge-unsupported`); o item `blob:` do DOM continua listado como
  *    não suportado (SPEC-0005), por isso os itens baixáveis são contados pelo `download-button`;
  *  - o servidor de fixtures deve responder `.m3u8` com application/vnd.apple.mpegurl e `.mpd` com
  *    application/dash+xml (e2e/support/fixture-server.ts: acrescentar ao mapa MIME).
@@ -183,9 +184,10 @@ test.describe('detecção por rede', () => {
     const item = popup.getByTestId('candidate-item');
     await expect(item).toHaveCount(1);
     await expect(item).toContainText('HLS');
-    await expect(item.getByTestId('badge-unsupported')).toBeVisible();
-    await expect(item.getByTestId('download-button')).toHaveCount(0);
-    await expect(popup.getByTestId('download-button')).toHaveCount(0);
+    // SPEC-0012: a playlist de fixture é HLS VOD sem criptografia; resolvida, ganha o botão Baixar
+    // e perde o selo de não suportado (antes da SPEC-0012: badge-unsupported e nenhum botão).
+    await expect(item.getByTestId('download-button')).toBeEnabled();
+    await expect(item.getByTestId('badge-unsupported')).toHaveCount(0);
   });
 
   test('SPEC-0010:E2E-03 depois de navegar a aba para outra página a lista não contém mais os itens da anterior', async ({

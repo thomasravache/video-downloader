@@ -85,6 +85,14 @@ module.exports = {
       to: { path: '(^|/)node_modules/m3u8-parser(/|$)' },
     },
     {
+      name: 'mux-js-only-in-offscreen',
+      comment:
+        'ADR-0013: mux.js (transmux TS->MP4) só pode ser importado por entrypoints/offscreen.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/offscreen/' },
+      to: { path: '(^|/)node_modules/mux\\.js(/|$)' },
+    },
+    {
       name: 'no-circular',
       comment: 'Ciclos de importação são proibidos.',
       severity: 'error',

@@ -130,5 +130,78 @@
   "hlsErrorGeneric": {
     "message": "Não foi possível ler a playlist. Reabra o popup e tente de novo.",
     "description": "Erro inesperado ao resolver o HLS"
+  },
+  "jobProgressLabel": {
+    "message": "Progresso do download"
+  },
+  "buttonCancelDownload": {
+    "message": "Cancelar"
+  },
+  "buttonRetryDownload": {
+    "message": "Tentar novamente"
+  },
+  "buttonRedownload": {
+    "message": "Baixar novamente"
+  },
+  "jobAssembling": {
+    "message": "Montando o arquivo…"
+  },
+  "jobSaving": {
+    "message": "Salvando o arquivo…"
+  },
+  "jobCanceled": {
+    "message": "Download cancelado"
+  },
+  "jobSegments": {
+    "message": "$DONE$ de $TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "12"
+      },
+      "total": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "jobSaved": {
+    "message": "Salvo como $NAME$",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Aula - 720p.mp4"
+      }
+    }
+  },
+  "jobErrorFETCH_FAILED": {
+    "message": "Não foi possível baixar todos os trechos do vídeo. Tente novamente."
+  },
+  "jobErrorTOO_LARGE": {
+    "message": "O vídeo é grande demais para ser montado (limite de 1,5 GB)."
+  },
+  "jobErrorUNSUPPORTED_CODEC": {
+    "message": "Este vídeo usa um formato de áudio ou vídeo que ainda não é suportado."
+  },
+  "jobErrorASSEMBLY_FAILED": {
+    "message": "Não foi possível montar o arquivo de vídeo."
+  },
+  "jobErrorDOWNLOAD_FAILED": {
+    "message": "O Chrome não conseguiu salvar o arquivo."
+  },
+  "jobErrorENCRYPTED": {
+    "message": "Este vídeo é criptografado e não pode ser baixado."
+  },
+  "jobErrorLIVE": {
+    "message": "Transmissões ao vivo não são suportadas."
+  },
+  "errorHlsNotResolved": {
+    "message": "Não foi possível ler a playlist deste vídeo. Reabra o popup e tente de novo."
+  },
+  "errorJobRunning": {
+    "message": "Este vídeo já está sendo baixado."
+  },
+  "errorTooManyJobs": {
+    "message": "Já há 2 downloads em andamento. Aguarde um terminar."
   }
 }

@@ -19,6 +19,13 @@
  *    `webRequest`, então o harness o substitui por eventos que CAPTURAM os listeners; `network.*`
  *    chama os listeners capturados. `restart()` simula a suspensão do service worker: remove os
  *    listeners e chama `background.main()` de novo SEM resetar o fake (storage.session é mantido).
+ *  - (SPEC-0012) o fake do WXT também não implementa `downloads.onChanged`, `offscreen.*` nem
+ *    `runtime.getContexts`: o harness os substitui. `downloads.onChanged` captura listeners e
+ *    `downloadEvents.complete(id)` / `.interrupt(id)` os dispara com `{ id, state: { current } }`;
+ *    `offscreen.createDocument/closeDocument/hasDocument` e `runtime.getContexts` simulam o limite de
+ *    UM documento por perfil (createDocument com um aberto rejeita, como no Chrome) e expõem
+ *    `bg.offscreen.isOpen()`. `restart()` não fecha o documento offscreen (só o service worker some).
+ *    O comportamento do documento (executar o job) é de tests/integration/support/offscreen.ts.
  */
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { vi } from 'vitest';
@@ -102,6 +109,73 @@ function installWebRequestStub(): { responseStarted: CapturedEvent; beforeReques
   return { responseStarted, beforeRequest };
 }
 
+export interface OffscreenDocumentHarness {
+  createDocument: MockInstance;
+  closeDocument: MockInstance;
+  /** Há um documento offscreen aberto (fake do limite de um por perfil). */
+  isOpen(): boolean;
+}
+
+export interface DownloadEventsHarness {
+  event: CapturedEvent;
+  /** `downloads.onChanged` com o download `id` concluído. */
+  complete(id: number): Promise<void>;
+  /** `downloads.onChanged` com o download `id` interrompido. */
+  interrupt(id: number): Promise<void>;
+}
+
+function installDownloadsChangedStub(): DownloadEventsHarness {
+  const event = capturedEvent();
+  Object.defineProperty(fakeBrowser.downloads, 'onChanged', { configurable: true, value: event });
+  const change = (id: number, current: string) => event.emit({ id, state: { current } });
+  return {
+    event,
+    complete: (id) => change(id, 'complete'),
+    interrupt: (id) => change(id, 'interrupted'),
+  };
+}
+
+function installOffscreenStub(): OffscreenDocumentHarness {
+  let open = false;
+  const createDocument = vi
+    .spyOn(fakeBrowser.offscreen as unknown as Record<string, () => unknown>, 'createDocument')
+    .mockImplementation(() => {
+      if (open) {
+        return Promise.reject(new Error('Only a single offscreen document may be created.'));
+      }
+      open = true;
+      return Promise.resolve();
+    });
+  const closeDocument = vi
+    .spyOn(fakeBrowser.offscreen as unknown as Record<string, () => unknown>, 'closeDocument')
+    .mockImplementation(() => {
+      if (!open) {
+        return Promise.reject(new Error('No current offscreen document.'));
+      }
+      open = false;
+      return Promise.resolve();
+    });
+  vi.spyOn(
+    fakeBrowser.offscreen as unknown as Record<string, () => unknown>,
+    'hasDocument',
+  ).mockImplementation(() => Promise.resolve(open));
+  Object.defineProperty(fakeBrowser.runtime, 'getContexts', {
+    configurable: true,
+    value: () =>
+      Promise.resolve(
+        open
+          ? [
+              {
+                contextType: 'OFFSCREEN_DOCUMENT',
+                documentUrl: `chrome-extension://${fakeBrowser.runtime.id}/offscreen.html`,
+              },
+            ]
+          : [],
+      ),
+  });
+  return { createDocument, closeDocument, isOpen: () => open };
+}
+
 export function video(overrides: Partial<VideoSnapshot> = {}): VideoSnapshot {
   return {
     src: null,
@@ -149,6 +223,10 @@ export interface BackgroundHarness {
   network: NetworkHarness;
   /** Suspende e recria o background mantendo o mesmo `storage.session` (SPEC-0010:IT-02). */
   restart(): void;
+  /** Documento offscreen simulado (SPEC-0012). */
+  offscreen: OffscreenDocumentHarness;
+  /** `downloads.onChanged` simulado (SPEC-0012). */
+  downloadEvents: DownloadEventsHarness;
 }
 
 export function startBackground(): BackgroundHarness {
@@ -169,6 +247,8 @@ export function startBackground(): BackgroundHarness {
     .mockResolvedValue(1);
 
   const stub = installWebRequestStub();
+  const downloadEvents = installDownloadsChangedStub();
+  const offscreen = installOffscreenStub();
   background.main();
 
   const ownId = fakeBrowser.runtime.id;
@@ -258,6 +338,7 @@ export function startBackground(): BackgroundHarness {
     fakeBrowser.tabs.onRemoved.removeAllListeners();
     stub.responseStarted.registrations.length = 0;
     stub.beforeRequest.registrations.length = 0;
+    downloadEvents.event.registrations.length = 0;
     background.main();
   }
 
@@ -272,5 +353,7 @@ export function startBackground(): BackgroundHarness {
     ownId,
     network,
     restart,
+    offscreen,
+    downloadEvents,
   };
 }

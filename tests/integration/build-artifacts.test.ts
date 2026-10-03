@@ -84,7 +84,8 @@ describe('manifesto dos builds reais', () => {
     for (const flavor of flavors) {
       const manifest = readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
       expect([...((manifest['permissions'] as string[] | undefined) ?? [])].sort(), flavor).toEqual(
-        ['activeTab', 'downloads', 'scripting', 'storage', 'webRequest'],
+        // SPEC-0012 (ADR-0012): `offscreen` entra com a spec que o usa.
+        ['activeTab', 'downloads', 'offscreen', 'scripting', 'storage', 'webRequest'],
       );
     }
   }, 600_000);
@@ -92,7 +93,15 @@ describe('manifesto dos builds reais', () => {
 
 describe('permissões de host por flavor (ADR-0012)', () => {
   const HOST_PATTERNS = ['http://*/*', 'https://*/*'];
-  const SPEC_0005_PERMISSIONS = ['activeTab', 'downloads', 'scripting', 'storage', 'webRequest'];
+  // Inclui `offscreen` (SPEC-0012, ADR-0012).
+  const SPEC_0005_PERMISSIONS = [
+    'activeTab',
+    'downloads',
+    'offscreen',
+    'scripting',
+    'storage',
+    'webRequest',
+  ];
   const manifestOf = (flavor: (typeof flavors)[number]) =>
     readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
   const sorted = (value: unknown) => [...((value as string[] | undefined) ?? [])].sort();
@@ -133,6 +142,7 @@ describe('permissões da detecção por rede (SPEC-0010)', () => {
       expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual([
         'activeTab',
         'downloads',
+        'offscreen', // SPEC-0012 (ADR-0012)
         'scripting',
         'storage',
         'webRequest',
@@ -212,4 +222,33 @@ describe('contrato ProviderManifest / virtual:providers v1', () => {
     expect(validateProviderManifest({ flavors: ['public'] }).ok).toBe(false);
     expect(validateProviderManifest(null).ok).toBe(false);
   });
+});
+
+describe('offscreen document do download HLS (SPEC-0012, ADR-0013)', () => {
+  it('SPEC-0012:IT-02 os dois builds trazem offscreen.html e a permissão offscreen', () => {
+    build();
+    for (const flavor of flavors) {
+      const dir = join(ROOT, '.output', `chrome-mv3-${flavor}`);
+      expect(existsSync(join(dir, 'offscreen.html')), `${flavor}: offscreen.html`).toBe(true);
+      expect(readManifest(dir)['permissions'] as string[], flavor).toContain('offscreen');
+    }
+  }, 600_000);
+
+  it('SPEC-0012:IT-02 o mux.js entra só no bundle do offscreen (nem popup nem background)', () => {
+    build();
+    for (const flavor of flavors) {
+      const dir = join(ROOT, '.output', `chrome-mv3-${flavor}`);
+      // Assinatura estável do mux.js: o módulo expõe o `Transmuxer` de MP4.
+      const withMux = allFiles(dir)
+        .filter((f) => f.endsWith('.js'))
+        .filter((f) => /Transmuxer/.test(readFileSync(f, 'utf8')))
+        .map((f) => f.slice(dir.length + 1));
+      expect(withMux.length, `${flavor}: algum bundle contém o mux.js`).toBeGreaterThan(0);
+      expect(withMux, `${flavor}: fora do background`).not.toContain('background.js');
+      expect(
+        withMux.filter((f) => /popup/.test(f)),
+        `${flavor}: fora do popup`,
+      ).toEqual([]);
+    }
+  }, 600_000);
 });

@@ -2,6 +2,8 @@ export interface FilenameInput {
   title?: string;
   mediaUrl: string;
   mimeType?: string;
+  /** Rótulo da qualidade HLS (SPEC-0012): o nome vira `<título> - <rótulo>.mp4`. */
+  label?: string;
   /** Relógio injetável; padrão: agora. Usado só no fallback `video-<data>.mp4`. */
   now?: Date;
 }
@@ -74,6 +76,13 @@ export function toFilename(input: FilenameInput): string {
   if (base === '') {
     const date = (input.now ?? new Date()).toISOString().slice(0, 10);
     return `video-${date}.mp4`;
+  }
+
+  if (input.label !== undefined && sanitize(input.label) !== '') {
+    // HLS (SPEC-0012): sempre MP4; o título é truncado primeiro, rótulo e extensão são preservados.
+    const suffix = ` - ${sanitize(input.label)}.mp4`;
+    const head = truncate(base, Math.max(1, MAX_FILENAME_LENGTH - suffix.length));
+    return `${head === '' ? 'video' : head}${suffix}`.slice(-MAX_FILENAME_LENGTH);
   }
 
   const ext = extension ?? 'mp4';

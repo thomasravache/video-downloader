@@ -26,12 +26,14 @@ export function resolveFlavor(mode: string): Flavor {
 export function buildManifest(flavor: Flavor): BuildManifest {
   return {
     manifest_version: 3,
+    // runtime.getContexts (offscreen, SPEC-0012) exige Chrome 116+.
+    minimum_chrome_version: '116',
     default_locale: 'pt_BR',
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     // Permissões mínimas (ADR-0007) sem CSP customizada; `webRequest` só observa (SPEC-0010) e vê
-    // apenas os hosts de cada flavor (ADR-0012).
-    permissions: ['activeTab', 'scripting', 'downloads', 'storage', 'webRequest'],
+    // apenas os hosts de cada flavor (ADR-0012); `offscreen` (SPEC-0012) hospeda a montagem do HLS.
+    permissions: ['activeTab', 'scripting', 'downloads', 'storage', 'webRequest', 'offscreen'],
     // local: acesso amplo; public: opcional, pedido por site com gesto do usuário (popup).
     ...(flavor === 'local'
       ? { host_permissions: [...HOST_PATTERNS] }
