@@ -8,6 +8,17 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.2] - 2026-10-02
+
+### Added
+- Detecção em iframes e acesso por site: permissão opcional pedida no popup no build `public` (SPEC-0009, ADR-0012)
+- Detecção por rede (media sniffing) observando requisições de mídia, sem bloquear nem alterar tráfego (SPEC-0010)
+- Playlists HLS: parser, escolha de variante e candidato no popup; HLS criptografado ou com DRM aparece como protegido (SPEC-0011)
+- Download de HLS sem criptografia: busca dos segmentos, junção em MP4 e barra de progresso com cancelamento; playlists ao vivo, criptografadas ou com byte range são recusadas (SPEC-0012, ADR-0013)
+
+### Changed
+- Chrome mínimo 116 (`minimum_chrome_version`) por causa do documento offscreen (SPEC-0012)
+
 ## [0.1.0-rc.1] - 2026-10-02
 
 ### Added
