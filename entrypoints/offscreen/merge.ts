@@ -62,7 +62,9 @@ export async function assembleMerged(video: MergeTrack, audio: MergeTrack): Prom
     const videoSource = new EncodedVideoPacketSource(videoCodec);
     const audioSource = new EncodedAudioPacketSource(audioCodec);
     output.addVideoTrack(videoSource);
-    output.addAudioTrack(audioSource);
+    // Preserva o idioma da trilha de origem (mdhd); `und` (sem idioma) segue como o padrão da saída.
+    const languageCode = await audioTrack.getLanguageCode();
+    output.addAudioTrack(audioSource, languageCode === 'und' ? {} : { languageCode });
     await output.start();
 
     const feeds: Pending[] = [];
