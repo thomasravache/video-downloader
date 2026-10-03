@@ -24,7 +24,7 @@ approved_at:
 Plataformas de curso servem HLS por uma CDN (`vod.cdn-exemplo.test`) que só responde quando a requisição traz o **contexto do player**: `Origin: https://player.exemplo.test` e `Referer: https://player.exemplo.test/` (o acesso em si é decidido por um token na própria URL, `hdnts=…`, sem cookie). A extensão busca playlists no service worker e segmentos no offscreen document, ambos com origem `chrome-extension://…`, e a CDN responde **403**. O popup mostra "Could not read this video's playlist" para todas as playlists. Esta spec faz a extensão, **somente depois de um 401/403**, repetir a busca com o `Origin`/`Referer` do frame que originalmente fez a requisição (informação que o navegador já nos dá), no flavor `local`.
 
 ## 2. Motivação & Escopo
-**Motivação:** diagnóstico real de uma plataforma de curso (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists da Hotmart; o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
+**Motivação:** diagnóstico real de uma plataforma de curso (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists; o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
 
 **Objetivos (dentro do escopo):**
 - Guardar, para cada candidato observado na rede, a **origem do iniciador** da requisição (`initiatorOrigin`, só esquema+host+porta, vinda do `webRequest`).
