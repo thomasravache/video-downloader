@@ -8,6 +8,22 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] - 2026-10-03
+
+### Added
+- Download de HLS cujos segmentos são trechos de um único arquivo (`EXT-X-BYTERANGE`, `EXT-X-MAP` com `BYTERANGE`), com requisições `Range` validadas (só `206` com `Content-Range` coerente) e recusa antecipada acima do limite (SPEC-0013)
+- Vídeo e áudio em playlists separadas (`EXT-X-MEDIA TYPE=AUDIO`) são baixados e juntados num único MP4, sem recodificar, com a biblioteca Mediabunny (MPL-2.0) carregada só quando há áudio separado; áudio criptografado, ao vivo ou inválido recusa o download inteiro (SPEC-0014, ADR-0014)
+- Aviso de licenças de terceiros (`THIRD_PARTY_NOTICES.txt`) na raiz do pacote, sem nada na interface (SPEC-0014)
+- Popup com um cartão por vídeo: fontes redundantes ficam recolhidas em "Outras fontes (N)" e, havendo mais de um idioma, um seletor de áudio; o MP4 mantém o idioma da faixa escolhida (SPEC-0015)
+
+### Changed
+- O cartão "arquivo" da página que aponta para a própria playlist HLS passa a ser o cartão HLS, com o título da página, em vez de oferecer o download do texto da playlist (SPEC-0013)
+- O cartão `blob` ("Not supported yet") deixa de aparecer quando há outra fonte baixável na aba (SPEC-0013)
+- Limite de memória de 512 MiB para downloads com junção de áudio e vídeo (SPEC-0014)
+
+### Fixed
+- Playlist com byte range deixa de falhar com "Could not read this video's playlist" (SPEC-0013)
+
 ## [0.1.0-rc.2] - 2026-10-02
 
 ### Added
