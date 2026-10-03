@@ -222,8 +222,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 272 ms); test exit 0 (Duration  40.13s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 145 ms); coverage exit 0 (================================================================================) — f28b0d0 | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (51 modules, 109 dependencies cruised)) — f28b0d0 | 2026-10-02 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs M1,M3,M4,M6,M7 e limite de 512 MiB corrigidos (79d3eb7..fb5f277); limitacao conhecida: grupo AUDIO sem faixa utilizavel cai no caminho legado (sem som), igual ao comportamento anterior — fb5f277 | 2026-10-03 |
-| G5 Integração & CI | FAIL | build exit 1 (at async node_modules/.pnpm/wxt@0.21.4_eslint@10.11.0_jiti@2.7.0__rolldown@1.2.12_typescri); test exit 1 (⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/14]⎯); test_integration exit 1 (⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/16]⎯); test_e2e exit 1 (at async build (node_modules/.pnpm/wxt@0.21.4_eslint@10.11.0_jiti@2.7.0__rolldown@1.2.12_t); arch_test exit 1 (ELIFECYCLE  Command failed with exit code 1.); security_scan exit 0 ([90m1:45AM[0m [32mINF[0m [1mno leaks found[0m) — 182f1cf | 2026-10-03 |
-| H2 Integração aprovada | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 259 ms); test exit 0 (Duration  44.96s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.48s (tests 79%, transform 10%, import 8%, setup 2%, worker 1%)); test_e2e exit 0 (60 passed (58.0s)); arch_test exit 0 (✔ no dependency violations found (51 modules, 109 dependencies cruised)); security_scan exit 0 ([90m1:47AM[0m [32mINF[0m [1mno leaks found[0m) — d36a8d9 | 2026-10-03 |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-03 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
