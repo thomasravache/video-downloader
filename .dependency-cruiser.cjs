@@ -101,6 +101,15 @@ module.exports = {
       to: { path: '(^|/)node_modules/mediabunny(/|$)' },
     },
     {
+      name: 'offscreen-merge-only-in-offscreen',
+      comment:
+        'ADR-0014: a junção (entrypoints/offscreen/merge*, único módulo que importa a mediabunny) só pode ' +
+        'ser importada de dentro de entrypoints/offscreen.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/offscreen/' },
+      to: { path: '^entrypoints/offscreen/merge[^/]*$' },
+    },
+    {
       name: 'no-circular',
       comment: 'Ciclos de importação são proibidos.',
       severity: 'error',

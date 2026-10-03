@@ -83,7 +83,9 @@ interface BundleItem {
 /**
  * MPL-2.0 (ADR-0014): o minificador descarta o cabeçalho `/*! ... *\/` da mediabunny (ele fica preso a
  * `import`s que o bundler remove). Este plugin o recoloca no início de todo chunk que contém a biblioteca,
- * lendo o texto do pacote instalado.
+ * lendo o texto do pacote instalado (sem duplicar se já estiver lá). O cabeçalho fica nos chunks com código da
+ * mediabunny (o `merge-*.js`, carregado por `import()`) e, por ficar à vista no ponto de uso, também no chunk que
+ * os importa (o offscreen); o custo desse segundo cabeçalho é de ~0,5 KB.
  */
 export function legalCommentsPlugin(root: string = ROOT) {
   const readHeader = (): string => {
@@ -116,7 +118,11 @@ export function legalCommentsPlugin(root: string = ROOT) {
       }
       const header = readHeader();
       for (const chunk of marked) {
-        chunk.code = `${header}\n${chunk.code ?? ''}`;
+        const code = chunk.code ?? '';
+        // Idempotente: o texto pode já estar no chunk (o bundler às vezes o mantém); nunca duplica.
+        if (!code.includes(header)) {
+          chunk.code = `${header}\n${code}`;
+        }
       }
     },
   };
