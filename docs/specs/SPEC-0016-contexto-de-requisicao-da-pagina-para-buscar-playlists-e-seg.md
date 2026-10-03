@@ -4,7 +4,7 @@ title: Contexto de requisição da página para buscar playlists e segmentos rec
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: in-progress
 created: 2026-10-03
 parent: SPEC-0008
 depends_on: []
@@ -14,8 +14,8 @@ touches: [wxt.config.ts, src/core/**, entrypoints/background/**, entrypoints/off
 adrs: [ADR-0015, ADR-0012, ADR-0013, ADR-0006, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-03
 ---
 
 # SPEC-0016 — Contexto de requisição da página para buscar playlists e segmentos recusados com 403
@@ -171,6 +171,21 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+**Fase 1: Prova de conceito do contexto de requisição (portão)**
+- [ ] Red: E2E-01 (servidor que exige Origin/Referer, iframe de outra origem) falhando pelo motivo certo
+- [ ] Green mínimo: `initiatorOrigin`, regra DNR de sessão e a escada 401/403 no resolve; E2E-01 verde no Chromium real; se o DNR não sobrescrever `Origin`, PARAR e reportar SPEC_DEFECT (plano B por emenda)
+
+**Fase 2: Contexto completo e segurança**
+- [ ] Red: UT-01..UT-06, CT-01, IT-01..IT-06, E2E-02 com a tag `SPEC-0016:<ID>`
+- [ ] Green: gerenciador de regras (lease, limpeza de órfãs), job com regra por operação, mensagem `hlsErrorExpired`, permissão só no manifest `local`
+- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->

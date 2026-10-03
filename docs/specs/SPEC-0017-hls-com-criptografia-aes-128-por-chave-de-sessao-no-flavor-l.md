@@ -4,7 +4,7 @@ title: HLS com criptografia AES-128 por chave de sessão no flavor local
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-03
 parent: SPEC-0008
 depends_on: []
@@ -14,8 +14,8 @@ touches: [wxt.config.ts, .dependency-cruiser.cjs, README.md, docs/runbook.md, sc
 adrs: [ADR-0015, ADR-0013, ADR-0011, ADR-0008, ADR-0006, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-03
 ---
 
 # SPEC-0017 — HLS com criptografia AES-128 por chave de sessão no flavor local
@@ -210,6 +210,25 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+**Fase 1: Política de chave, plano e descriptografia (núcleo)**
+- [ ] Red: UT-01..UT-07, CT-01 com a tag `SPEC-0017:<ID>` (fuzz da allowlist, plano de chaves, descriptografia, manuseio da chave)
+- [ ] Green: `src/aes128/**` (classify, plano, decrypt), porta `KeyPolicyPort`, módulos virtuais e plugin de build, `flavor-guard` com `FORBIDDEN_AES128_IN_PUBLIC`
+- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+
+**Fase 2: Download ponta a ponta**
+- [ ] Red: IT-01..IT-09 (TS, fMP4 com range, rotação, recusas, privacidade, contexto na chave, resolve, build)
+- [ ] Green: `start.encryption`/`audio.encryption`, busca de chaves no offscreen antes da mídia, `KEY_FAILED`/`DECRYPT_FAILED`, popup (`aes128-note`)
+
+**Fase 3: Jornada E2E e documentação**
+- [ ] Red: E2E-01..E2E-03 (fixture AES-128 gerada com ffmpeg)
+- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake; README e runbook com o uso responsável
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
