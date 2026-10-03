@@ -77,3 +77,18 @@ export function hideRedundantCandidates(candidates: VideoCandidate[]): VideoCand
   );
   return hasSource ? candidates.filter((c) => !isNoise(c)) : [...candidates];
 }
+
+/** Cartão em destaque e as fontes redundantes recolhidas sob ele (SPEC-0015). */
+export interface CandidateGroup {
+  primary: VideoCandidate;
+  related: VideoCandidate[];
+}
+
+/**
+ * Agrupa por master HLS resolvida: variantes, faixas de áudio e arquivos de `hls.mediaResources` viram
+ * `related` da primeira master que os reivindica; os demais candidatos são grupos de um elemento
+ * (SPEC-0015 §6). Aplica antes `hideRedundantCandidates`, preserva a ordem e não muta a entrada.
+ */
+export function groupCandidates(_candidates: VideoCandidate[]): CandidateGroup[] {
+  throw new Error('NotImplemented: groupCandidates (SPEC-0015)');
+}

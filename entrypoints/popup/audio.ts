@@ -14,3 +14,21 @@ export function audioIncludedText(
   const track = chooseAudio(hls, variantIndex);
   return typeof track === 'object' ? format(track.name) : undefined;
 }
+
+/** Opção do seletor "Áudio" (SPEC-0015). */
+export interface AudioOption {
+  /** Posição em `HlsInfo.audio`: o `audioIndex` enviado no download. */
+  index: number;
+  /** Nome da faixa; com idioma: `Nome (idioma)`. Só texto (o chamador usa `textContent`). */
+  label: string;
+  /** É a faixa que o download escolheria sem índice (`chooseAudio`): vem selecionada. */
+  default: boolean;
+}
+
+/**
+ * Função pura (sem DOM): opções do `audio-select` da variante `variantIndex`: as faixas do grupo dela, na
+ * ordem de `hls.audio`; lista vazia quando o grupo tem 0 ou 1 faixa (sem seletor; fica o "Inclui áudio").
+ */
+export function audioOptions(_hls: HlsInfo, _variantIndex: number): AudioOption[] {
+  throw new Error('NotImplemented: audioOptions (SPEC-0015)');
+}

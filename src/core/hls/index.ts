@@ -45,6 +45,8 @@ export interface HlsInfo {
   fmp4: boolean;
   /** Faixas de áudio separadas da master (máx. 20); ausente se não há faixa com URI (SPEC-0014). */
   audio?: HlsAudioTrack[];
+  /** SPEC-0015: origem+caminho (sem query/fragmento) dos arquivos de mídia citados pelas playlists de variante/áudio buscadas no resolve; únicos; máx. 32. */
+  mediaResources?: string[];
 }
 
 /** Playlist vazia ou inválida. */

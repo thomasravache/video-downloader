@@ -209,3 +209,13 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
     ...(initRange !== undefined && { initRange }),
   };
 }
+
+/**
+ * Origem+caminho (sem query nem fragmento) dos arquivos citados (segmentos e init) pelas playlists de mídia
+ * dadas, únicos, na ordem de aparição, no máximo 32 (`HlsInfo.mediaResources`, SPEC-0015).
+ */
+export function deriveMediaResources(
+  _playlists: readonly Pick<MediaSegments, 'urls' | 'initUrl'>[],
+): string[] {
+  throw new Error('NotImplemented: deriveMediaResources (SPEC-0015)');
+}
