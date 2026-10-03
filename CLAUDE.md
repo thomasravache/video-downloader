@@ -15,5 +15,5 @@
 - Mudanças entram na `main` só por PR (merge commit), nunca direto.
 - Flavors: `public` (Chrome Web Store, somente detector genérico) e `local` (providers extras). Código de providers específicos de sites nunca entra no build `public` (ADR-0011).
 - Nunca commitar segredos (`.env*`, `*.pem`, `*.crx`, tokens).
-- DRM de verdade (Widevine, PlayReady, FairPlay, EME/`MediaKeys`, `SAMPLE-AES`/CENC) nunca é contornado. Única exceção (ADR-0015): HLS `METHOD=AES-128` com a chave entregue por URI ao player da própria sessão do usuário, só no flavor `local` e nunca no `public`. Sem extrair chaves por outros meios, sem forjar ou reaproveitar tokens, sem persistir ou compartilhar chaves e tokens.
+- Proteção de conteúdo (ADR-0015): o flavor `local` descriptografa HLS `AES-128` com a chave entregue por URI à sessão do próprio usuário; o `public` não. DRM (Widevine, PlayReady, FairPlay, EME/`MediaKeys`, `SAMPLE-AES`/CENC) está fora de escopo. Chaves e tokens não são persistidos nem compartilhados.
 - Dependências novas exigem ADR (ADR-0008); versões fixadas (sem `^`/`~`).

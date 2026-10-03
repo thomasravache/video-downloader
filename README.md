@@ -1,8 +1,8 @@
 # Video Downloader
 
-Extensão do Chrome (Manifest V3) que detecta e baixa vídeos **sem DRM** das páginas visitadas.
+Extensão do Chrome (Manifest V3) que detecta e baixa vídeos das páginas visitadas (arquivos diretos e HLS).
 
-> Esta extensão **nunca** contorna DRM nem proteções de conteúdo. Vídeos protegidos não são suportados e isso não vai mudar.
+> DRM (Widevine, PlayReady, FairPlay, EME) está fora de escopo. No build `local`, HLS com criptografia AES-128 é descriptografado com a chave entregue à sua própria sessão (ADR-0015); no build `public` esse tipo de vídeo aparece como protegido. Use apenas com conteúdo ao qual você tem acesso, para uso pessoal e offline, respeitando os termos da plataforma: a responsabilidade pelo uso é sua.
 
 ## Stack
 
@@ -46,9 +46,9 @@ O flavor é definido pela variável `FLAVOR` (`public` | `local`) e exposto como
 
 ## Limitações conhecidas
 
-- Só detecta vídeos no documento principal da aba. Players dentro de iframes de outro domínio (comum em plataformas de curso) ainda não são detectados.
-- Só arquivos diretos (MP4/WebM). HLS/DASH ainda não são suportados.
-- Vídeos com DRM são identificados como protegidos e **nunca** baixados; não há e não haverá contorno de DRM.
+- DASH (`.mpd`) ainda não é suportado.
+- HLS ao vivo não é suportado.
+- Vídeos com DRM de verdade (Widevine, PlayReady, FairPlay) são identificados como protegidos e não são baixados.
 
 ## Scripts
 

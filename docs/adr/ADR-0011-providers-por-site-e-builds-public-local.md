@@ -22,7 +22,7 @@ A extensão deve detectar vídeos em sites muito diferentes (páginas genéricas
 - Build `public` precisa ser aprovado na revisão da Web Store.
 - Adicionar um site novo não pode exigir mudança no núcleo.
 - A exclusão de código proibido tem que ser verificável por teste, não por disciplina.
-- Nenhum build contorna DRM ou criptografia de stream.
+- Nenhum build contorna DRM ou criptografia de stream. *(Atualizado pelo ADR-0015: AES-128 com chave de sessão passa a ser permitido, só no flavor `local`.)*
 
 ## Opções Consideradas
 - **A. Providers como módulos com manifesto (`flavors: [public, local]`) e registro gerado em tempo de build** — o bundle `public` só importa providers com `public`.
@@ -50,7 +50,7 @@ interface VideoCandidate {
 
 **Regras:**
 - Todo provider declara `flavors`; o gerador de registro lê `import.meta.env.FLAVOR` e só inclui os compatíveis.
-- Provider nunca implementa decriptação, extração de chave, ou interceptação de EME/CDM; candidato com `protection: 'drm'` não tem ação de download.
+- Provider nunca implementa decriptação, extração de chave, ou interceptação de EME/CDM; candidato com `protection: 'drm'` não tem ação de download. *(Atualizado pelo ADR-0015: AES-128 com chave de sessão passa a ser permitido, só no flavor `local`.)*
 - Providers dependem só de `core/`; nunca uns dos outros.
 
 ### Consequências
