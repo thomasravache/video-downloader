@@ -1,7 +1,7 @@
 ---
 id: ADR-0015
 title: "HLS com criptografia AES-128 por chave de sessão: permitido só no flavor local"
-status: proposed
+status: accepted
 origin: decision
 date: 2026-10-03
 pillars: [dependencias]
