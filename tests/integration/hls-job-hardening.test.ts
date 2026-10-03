@@ -1,7 +1,6 @@
 /**
  * Contrato usado (SPEC-0012, revisão independente) — background REAL + fakeBrowser + offscreen simulado (manual):
- *  MAJOR-1  playlist de mídia com EXT-X-BYTERANGE (ou BYTERANGE em EXT-X-MAP) -> {ok:false, error:'HLS_NOT_RESOLVED'};
- *           nenhum segmento requisitado, offscreen não aberto, downloads.download não chamado;
+ *  MAJOR-1  (removido pela SPEC-0013: byte range deixou de ser recusado; ver tests/integration/hls-job-byterange.test.ts)
  *  MAJOR-2  job ativo cujo documento offscreen sumiu (OffscreenPort.isOpen() via runtime.getContexts) é
  *           falhado com ASSEMBLY_FAILED em `create` e em `job`: libera o candidato e a vaga (TOO_MANY_JOBS);
  *           nada é revogado;
@@ -17,14 +16,7 @@ import { startBackground } from './support/background';
 import type { BackgroundHarness } from './support/background';
 import { simulateOffscreen } from './support/offscreen';
 import type { SimulatedOffscreen } from './support/offscreen';
-import {
-  fileHandler,
-  isSegmentPath,
-  jobOf,
-  observeAndResolve,
-  startDownload,
-  startJob,
-} from './support/hls-job';
+import { fileHandler, jobOf, observeAndResolve, startDownload, startJob } from './support/hls-job';
 import { body, startPlaylistServer } from './support/playlist-server';
 import type { Handler, PlaylistServer } from './support/playlist-server';
 
@@ -77,35 +69,6 @@ async function fromSender(message: unknown, sender: Record<string, unknown>): Pr
   }
   return Promise.race([responded, new Promise((resolve) => setTimeout(resolve, 300, 'timeout'))]);
 }
-
-describe('MAJOR-1: faixas de bytes não são suportadas', () => {
-  const cases: [string, string][] = [
-    [
-      'EXT-X-BYTERANGE em segmento',
-      `${head}#EXTINF:2.0,\n#EXT-X-BYTERANGE:1000@0\ns0.mpegts\n#EXTINF:2.0,\n#EXT-X-BYTERANGE:1000@1000\ns0.mpegts\n#EXT-X-ENDLIST\n`,
-    ],
-    [
-      'BYTERANGE em EXT-X-MAP',
-      `${head}#EXT-X-MAP:URI="s0.mpegts",BYTERANGE="100@0"\n#EXTINF:2.0,\ns1.mpegts\n#EXT-X-ENDLIST\n`,
-    ],
-  ];
-  for (const [name, text] of cases) {
-    it(`SPEC-0012:IT-03 ${name} -> HLS_NOT_RESOLVED, sem segmentos, sem offscreen e sem downloads.download`, async () => {
-      await start({ '/r/br.m3u8': body(text) });
-      const { candidate } = await observeAndResolve(bg, o('/r/br.m3u8'));
-
-      expect(await startDownload(bg, candidate.id)).toEqual({
-        ok: false,
-        error: 'HLS_NOT_RESOLVED',
-      });
-
-      expect(server.requests.filter(isSegmentPath)).toEqual([]);
-      expect(offscreen.starts()).toEqual([]);
-      expect(bg.offscreen.createDocument).not.toHaveBeenCalled();
-      expect(bg.download).not.toHaveBeenCalled();
-    });
-  }
-});
 
 describe('MAJOR-2: job ativo com o offscreen sumido é recuperado', () => {
   it('SPEC-0012:IT-04 consulta do job (`job`) falha o job com ASSEMBLY_FAILED e não revoga nada', async () => {
