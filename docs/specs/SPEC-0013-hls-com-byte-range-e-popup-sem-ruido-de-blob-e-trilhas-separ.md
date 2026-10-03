@@ -214,8 +214,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 250 ms); test exit 0 (Duration  34.30s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 142 ms); coverage exit 0 (================================================================================) — 78d496c | 2026-10-02 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (46 modules, 100 dependencies cruised)) — 78d496c | 2026-10-02 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; 4 MINOR corrigidos (bf14951..6f6fc09), 1 MINOR aceito (merge DOM file->hls por origem+caminho, conforme UT-10) — 6f6fc09 | 2026-10-02 |
-| G5 Integração & CI | PENDING | | |
-| H2 Integração aprovada | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 227 ms); test exit 0 (Duration  33.82s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.23s (tests 76%, transform 14%, import 7%, setup 3%)); test_e2e exit 0 (56 passed (52.1s)); arch_test exit 0 (✔ no dependency violations found (46 modules, 100 dependencies cruised)); security_scan exit 0 ([90m10:44PM[0m [32mINF[0m [1mno leaks found[0m) — c3c5c14 | 2026-10-02 |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
