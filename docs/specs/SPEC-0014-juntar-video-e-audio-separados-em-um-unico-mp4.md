@@ -4,7 +4,7 @@ title: Juntar vídeo e áudio separados em um único MP4
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
