@@ -79,6 +79,26 @@ interface RawLayout {
 }
 
 /**
+ * Fail closed: uma linha de tag que fala de BYTERANGE em grafia que o leitor estrito não reconhece
+ * (minúsculas, sem `:`, atributo em minúsculas) seria ignorada e o recurso seria baixado inteiro.
+ */
+function rejectUnrecognizedByteRange(line: string): void {
+  if (!/^#EXT/i.test(line) || !/byterange/i.test(line.replace(/"[^"]*"/g, '""'))) {
+    return;
+  }
+  if (line.startsWith('#EXT-X-BYTERANGE:')) {
+    return;
+  }
+  if (
+    line.startsWith('#EXT-X-MAP:') &&
+    attributesOf(line.slice('#EXT-X-MAP:'.length)).has('BYTERANGE')
+  ) {
+    return;
+  }
+  throw new HlsParseError();
+}
+
+/**
  * Lê o texto bruto: o m3u8-parser descarta em silêncio BYTERANGE malformado, o que faria o segmento ser
  * baixado inteiro e corromperia o arquivo; por isso a faixa é validada aqui, a partir do texto.
  */
@@ -91,6 +111,7 @@ function scanLayout(text: string): RawLayout {
     if (line === '') {
       continue;
     }
+    rejectUnrecognizedByteRange(line);
     if (line.startsWith('#EXT-X-BYTERANGE:')) {
       pending = line.slice('#EXT-X-BYTERANGE:'.length);
     } else if (line.startsWith('#EXT-X-MAP:')) {
@@ -134,18 +155,21 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
   }
   let ranges: (ByteRange | undefined)[] | undefined;
   if (layout.segmentRanges.some((raw) => raw !== undefined)) {
-    const ends = new Map<string, number>();
+    // RFC 8216 §4.3.2.2: offset omitido só vale se o segmento IMEDIATAMENTE anterior é uma faixa do
+    // mesmo recurso; qualquer segmento sem BYTERANGE ou troca de URL zera a referência.
+    let previous: { url: string; end: number } | undefined;
     ranges = layout.segmentRanges.map((raw, i) => {
+      const url = urls[i] as string;
       if (raw === undefined) {
+        previous = undefined;
         return undefined;
       }
-      const url = urls[i] as string;
       const parsed = parseRangeText(raw);
-      const offset = parsed.offset ?? ends.get(url);
+      const offset = parsed.offset ?? (previous?.url === url ? previous.end : undefined);
       if (offset === undefined || offset + parsed.length > Number.MAX_SAFE_INTEGER) {
         throw new HlsParseError();
       }
-      ends.set(url, offset + parsed.length);
+      previous = { url, end: offset + parsed.length };
       return { offset, length: parsed.length };
     });
   }
@@ -165,6 +189,16 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
   const initUrl = typeof mapUri === 'string' ? absoluteHttp(mapUri, baseUrl) : undefined;
   if (initRange !== undefined && initUrl === undefined) {
     throw new HlsParseError();
+  }
+  if (ranges !== undefined) {
+    // Playlist malformada: segmento inteiro apontando para um recurso que também é fatiado (ou o init).
+    const sliced = new Set(urls.filter((_url, i) => ranges?.[i] !== undefined));
+    if (initUrl !== undefined) {
+      sliced.add(initUrl);
+    }
+    if (urls.some((url, i) => ranges?.[i] === undefined && sliced.has(url))) {
+      throw new HlsParseError();
+    }
   }
   return {
     urls,
