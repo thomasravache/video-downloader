@@ -10,6 +10,7 @@ import type { JobError } from './errors';
 import { newJob, reduceJob } from './job';
 import type { JobEvent, JobState } from './job';
 import type { OffscreenEvent, OffscreenStart } from './protocol';
+import type { ByteRange } from './segments';
 
 const JOBS_KEY = 'vd:jobs';
 const MAX_ACTIVE_JOBS = 2;
@@ -38,6 +39,8 @@ export interface JobPlan {
   urls: string[];
   initUrl?: string;
   fmp4: boolean;
+  ranges?: (ByteRange | undefined)[];
+  initRange?: ByteRange;
 }
 
 export type CreateJobResult =
@@ -273,6 +276,9 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           urls: plan.urls,
           ...(plan.initUrl !== undefined && { initUrl: plan.initUrl }),
           fmp4: plan.fmp4,
+          ...(plan.ranges !== undefined && { ranges: plan.ranges }),
+          ...(plan.initUrl !== undefined &&
+            plan.initRange !== undefined && { initRange: plan.initRange }),
         };
         try {
           await offscreen.ensure();

@@ -8,6 +8,7 @@ import type {
   VideoCandidate,
 } from '../../src/core/contracts';
 import { requestAccess } from '../../src/core/access';
+import { hideRedundantCandidates } from '../../src/core/candidates';
 import type { PermissionsPort } from '../../src/core/access';
 import { validateJobResponse } from '../../src/core/hls-download';
 import {
@@ -276,16 +277,17 @@ async function detect(): Promise<void> {
     } else if (response.candidates.length === 0) {
       showMessage(content, t('popupEmpty'), 'empty-state');
     } else {
+      const candidates = hideRedundantCandidates(response.candidates);
       renderCandidates(
         content,
-        response.candidates,
+        candidates,
         text,
         (candidate, button) => {
           void download(candidate, button);
         },
         hlsContext,
       );
-      resolvePlaylists(content, response.candidates);
+      resolvePlaylists(content, candidates);
     }
   } else if (response?.error === 'RESTRICTED_PAGE') {
     showMessage(content, t('popupRestricted'), 'restricted-state');
