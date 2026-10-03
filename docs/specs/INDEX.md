@@ -5,7 +5,7 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 15 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 3, in-progress 4, implemented 5
+- Specs: proposed 1, approved 2, in-progress 5, implemented 5
 - Impedimentos: **0 aberto(s)**, 7 resolvido(s)
 
 ## Cobertura de Pilares
@@ -37,7 +37,7 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -47,7 +47,7 @@ Perfil: **padrao**
 | 2 | SPEC-0010 | Detecção por rede (media sniffing) | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009 |
 | 3 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010 |
 | 4 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011 |
-| 5 | SPEC-0013 | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
+| 5 | SPEC-0013 | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
@@ -75,7 +75,7 @@ flowchart LR
     S0010["SPEC-0010<br/>Detecção por rede (media sniffing)"]:::inprogress
     S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::inprogress
     S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::inprogress
-    S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::approved
+    S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::inprogress
     S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::approved
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::approved
   end
@@ -114,7 +114,7 @@ flowchart LR
 | [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0009@1 |
 | [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
 | [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1 |
-| [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
+| [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
 | [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | approved | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
 

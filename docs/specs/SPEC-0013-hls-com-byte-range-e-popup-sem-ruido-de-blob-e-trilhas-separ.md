@@ -210,10 +210,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 2482d6e (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/24]⎯) — f7b4636 | 2026-10-02 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 250 ms); test exit 0 (Duration  34.30s (tests 98%, import 1%, transform 1%)); lint exit 0 (✔ Finished in 142 ms); coverage exit 0 (================================================================================) — 78d496c | 2026-10-02 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (46 modules, 100 dependencies cruised)) — 78d496c | 2026-10-02 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; 4 MINOR corrigidos (bf14951..6f6fc09), 1 MINOR aceito (merge DOM file->hls por origem+caminho, conforme UT-10) — 6f6fc09 | 2026-10-02 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
