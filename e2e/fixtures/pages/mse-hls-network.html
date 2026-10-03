@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aula com player MSE e playlist na rede</title>
+  </head>
+  <body>
+    <h1>Player com MediaSource (blob:) e HLS observado na rede</h1>
+    <video id="player" controls muted></video>
+    <script>
+      // O <video> só enxerga blob: (MSE); a playlist HLS real só aparece na rede (SPEC-0013:E2E-02).
+      const source = new MediaSource();
+      document.getElementById('player').src = URL.createObjectURL(source);
+      fetch('/hls/single-file/media.m3u8')
+        .then((response) => response.text())
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>

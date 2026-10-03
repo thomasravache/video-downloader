@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aula com HLS de arquivo único</title>
+  </head>
+  <body>
+    <h1>Aula com HLS de arquivo único (byte range)</h1>
+    <script>
+      fetch('/hls/single-file/media.m3u8')
+        .then((response) => response.text())
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>

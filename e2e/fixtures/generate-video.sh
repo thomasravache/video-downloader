@@ -63,3 +63,17 @@ ffmpeg -y -loglevel error \
   -c:v mpeg2video -threads 1 -b:v 100k -c:a mp2 -b:a 32k -shortest \
   -map_metadata -1 -fflags +bitexact -flags:v +bitexact -flags:a +bitexact \
   -f mpegts hls/clip/other-codec.mpegts
+
+# SPEC-0013: hls/single-file/ — o mesmo clipe sintético (6 s, 320x180, H.264 + AAC) como fMP4 de ARQUIVO ÚNICO:
+# media.mp4 + media.m3u8 com EXT-X-MAP/EXT-X-BYTERANGE (trechos do mesmo arquivo, servidos com Range/206).
+rm -rf hls/single-file
+mkdir -p hls/single-file
+ffmpeg -y -loglevel error \
+  -f lavfi -i "testsrc2=size=320x180:rate=25:duration=6" \
+  -f lavfi -i "sine=frequency=440:duration=6" \
+  -c:v libx264 -threads 1 -preset veryfast -profile:v main -b:v 120k -maxrate 120k -bufsize 120k \
+  -g 50 -keyint_min 50 -sc_threshold 0 -pix_fmt yuv420p \
+  -c:a aac -b:a 48k -ar 44100 -ac 1 -shortest \
+  -map_metadata -1 -fflags +bitexact -flags:v +bitexact -flags:a +bitexact \
+  -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
+  -hls_segment_filename hls/single-file/media.mp4 hls/single-file/media.m3u8
