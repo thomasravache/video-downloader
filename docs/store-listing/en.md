@@ -22,7 +22,6 @@ Privacy first
 
 Responsible use
 - Meant for content you have the right to download (your own videos, content released by its author, or content whose terms allow it).
-- It does not circumvent DRM or any technical protection: protected videos are not downloaded.
 - You are responsible for respecting site terms and copyright law.
 
 Open source and questions: https://github.com/thomasravache/video-downloader/issues

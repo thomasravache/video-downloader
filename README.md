@@ -2,7 +2,7 @@
 
 Extensão do Chrome (Manifest V3) que detecta e baixa vídeos das páginas visitadas (arquivos diretos e HLS).
 
-> DRM (Widevine, PlayReady, FairPlay, EME) está fora de escopo. HLS com criptografia AES-128 é descriptografado com a chave entregue à sua própria sessão (ADR-0015). Use apenas com conteúdo ao qual você tem acesso, para uso pessoal e offline, respeitando os termos da plataforma: a responsabilidade pelo uso é sua.
+> HLS com criptografia AES-128 é descriptografado com a chave entregue à sua própria sessão (ADR-0015), para uso pessoal e offline. DRM (Widevine, PlayReady, FairPlay, EME) não é suportado.
 
 ## Stack
 
