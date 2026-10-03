@@ -311,10 +311,14 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
+  /** Extensões típicas de segmento fMP4/CMAF (o caminho, sem consulta/fragmento). */
+  const FMP4_SEGMENT = /\.(?:m4s|mp4|m4a|m4v|cmfv|cmfa)(?:[?#]|$)/i;
+
   type HlsRefusal = Extract<DownloadResponse, { ok: false }>;
 
   type ApprovedPlaylist =
-    { ok: true; media: MediaSegments } | { ok: false; error: HlsRefusal['error']; event: string };
+    | { ok: true; media: MediaSegments; fmp4WithoutInit: boolean }
+    | { ok: false; error: HlsRefusal['error']; event: string };
 
   /** Busca e aprova uma playlist de mídia (allowlist de criptografia, ao vivo, http(s), byte range). */
   async function approvePlaylist(url: string): Promise<ApprovedPlaylist> {
@@ -343,7 +347,12 @@ export function createService(deps: ServiceDeps): Service {
       if (info.live) {
         return { ok: false, error: 'LIVE', event: 'download.live' };
       }
-      return { ok: true, media: parseMediaSegments(text, url) };
+      const media = parseMediaSegments(text, url);
+      // fMP4 sem init utilizável: tem EXT-X-MAP sem URI ou segmentos com extensão de fMP4 sem MAP.
+      const fmp4WithoutInit =
+        !media.fmp4 &&
+        (/^\s*#EXT-X-MAP/m.test(text) || media.urls.some((u) => FMP4_SEGMENT.test(u)));
+      return { ok: true, media, fmp4WithoutInit };
     } catch {
       return notResolved;
     }
@@ -411,12 +420,18 @@ export function createService(deps: ServiceDeps): Service {
     }
     const media = approved.media;
     let audioMedia: MediaSegments | undefined;
+    let noInit = approved.fmp4WithoutInit;
     if (audioTrack !== 'none') {
       const approvedAudio = await approvePlaylist(audioTrack.url);
       if (!approvedAudio.ok) {
         return refuse(approvedAudio.error, approvedAudio.event);
       }
       audioMedia = approvedAudio.media;
+      noInit ||= approvedAudio.fmp4WithoutInit;
+      // fMP4 sem EXT-X-MAP utilizável: a playlist não se resolve (antes de qualquer requisição de mídia).
+      if (noInit) {
+        return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+      }
       // A junção só trabalha com fMP4 nas duas pontas (SPEC-0014).
       if (!media.fmp4 || !audioMedia.fmp4) {
         return refuse('UNSUPPORTED', 'download.unsupported');

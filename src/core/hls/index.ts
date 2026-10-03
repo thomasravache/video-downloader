@@ -95,11 +95,12 @@ function absoluteHttp(uri: string, baseUrl: string): string | undefined {
   }
 }
 
-const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
+/** Controle (C0/C1) e formatação Unicode (`Cf`: bidi, largura zero): invisíveis e usados para disfarçar texto. */
+const HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\p{Cf}]/gu;
 
-/** Texto de atributo sem caracteres de controle, aparado e truncado (sem partir um par substituto). */
+/** Texto de atributo sem caracteres invisíveis, com espaços normalizados, aparado e truncado (sem partir um par substituto). */
 function cleanText(value: string, max: number): string {
-  const text = value.replace(CONTROL_CHARS, '').trim().slice(0, max);
+  const text = value.replace(HIDDEN_CHARS, '').replace(/\s+/g, ' ').trim().slice(0, max);
   return /[\ud800-\udbff]$/.test(text) ? text.slice(0, -1) : text;
 }
 
