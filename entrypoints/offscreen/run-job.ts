@@ -141,6 +141,11 @@ export async function runOffscreenJob(
           }
           chunks.push(value);
           received += value.byteLength;
+          if (range && received > range.length) {
+            // Servidor hostil/defeituoso: mais bytes que a faixa pedida; não lê até o fim nem até o limite.
+            await reader.cancel().catch(() => undefined);
+            throw new Error('range length');
+          }
           inFlight.set(id, Math.max(inFlight.get(id) ?? 0, received));
           checkLimit();
           if (isTooLarge()) {
