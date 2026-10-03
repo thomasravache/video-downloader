@@ -1,7 +1,10 @@
 /** Agendador de segmentos (SPEC-0012:UT-01): concorrência limitada, retentativas, ordem e abort. */
 import { SegmentFetchError } from './errors';
 
-export type SegmentFetch = (url: string, init: { signal: AbortSignal }) => Promise<Uint8Array>;
+export type SegmentFetch = (
+  url: string,
+  init: { signal: AbortSignal; index: number },
+) => Promise<Uint8Array>;
 
 export interface SegmentProgress {
   /** Índice do segmento concluído (ordem original). */
@@ -78,7 +81,7 @@ export function runSegments(options: RunSegmentsOptions): Promise<Uint8Array[]> 
           return undefined;
         }
         try {
-          return await options.fetch(url, { signal: internal.signal });
+          return await options.fetch(url, { signal: internal.signal, index });
         } catch {
           if (flags.settled) {
             return undefined;

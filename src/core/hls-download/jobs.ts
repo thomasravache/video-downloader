@@ -276,6 +276,9 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           urls: plan.urls,
           ...(plan.initUrl !== undefined && { initUrl: plan.initUrl }),
           fmp4: plan.fmp4,
+          ...(plan.ranges !== undefined && { ranges: plan.ranges }),
+          ...(plan.initUrl !== undefined &&
+            plan.initRange !== undefined && { initRange: plan.initRange }),
         };
         try {
           await offscreen.ensure();

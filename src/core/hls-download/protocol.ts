@@ -11,8 +11,9 @@ export interface OffscreenStart {
   /** EXT-X-MAP (fMP4), quando houver. */
   initUrl?: string;
   fmp4: boolean;
-  /** Faixas alinhadas a `urls` (SPEC-0013); se presente, `length === urls.length`. */
-  ranges?: (ByteRange | undefined)[];
+  /** Faixas alinhadas a `urls` (SPEC-0013); se presente, `length === urls.length`. `null` (o
+   * `sendMessage` serializa `undefined` assim) equivale a "sem faixa". */
+  ranges?: (ByteRange | null | undefined)[];
   /** Faixa do `initUrl` (SPEC-0013); só com `initUrl`. */
   initRange?: ByteRange;
 }

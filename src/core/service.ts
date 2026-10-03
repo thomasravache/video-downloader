@@ -396,6 +396,8 @@ export function createService(deps: ServiceDeps): Service {
       urls: media.urls,
       ...(media.initUrl !== undefined && { initUrl: media.initUrl }),
       fmp4: media.fmp4,
+      ...(media.ranges !== undefined && { ranges: media.ranges }),
+      ...(media.initRange !== undefined && { initRange: media.initRange }),
     });
     if (!created.ok) {
       return refuse(created.error, 'download.refused');
