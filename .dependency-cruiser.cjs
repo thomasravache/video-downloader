@@ -93,6 +93,14 @@ module.exports = {
       to: { path: '(^|/)node_modules/mux\\.js(/|$)' },
     },
     {
+      name: 'mediabunny-only-in-offscreen',
+      comment:
+        'ADR-0014: mediabunny (junção de trilhas MP4) só pode ser importado por entrypoints/offscreen.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/offscreen/' },
+      to: { path: '(^|/)node_modules/mediabunny(/|$)' },
+    },
+    {
       name: 'no-circular',
       comment: 'Ciclos de importação são proibidos.',
       severity: 'error',

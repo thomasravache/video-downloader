@@ -36,5 +36,8 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "mediabunny": "1.61.0"
   }
 }
