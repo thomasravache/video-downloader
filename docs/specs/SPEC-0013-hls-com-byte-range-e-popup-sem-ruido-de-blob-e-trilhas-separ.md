@@ -4,7 +4,7 @@ title: HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blo
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
