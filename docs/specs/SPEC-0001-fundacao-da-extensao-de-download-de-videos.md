@@ -19,7 +19,7 @@ Uma extensão do Chrome (Manifest V3) que identifica vídeos na página aberta e
 
 **Roadmap após a fundação** (épicos futuros, cada um com sua própria spec e H1):
 1. Detector genérico completo: streams HLS/DASH **sem criptografia** (junção de segmentos), escolha de qualidade, progresso, nome do arquivo.
-2. Providers de plataformas de curso (ex.: Hotmart) — só aulas sem DRM, **somente build `local`**.
+2. Providers de plataformas de curso — só aulas sem DRM, **somente build `local`**.
 3. Provider YouTube — **somente build `local`**.
 4. Salvar direto no Google Drive (OAuth via `chrome.identity`).
 
@@ -33,7 +33,7 @@ Uma extensão do Chrome (Manifest V3) que identifica vídeos na página aberta e
 - Pipeline de release: versão SemVer, zip dos dois builds, publicação do `public` na Web Store via API (com confirmação humana), `local` como artefato da release no GitHub.
 
 **Não-objetivos (fora do escopo):**
-- Qualquer contorno de DRM (Widevine/PlayReady/FairPlay) ou de criptografia de stream — **nunca**, em nenhum build. Vídeo protegido aparece como "protegido — download indisponível".
+- DRM (Widevine/PlayReady/FairPlay): vídeo protegido aparece como "protegido — download indisponível".
 - HLS/DASH, providers de sites específicos, YouTube e Google Drive (épicos do roadmap).
 - Navegadores além do Chrome/Chromium.
 - Telemetria remota ou coleta de dados do usuário.
@@ -97,14 +97,14 @@ Uma extensão do Chrome (Manifest V3) que identifica vídeos na página aberta e
 
 ## 8. Questões em Aberto
 - [x] Distribuição — pública na Web Store para o que a política permitir; o resto (ex.: YouTube) só em build local (Thomas, 2026-09-30)
-- [x] Limite para conteúdo protegido — somente conteúdo sem DRM; nunca contornar DRM (Thomas, 2026-09-30)
+- [x] Limite para conteúdo protegido — somente conteúdo sem DRM (Thomas, 2026-09-30); AES-128 por chave de sessão permitido depois, ADR-0015 (Thomas, 2026-10-03)
 - [x] Board — só no repositório (`tracker.provider: none`) (Thomas, 2026-09-30)
 - [x] Fluxo de mudança — PR no GitHub com CI obrigatório e merge commit (Thomas, 2026-09-30)
 - [x] Stack — Thomas domina .NET e já usou TypeScript; pediu a tecnologia mais compatível → TypeScript + WXT (ADR-0010) (Thomas, 2026-09-30)
 - [x] Repositório GitHub — ainda não existe; git init local agora, repo criado em SPEC-0002 (Thomas, 2026-09-30)
 - [x] Rigor dos pilares — `padrao` (Thomas, 2026-09-30)
 - [x] Primeiro alvo — detector genérico (MP4/WebM direto) antes de providers específicos (Thomas, 2026-09-30)
-- [x] Providers de cursos e a política da loja (paywall/login) — providers de cursos (Hotmart etc.) e YouTube só no build `local`; build `public` = detector genérico sem DRM (Thomas, 2026-09-30)
+- [x] Providers de cursos e a política da loja (paywall/login) — providers de cursos e YouTube só no build `local`; build `public` = detector genérico sem DRM (Thomas, 2026-09-30)
 - [x] Conta de desenvolvedor da Web Store — Thomas vai criar; até existir, a publicação na loja (SPEC-0006) fica como impedimento externo e a produção é o zip `local` (Thomas, 2026-09-30)
 - [x] Idiomas e nome — interface em pt-BR + en com `_locales` desde o início; nome provisório "Video Downloader", nome final definido na listagem da loja (SPEC-0006) (Thomas, 2026-09-30)
 - [x] Visibilidade — repositório público no GitHub, licença MIT (Thomas, 2026-09-30)
@@ -122,3 +122,4 @@ Uma aprovação humana cobre o épico e as specs filhas apresentadas junto com e
 ## 12. Emendas
 | Versão | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (política, ADR-0015) | 2026-10-03 | removida a proibição de contorno de criptografia de stream; AES-128 por chave de sessão passa a ser permitido (DRM segue fora de escopo) | decisão do Thomas (uso pessoal e offline) | SPEC-0011, SPEC-0012, SPEC-0017 | thomas (chat, 2026-10-03: "aprovadíssimo") |

@@ -15,7 +15,7 @@
 - **Preferências.** As configurações da extensão (por exemplo, idioma e opções de interface) ficam em `chrome.storage` no seu navegador e não contêm dados pessoais.
 - **Sem telemetria.** Não há analytics, rastreamento, cookies próprios, publicidade, perfilamento nem venda ou compartilhamento de dados.
 - **Sem servidores.** A extensão não tem backend e não faz requisições a serviços nossos. As únicas requisições de rede são as feitas pela própria página e o download do arquivo do site de origem iniciado por você.
-- **Uso responsável.** A extensão destina-se a conteúdo que você tem o direito de baixar. Ela não contorna DRM nem proteções técnicas.
+- **Uso responsável.** A extensão destina-se a conteúdo que você tem o direito de baixar.
 
 **Contato.** Dúvidas ou solicitações: abra uma issue em https://github.com/thomasravache/video-downloader/issues.
 
@@ -32,7 +32,7 @@ Mudanças nesta política serão publicadas neste arquivo, com a data de atualiz
 - **Preferences.** Extension settings (for example language and interface options) are kept in `chrome.storage` in your browser and contain no personal data.
 - **No telemetry.** No analytics, tracking, first-party cookies, advertising, profiling, or sale or sharing of data.
 - **No servers.** The extension has no backend and makes no requests to services of ours. The only network requests are those made by the page itself and the file download from the original site that you start.
-- **Responsible use.** The extension is meant for content you have the right to download. It does not circumvent DRM or other technical protection measures.
+- **Responsible use.** The extension is meant for content you have the right to download.
 
 **Contact.** Questions or requests: open an issue at https://github.com/thomasravache/video-downloader/issues.
 

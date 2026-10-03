@@ -16,7 +16,7 @@ enforced_by: "teste de arquitetura: m3u8-parser só em src/core; mux.js só no o
 # ADR-0013 — Montagem de HLS: m3u8-parser e mux.js em offscreen document
 
 ## Contexto e Problema
-Para baixar HLS sem criptografia é preciso ler a playlist (master e mídia), buscar dezenas ou centenas de segmentos e juntá-los num arquivo reproduzível. No MV3 o service worker é efêmero e não tem DOM; blobs grandes e `URL.createObjectURL` pedem um contexto de documento. A decisão do usuário (2026-10-02) restringe o escopo a streams **sem criptografia**; AES-128 e DRM são recusados.
+Para baixar HLS sem criptografia é preciso ler a playlist (master e mídia), buscar dezenas ou centenas de segmentos e juntá-los num arquivo reproduzível. No MV3 o service worker é efêmero e não tem DOM; blobs grandes e `URL.createObjectURL` pedem um contexto de documento. A decisão inicial do usuário (2026-10-02) restringia o escopo a streams **sem criptografia**; o ADR-0015 passou a permitir AES-128 com chave de sessão.
 
 ## Direcionadores da Decisão
 - Arquivo final reproduzível em qualquer player (MP4/H.264/AAC), sem exigir `.ts`.
@@ -34,7 +34,7 @@ Para baixar HLS sem criptografia é preciso ler a playlist (master e mídia), bu
 
 **Regras (verificáveis):**
 - `m3u8-parser` fica restrito a `src/core` (parse puro, sem APIs do navegador); `mux.js` e a montagem de blobs ficam só em `entrypoints/offscreen` e `src/` de apoio sem `chrome.*`.
-- Playlist com `EXT-X-KEY` de `METHOD` diferente de `NONE` (incluindo `SAMPLE-AES`) ou `EXT-X-SESSION-KEY` é tratada como **protegida** e nunca baixada; playlist sem `EXT-X-ENDLIST` (ao vivo) é recusada.
+- Playlist com `EXT-X-KEY` de `METHOD` diferente de `NONE` (incluindo `SAMPLE-AES`) ou `EXT-X-SESSION-KEY` é tratada como **protegida**, exceto o `AES-128` com chave de sessão permitido pelo ADR-0015; playlist sem `EXT-X-ENDLIST` (ao vivo) é recusada.
 - O offscreen document é criado sob demanda com a razão `BLOBS` e fechado ao fim do último job.
 - Limite de memória: recusa com erro claro acima de 1,5 GiB bufferizados (o arquivo é montado em memória).
 - Versões fixadas sem `^`/`~` (ADR-0008) e licença Apache-2.0 compatível com MIT.

@@ -32,7 +32,7 @@ Origem: na verificação manual da fundação (2026-10-02), a página da MDN (v�
 **Não-objetivos (fora do escopo):**
 - DRM e criptografia de stream (AES-128, SAMPLE-AES, Widevine etc.) — decisão de 2026-10-02: nunca.
 - DASH (download), legendas, faixas de áudio alternativas, transmissões ao vivo.
-- Providers de plataformas específicas (Hotmart etc.), YouTube e Google Drive (épicos seguintes do roadmap).
+- Providers de plataformas específicas, YouTube e Google Drive (épicos seguintes do roadmap).
 - Gravação em disco por streaming (arquivos HLS acima de 1,5 GiB são recusados nesta fase).
 
 ## 3. Arquitetura Alvo
@@ -80,7 +80,7 @@ Executam em sequência (arquivos em comum: background, popup, manifesto e harnes
 - **Memória em arquivos grandes** — limite de 1,5 GiB com erro claro; streaming para disco fica para depois.
 - **Codecs fora de H.264/AAC** (ex.: HEVC) — erro `UNSUPPORTED_CODEC` com mensagem clara.
 - **Build `public` não enxerga mídia de CDN de terceiros** — o `webRequest` e o `fetch` do service worker só alcançam hosts com permissão concedida; um player cuja playlist/mídia vem de um host diferente do da página só será detectado no `public` se o usuário também conceder esse host. Consequência do ADR-0012 (por site). Mitigação a decidir pelo Thomas após a verificação manual: oferecer no popup "Permitir todos os sites" (uma concessão ampla opcional) ou aceitar a limitação do `public` e deixar a cobertura completa para o `local` (decisão de produto, registrada em ADR se mudar).
-- **Conteúdo protegido/pago** — nunca contornamos DRM ou criptografia; a política da loja e o uso responsável permanecem como no épico da fundação.
+- **Conteúdo protegido/pago** — AES-128 por chave de sessão é permitido (ADR-0015) e DRM está fora de escopo; a política da loja e o uso responsável permanecem como no épico da fundação.
 
 ## 7. Critérios de Aceite do Épico
 - [ ] Numa página com iframe de outro domínio, o build `local` lista e baixa o vídeo do iframe — SPEC-0009:E2E-01
@@ -111,3 +111,4 @@ Uma aprovação humana cobre o épico e as specs filhas apresentadas junto com e
 <!-- Mudança em spec aprovada: uma linha por emenda, aprovada pelo humano. -->
 | Versão | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (política, ADR-0015) | 2026-10-03 | removida a proibição de contorno de criptografia de stream; AES-128 por chave de sessão passa a ser permitido (DRM segue fora de escopo) | decisão do Thomas (uso pessoal e offline) | SPEC-0011, SPEC-0012, SPEC-0017 | thomas (chat, 2026-10-03: "aprovadíssimo") |
