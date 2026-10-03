@@ -107,3 +107,43 @@ video.m3u8
 M
 sed 's#^\(\#EXT-X-VERSION.*\)$#\1\n\#EXT-X-KEY:METHOD=AES-128,URI="key.bin"#' hls/split-av/audio.m3u8 > hls/split-av/audio-enc.m3u8
 sed 's#audio.m3u8#audio-enc.m3u8#' hls/split-av/master.m3u8 > hls/split-av/master-enc-audio.m3u8
+
+# SPEC-0015: hls/course/ — uma "aula de curso": master com 2 variantes de vídeo (video-hi 320x180, video-lo 160x90)
+# e 2 faixas de áudio no grupo a1 (English, DEFAULT, `eng`; Português, `por`), cada trilha um fMP4 de arquivo único
+# (EXT-X-MAP + EXT-X-BYTERANGE) com a sua playlist. Todos os .mp4 têm > 100 KiB (o corte da detecção por rede,
+# SPEC-0010) para aparecerem como cartões de arquivo solto quando a página os busca. 6 s, sem conteúdo de terceiros.
+rm -rf hls/course
+mkdir -p hls/course
+course_video() {
+  # $1 largura, $2 altura, $3 bitrate de vídeo, $4 nome
+  ffmpeg -y -loglevel error \
+    -f lavfi -i "testsrc2=size=$1x$2:rate=25:duration=6" \
+    -an -c:v libx264 -threads 1 -preset veryfast -profile:v main -b:v "$3" -maxrate "$3" -bufsize "$3" \
+    -g 50 -keyint_min 50 -sc_threshold 0 -pix_fmt yuv420p \
+    -map_metadata -1 -fflags +bitexact -flags:v +bitexact \
+    -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
+    -hls_segment_filename "hls/course/$4.mp4" "hls/course/$4.m3u8"
+}
+course_audio() {
+  # $1 frequência, $2 idioma ISO-639-2 (eng/por), $3 nome
+  ffmpeg -y -loglevel error \
+    -f lavfi -i "sine=frequency=$1:duration=6" \
+    -vn -c:a aac -b:a 256k -ar 44100 -ac 2 -metadata:s:a:0 "language=$2" \
+    -map_metadata -1 -fflags +bitexact -flags:a +bitexact \
+    -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
+    -hls_segment_filename "hls/course/$3.mp4" "hls/course/$3.m3u8"
+}
+course_video 320 180 200k video-hi
+course_video 160 90 200k video-lo
+course_audio 440 eng audio-en
+course_audio 880 por audio-pt
+cat > hls/course/master.m3u8 <<'M'
+#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a1",NAME="English",LANGUAGE="en",DEFAULT=YES,AUTOSELECT=YES,URI="audio-en.m3u8"
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a1",NAME="Português",LANGUAGE="pt",DEFAULT=NO,AUTOSELECT=YES,URI="audio-pt.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=400000,RESOLUTION=320x180,CODECS="avc1.4d4015,mp4a.40.2",AUDIO="a1"
+video-hi.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=160x90,CODECS="avc1.4d400b,mp4a.40.2",AUDIO="a1"
+video-lo.m3u8
+M

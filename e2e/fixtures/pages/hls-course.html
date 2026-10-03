@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aula de curso com várias fontes</title>
+  </head>
+  <body>
+    <h1>Aula de curso com várias fontes</h1>
+    <!-- Como o player de um site de curso: busca a master, as playlists de cada qualidade e de cada áudio e,
+         depois, os arquivos .mp4 soltos que essas playlists usam. Sem <video>: só a rede é observada. -->
+    <script>
+      const urls = [
+        '/hls/course/master.m3u8',
+        '/hls/course/video-hi.m3u8',
+        '/hls/course/video-lo.m3u8',
+        '/hls/course/audio-en.m3u8',
+        '/hls/course/audio-pt.m3u8',
+        '/hls/course/video-hi.mp4',
+        '/hls/course/video-lo.mp4',
+        '/hls/course/audio-en.mp4',
+        '/hls/course/audio-pt.mp4',
+      ];
+      (async () => {
+        for (const url of urls) {
+          await (await fetch(url)).arrayBuffer();
+        }
+      })()
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>
