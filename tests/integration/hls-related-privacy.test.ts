@@ -112,7 +112,8 @@ describe('privacidade das buscas extras', () => {
     expect(response.ok).toBe(true);
     expect(response.hls?.mediaResources).toBeDefined();
     expect(response.hls?.mediaResources?.length).toBeGreaterThan(0);
-    expectClean(JSON.stringify(response), 'resposta');
+    // variants[].url e audio[].url carregam a query por contrato (o download as rebusca): só mediaResources.
+    expectClean(JSON.stringify(response.hls?.mediaResources), 'mediaResources');
     expectClean(await diagnosticsText(), 'diagnósticos');
     expectClean(logged.join('\n'), 'console');
   });
