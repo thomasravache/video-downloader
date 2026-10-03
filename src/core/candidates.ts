@@ -63,7 +63,17 @@ export function createCandidateStore(): CandidateStore {
   };
 }
 
-/** Esconde candidatos `blob:` sem o que baixar quando há outra fonte (SPEC-0013). Ainda sem implementação. */
-export function hideRedundantCandidates(_candidates: VideoCandidate[]): VideoCandidate[] {
-  throw new Error('NotImplemented: hideRedundantCandidates (SPEC-0013)');
+const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+/**
+ * Esconde candidatos `blob:` (`unsupported-stream` sem URL http(s)) quando a lista tem outra fonte baixável
+ * ou HLS (SPEC-0013). Preserva a ordem e não muta a entrada.
+ */
+export function hideRedundantCandidates(candidates: VideoCandidate[]): VideoCandidate[] {
+  const isNoise = (c: VideoCandidate): boolean =>
+    c.support === 'unsupported-stream' && !isHttpUrl(c.mediaUrl);
+  const hasSource = candidates.some(
+    (c) => !isNoise(c) && (c.support === 'downloadable' || c.kind === 'hls'),
+  );
+  return hasSource ? candidates.filter((c) => !isNoise(c)) : [...candidates];
 }
