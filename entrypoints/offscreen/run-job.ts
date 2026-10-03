@@ -2,6 +2,7 @@
 import {
   AssemblyError,
   MAX_BUFFERED_BYTES,
+  MAX_MERGE_BUFFERED_BYTES,
   SegmentFetchError,
   runSegments,
 } from '../../src/core/hls-download';
@@ -11,7 +12,7 @@ import type {
   OffscreenEvent,
   OffscreenStart,
 } from '../../src/core/hls-download';
-import { assembleFmp4, assembleTs } from './assemble';
+import { assembleFmp4, assembleTs, initIsEncrypted } from './assemble';
 
 export interface OffscreenJobDeps {
   fetch: typeof fetch;
@@ -57,6 +58,14 @@ function contentRangeMatches(response: Response, { offset, length }: ByteRange):
   return match !== null && Number(match[1]) === offset && Number(match[2]) === offset + length - 1;
 }
 
+/** Forma comum às duas trilhas do `start` (vídeo no nível do comando, áudio em `audio`). */
+interface TrackRequest {
+  urls: string[];
+  initUrl?: string | undefined;
+  ranges?: (ByteRange | null | undefined)[] | undefined;
+  initRange?: ByteRange | undefined;
+}
+
 const isAborted = (signal: AbortSignal): boolean => signal.aborted;
 
 function errorCode(error: unknown): JobError {
@@ -92,10 +101,12 @@ export async function runOffscreenJob(
   const inFlight = new Map<number, number>();
   let requestId = 0;
   const flags = { tooLarge: false };
+  // Com áudio a junção guarda mais cópias: o limite vale para a soma das duas trilhas (SPEC-0014).
+  const limit = request.audio === undefined ? MAX_BUFFERED_BYTES : MAX_MERGE_BUFFERED_BYTES;
   const isTooLarge = (): boolean => flags.tooLarge;
   const buffered = (): number => completedBytes + [...inFlight.values()].reduce((a, b) => a + b, 0);
   const checkLimit = (): void => {
-    if (!flags.tooLarge && buffered() > MAX_BUFFERED_BYTES) {
+    if (!flags.tooLarge && buffered() > limit) {
       flags.tooLarge = true;
       job.abort();
     }
@@ -178,52 +189,93 @@ export async function runOffscreenJob(
     signal: job.signal,
   };
 
+  const emitReady = (mp4: Uint8Array): void => {
+    const blobUrl = URL.createObjectURL(
+      new Blob([mp4 as Uint8Array<ArrayBuffer>], { type: 'video/mp4' }),
+    );
+    deps.emit({ type: 'ready', blobUrl, bytes: mp4.byteLength });
+  };
+
   try {
-    // Limite decidido pelos metadados, antes da primeira requisição de mídia (inclui o init).
+    // Limite decidido pelos metadados, antes da primeira requisição de mídia (inclui os inits).
+    const sumRanges = (ranges: OffscreenStart['ranges'], initRange?: ByteRange): number =>
+      (ranges ?? []).reduce((sum, range) => sum + (range?.length ?? 0), initRange?.length ?? 0);
     const declared =
-      (request.ranges ?? []).reduce((sum, range) => sum + (range?.length ?? 0), 0) +
-      (request.initRange?.length ?? 0);
-    if (declared > MAX_BUFFERED_BYTES) {
+      sumRanges(request.ranges, request.initRange) +
+      sumRanges(request.audio?.ranges, request.audio?.initRange);
+    if (declared > limit) {
       flags.tooLarge = true;
       throw new AssemblyError('TOO_LARGE');
     }
-    let init: Uint8Array | undefined;
-    if (request.fmp4 && request.initUrl !== undefined) {
-      [init] = await runSegments({
+    const { audio } = request;
+    const total = request.urls.length + (audio?.urls.length ?? 0);
+    const fetchInit = async (track: TrackRequest): Promise<Uint8Array | undefined> => {
+      if (track.initUrl === undefined) {
+        return undefined;
+      }
+      const [bytes] = await runSegments({
         ...common,
-        fetch: (url, options) => fetchBytes(url, options, request.initRange),
-        urls: [request.initUrl],
+        fetch: (url, options) => fetchBytes(url, options, track.initRange),
+        urls: [track.initUrl],
       });
+      return bytes;
+    };
+    const fetchTrack = (track: TrackRequest, doneBefore: number): Promise<Uint8Array[]> =>
+      runSegments({
+        ...common,
+        fetch: (url, options) =>
+          fetchBytes(url, options, track.ranges?.[options.index] ?? undefined),
+        urls: track.urls,
+        onProgress: (progress) => {
+          deps.emit({
+            type: 'progress',
+            segmentsDone: doneBefore + progress.segmentsDone,
+            segmentsTotal: total,
+            bytesDone: completedBytes,
+          });
+        },
+      });
+
+    const videoInit = request.fmp4 ? await fetchInit(request) : undefined;
+    if (audio !== undefined) {
+      if (videoInit === undefined || audio.initUrl === undefined) {
+        throw new AssemblyError('ASSEMBLY_FAILED', 'junção exige fMP4 nas duas trilhas');
+      }
+      const audioInit = (await fetchInit(audio)) as Uint8Array;
+      if (initIsEncrypted(videoInit) || initIsEncrypted(audioInit)) {
+        throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
+      }
+      const videoSegments = await fetchTrack(request, 0);
+      const audioSegments = await fetchTrack(audio, request.urls.length);
+      if (job.signal.aborted) {
+        throw new DOMException('aborted', 'AbortError');
+      }
+      deps.emit({ type: 'assembling' });
+      // Importação dinâmica: a biblioteca de mídia só carrega quando há áudio separado (ADR-0014).
+      const { assembleMerged } = await import('./merge');
+      const merged = await assembleMerged(
+        { init: videoInit, segments: videoSegments },
+        { init: audioInit, segments: audioSegments },
+      );
+      if (isAborted(job.signal)) {
+        return;
+      }
+      emitReady(merged);
+      return;
     }
-    const segments = await runSegments({
-      ...common,
-      fetch: (url, options) =>
-        fetchBytes(url, options, request.ranges?.[options.index] ?? undefined),
-      urls: request.urls,
-      onProgress: (progress) => {
-        deps.emit({
-          type: 'progress',
-          segmentsDone: progress.segmentsDone,
-          segmentsTotal: progress.segmentsTotal,
-          bytesDone: progress.bytesDone,
-        });
-      },
-    });
+    const segments = await fetchTrack(request, 0);
     if (job.signal.aborted) {
       throw new DOMException('aborted', 'AbortError');
     }
     deps.emit({ type: 'assembling' });
     const mp4 =
-      request.fmp4 && init !== undefined
-        ? await assembleFmp4(init, segments)
-        : await assembleTs(init, segments);
+      request.fmp4 && videoInit !== undefined
+        ? await assembleFmp4(videoInit, segments)
+        : await assembleTs(videoInit, segments);
     if (isAborted(job.signal)) {
       return;
     }
-    const blobUrl = URL.createObjectURL(
-      new Blob([mp4 as Uint8Array<ArrayBuffer>], { type: 'video/mp4' }),
-    );
-    deps.emit({ type: 'ready', blobUrl, bytes: mp4.byteLength });
+    emitReady(mp4);
   } catch (error) {
     if (isTooLarge()) {
       deps.emit({ type: 'failed', error: 'TOO_LARGE' });

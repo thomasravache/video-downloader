@@ -9,7 +9,7 @@ import { JOB_ERRORS } from './errors';
 import type { JobError } from './errors';
 import { newJob, reduceJob } from './job';
 import type { JobEvent, JobState } from './job';
-import type { OffscreenEvent, OffscreenStart } from './protocol';
+import type { OffscreenAudio, OffscreenEvent, OffscreenStart } from './protocol';
 import type { ByteRange } from './segments';
 
 const JOBS_KEY = 'vd:jobs';
@@ -41,6 +41,8 @@ export interface JobPlan {
   fmp4: boolean;
   ranges?: (ByteRange | undefined)[];
   initRange?: ByteRange;
+  /** Faixa de áudio a juntar ao vídeo (SPEC-0014); o progresso soma as duas trilhas. */
+  audio?: OffscreenAudio;
 }
 
 export type CreateJobResult =
@@ -259,7 +261,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
               candidateId: plan.candidateId,
               variantIndex: plan.variantIndex,
             }),
-            { type: 'start', segmentsTotal: plan.urls.length },
+            { type: 'start', segmentsTotal: plan.urls.length + (plan.audio?.urls.length ?? 0) },
           ),
           filename: plan.filename,
           providerId: plan.providerId,
@@ -268,7 +270,11 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
         };
         records[jobId] = record;
         prune(records);
-        log('info', 'job.created', record, { segments: plan.urls.length, fmp4: plan.fmp4 });
+        log('info', 'job.created', record, {
+          segments: plan.urls.length + (plan.audio?.urls.length ?? 0),
+          fmp4: plan.fmp4,
+          audio: plan.audio !== undefined,
+        });
         const start: OffscreenStart = {
           target: 'offscreen',
           type: 'start',
@@ -279,6 +285,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           ...(plan.ranges !== undefined && { ranges: plan.ranges }),
           ...(plan.initUrl !== undefined &&
             plan.initRange !== undefined && { initRange: plan.initRange }),
+          ...(plan.audio !== undefined && { audio: plan.audio }),
         };
         try {
           await offscreen.ensure();

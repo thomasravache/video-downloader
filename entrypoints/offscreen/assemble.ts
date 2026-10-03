@@ -104,7 +104,7 @@ function includesTag(bytes: Uint8Array, from: number, to: number, tag: string): 
 }
 
 /** O init declara amostras criptografadas (`encv`/`enca` ou caixas `sinf`/`schm` na `stsd`)? */
-function initIsEncrypted(init: Uint8Array): boolean {
+export function initIsEncrypted(init: Uint8Array): boolean {
   const entries: [number, number][] = [];
   findStsd(init, 0, init.byteLength, entries);
   return entries.some(
