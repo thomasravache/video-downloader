@@ -3,6 +3,7 @@ import type { HlsInfo } from '../../src/core/hls';
 import type { CandidateGroup } from '../../src/core/candidates';
 import type { JobState } from '../../src/core/hls-download';
 import { audioIncludedText, audioOptions } from './audio';
+import { syncChildren } from './dom';
 
 export interface ViewText {
   listLabel: string;
@@ -481,8 +482,8 @@ export function renderCandidates(
 
 /**
  * Posiciona os cartões (já no DOM) conforme os grupos: o primary no nível da lista e os `related` dentro de
- * `<details data-testid="related-sources">` fechado por padrão, sob o primary (SPEC-0015). Só MOVE os nós,
- * então o estado dos cartões (resolve, progresso, seleção) e o `open` do details são preservados.
+ * `<details data-testid="related-sources">` fechado por padrão, sob o primary (SPEC-0015). Só MOVE os nós que precisam
+ * (`syncChildren`), então o estado dos cartões (resolve, progresso, seleção) e o `open` do details são preservados.
  */
 export function applyGroups(
   container: HTMLElement,
@@ -497,12 +498,13 @@ export function applyGroups(
   for (const node of container.querySelectorAll<HTMLElement>('li[data-candidate-id]')) {
     cards.set(node.dataset['candidateId'] ?? '', node);
   }
+  const primaries: HTMLElement[] = [];
   for (const group of groups) {
     const card = cards.get(group.primary.id);
     if (!card) {
       continue;
     }
-    list.append(card);
+    primaries.push(card);
     let details = card.querySelector<HTMLDetailsElement>(':scope > details.related');
     if (group.related.length === 0) {
       details?.remove();
@@ -517,9 +519,13 @@ export function applyGroups(
     (details.querySelector('summary') as HTMLElement).textContent = text.relatedSources(
       group.related.length,
     );
-    const inner = details.querySelector('ul') as HTMLElement;
-    inner.append(...group.related.flatMap((candidate) => cards.get(candidate.id) ?? []));
+    syncChildren(
+      details.querySelector('ul') as HTMLElement,
+      group.related.flatMap((candidate) => cards.get(candidate.id) ?? []),
+    );
   }
+  // Só depois de tirar os `related` da lista: o primary que já está no lugar não é movido.
+  syncChildren(list, primaries);
 }
 
 /** Bloco "acesso necessário" (origens de iframe sem permissão + botão); vazio esconde o bloco. */
