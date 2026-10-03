@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aula com master vista como arquivo</title>
+  </head>
+  <body>
+    <h1>Aula cujo &lt;video src&gt; é a própria playlist HLS (query diferente)</h1>
+    <video
+      id="player"
+      controls
+      muted
+      preload="none"
+      src="/hls/single-file/media.m3u8?sig=pagina"
+    ></video>
+    <script>
+      // preload=none: o navegador não busca o src; a rede só vê a playlist pedida abaixo, com outra query,
+      // e o DOM vê o mesmo caminho como "arquivo" (SPEC-0013:E2E-02).
+      fetch('/hls/single-file/media.m3u8?sig=rede')
+        .then((response) => response.text())
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>

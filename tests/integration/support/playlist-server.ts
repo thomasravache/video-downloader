@@ -10,11 +10,19 @@ export const HLS_TYPE = 'application/vnd.apple.mpegurl';
 
 export type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 
+/** Requisição recebida: caminho + query e o cabeçalho `Range` (SPEC-0013), se houve. */
+export interface RequestRecord {
+  url: string;
+  range: string | undefined;
+}
+
 export interface PlaylistServer {
   /** 'http://127.0.0.1:<porta>' */
   origin: string;
   /** Caminho + query de cada requisição recebida, em ordem. */
   requests: string[];
+  /** Mesmas requisições, com o cabeçalho `Range` de cada uma (SPEC-0013). */
+  log: RequestRecord[];
   close(): Promise<void>;
 }
 
@@ -23,6 +31,49 @@ export function body(text: string, contentType = HLS_TYPE): Handler {
   return (_req, res) => {
     res.writeHead(200, { 'content-type': contentType, 'content-length': Buffer.byteLength(text) });
     res.end(text);
+  };
+}
+
+/**
+ * Como `rangeHandler` responde a um pedido com `Range` (SPEC-0013):
+ *  - 'ok': 206 com o trecho e `Content-Range: bytes a-b/<total>`;
+ *  - 'total-star': 206 correto, mas com `Content-Range: bytes a-b/*`;
+ *  - 'ignore': ignora o `Range` e responde 200 com o arquivo inteiro;
+ *  - 'wrong-content-range': 206 com o trecho certo, mas `Content-Range` de OUTRO intervalo (começa 1 byte depois);
+ *  - 'no-content-range': 206 sem `Content-Range`.
+ */
+export type RangeMode = 'ok' | 'total-star' | 'ignore' | 'wrong-content-range' | 'no-content-range';
+
+/** Arquivo servido com suporte a `Range` (um só intervalo `bytes=a-b`); sem `Range` responde 200 inteiro. */
+export function rangeHandler(
+  bytes: Uint8Array,
+  { mode = 'ok', contentType = 'video/mp4' }: { mode?: RangeMode; contentType?: string } = {},
+): Handler {
+  return (req, res) => {
+    const header = req.headers['range'];
+    const match = typeof header === 'string' ? /^bytes=(\d+)-(\d+)$/.exec(header) : null;
+    if (!match || mode === 'ignore') {
+      res.writeHead(200, { 'content-type': contentType, 'content-length': bytes.byteLength });
+      res.end(Buffer.from(bytes));
+      return;
+    }
+    const from = Number(match[1]);
+    const to = Math.min(Number(match[2]), bytes.byteLength - 1);
+    const slice = Buffer.from(bytes.subarray(from, to + 1));
+    const headers: Record<string, string | number> = {
+      'content-type': contentType,
+      'content-length': slice.byteLength,
+    };
+    if (mode === 'ok') {
+      headers['content-range'] = `bytes ${String(from)}-${String(to)}/${String(bytes.byteLength)}`;
+    } else if (mode === 'total-star') {
+      headers['content-range'] = `bytes ${String(from)}-${String(to)}/*`;
+    } else if (mode === 'wrong-content-range') {
+      headers['content-range'] =
+        `bytes ${String(from + 1)}-${String(to + 1)}/${String(bytes.byteLength)}`;
+    }
+    res.writeHead(206, headers);
+    res.end(slice);
   };
 }
 
@@ -38,10 +89,13 @@ export async function startPlaylistServer(
   routes: Record<string, Handler>,
 ): Promise<PlaylistServer> {
   const requests: string[] = [];
+  const log: RequestRecord[] = [];
   const sockets = new Set<import('node:net').Socket>();
   const server: Server = createServer((req, res) => {
     const url = req.url ?? '/';
     requests.push(url);
+    const range = req.headers['range'];
+    log.push({ url, range: typeof range === 'string' ? range : undefined });
     const handler = routes[new URL(url, 'http://127.0.0.1').pathname];
     if (handler) {
       handler(req, res);
@@ -64,6 +118,7 @@ export async function startPlaylistServer(
   return {
     origin: `http://127.0.0.1:${String(address.port)}`,
     requests,
+    log,
     close: () =>
       new Promise<void>((done) => {
         for (const socket of sockets) {

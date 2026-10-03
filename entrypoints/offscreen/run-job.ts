@@ -5,7 +5,12 @@ import {
   SegmentFetchError,
   runSegments,
 } from '../../src/core/hls-download';
-import type { JobError, OffscreenEvent, OffscreenStart } from '../../src/core/hls-download';
+import type {
+  ByteRange,
+  JobError,
+  OffscreenEvent,
+  OffscreenStart,
+} from '../../src/core/hls-download';
 import { assembleFmp4, assembleTs } from './assemble';
 
 export interface OffscreenJobDeps {
@@ -36,6 +41,20 @@ function realSleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     signal?.addEventListener('abort', onAbort, { once: true });
   });
+}
+
+const rangeHeader = ({ offset, length }: ByteRange): string =>
+  `bytes=${String(offset)}-${String(offset + length - 1)}`;
+
+/** `206` com `Content-Range: bytes <offset>-<fim>/<total|*>` exatamente igual ao pedido. */
+function contentRangeMatches(response: Response, { offset, length }: ByteRange): boolean {
+  if (response.status !== 206) {
+    return false;
+  }
+  const match = /^bytes (\d+)-(\d+)\/(?:\d+|\*)$/.exec(
+    response.headers.get('content-range')?.trim() ?? '',
+  );
+  return match !== null && Number(match[1]) === offset && Number(match[2]) === offset + length - 1;
 }
 
 const isAborted = (signal: AbortSignal): boolean => signal.aborted;
@@ -82,13 +101,26 @@ export async function runOffscreenJob(
     }
   };
 
-  async function fetchBytes(url: string, init: { signal: AbortSignal }): Promise<Uint8Array> {
+  async function fetchBytes(
+    url: string,
+    init: { signal: AbortSignal },
+    range?: ByteRange,
+  ): Promise<Uint8Array> {
     const id = requestId++;
     inFlight.set(id, 0);
     try {
-      const response = await deps.fetch(url, { signal: init.signal, credentials: 'include' });
+      const response = await deps.fetch(url, {
+        signal: init.signal,
+        credentials: 'include',
+        ...(range && { headers: { Range: rangeHeader(range) } }),
+      });
       if (!response.ok) {
         throw new Error('status');
+      }
+      // Com Range só vale 206 com Content-Range igual ao pedido: 200 (Range ignorado) ou outro
+      // intervalo não é o trecho, e usá-lo corromperia o arquivo.
+      if (range && !contentRangeMatches(response, range)) {
+        throw new Error('range');
       }
       const declared = Number(response.headers.get('content-length'));
       if (Number.isFinite(declared) && declared > 0) {
@@ -109,6 +141,11 @@ export async function runOffscreenJob(
           }
           chunks.push(value);
           received += value.byteLength;
+          if (range && received > range.length) {
+            // Servidor hostil/defeituoso: mais bytes que a faixa pedida; não lê até o fim nem até o limite.
+            await reader.cancel().catch(() => undefined);
+            throw new Error('range length');
+          }
           inFlight.set(id, Math.max(inFlight.get(id) ?? 0, received));
           checkLimit();
           if (isTooLarge()) {
@@ -123,6 +160,9 @@ export async function runOffscreenJob(
         out.set(chunk, at);
         at += chunk.byteLength;
       }
+      if (range && received !== range.length) {
+        throw new Error('range length');
+      }
       completedBytes += received;
       return out;
     } finally {
@@ -134,18 +174,31 @@ export async function runOffscreenJob(
     concurrency: CONCURRENCY,
     retries: RETRIES,
     backoffMs: (n: number) => 250 * 2 ** n,
-    fetch: fetchBytes,
     sleep: deps.sleep ?? realSleep,
     signal: job.signal,
   };
 
   try {
+    // Limite decidido pelos metadados, antes da primeira requisição de mídia (inclui o init).
+    const declared =
+      (request.ranges ?? []).reduce((sum, range) => sum + (range?.length ?? 0), 0) +
+      (request.initRange?.length ?? 0);
+    if (declared > MAX_BUFFERED_BYTES) {
+      flags.tooLarge = true;
+      throw new AssemblyError('TOO_LARGE');
+    }
     let init: Uint8Array | undefined;
     if (request.fmp4 && request.initUrl !== undefined) {
-      [init] = await runSegments({ ...common, urls: [request.initUrl] });
+      [init] = await runSegments({
+        ...common,
+        fetch: (url, options) => fetchBytes(url, options, request.initRange),
+        urls: [request.initUrl],
+      });
     }
     const segments = await runSegments({
       ...common,
+      fetch: (url, options) =>
+        fetchBytes(url, options, request.ranges?.[options.index] ?? undefined),
       urls: request.urls,
       onProgress: (progress) => {
         deps.emit({

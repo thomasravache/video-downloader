@@ -210,9 +210,20 @@ export class NetworkStore {
   }
 }
 
+/** Origem + caminho (sem query nem fragmento); `undefined` se não for uma URL válida. */
+function originAndPath(url: string): string | undefined {
+  try {
+    const { origin, pathname } = new URL(url);
+    return `${origin}${pathname}`;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * DOM ∪ rede, sem repetir a mesma URL (sem fragmento); o candidato do DOM prevalece, exceto um `file`
- * do DOM contra um `hls` da rede (a rede viu a playlist de verdade).
+ * do DOM contra um `hls` da rede (a rede viu a playlist de verdade): vale para a mesma URL e, também,
+ * para a mesma origem+caminho com query diferente (SPEC-0013). O `hls` herda o título do DOM.
  */
 export function mergeCandidates(
   dom: VideoCandidate[],
@@ -220,18 +231,35 @@ export function mergeCandidates(
 ): VideoCandidate[] {
   const seen = new Map<string, number>();
   const merged: VideoCandidate[] = [];
+  const isNetworkHls = (c: VideoCandidate): boolean => c.source === 'network' && c.kind === 'hls';
+  const replace = (at: number, candidate: VideoCandidate): void => {
+    const title = merged[at]?.title;
+    merged[at] =
+      candidate.title === undefined && title !== undefined ? { ...candidate, title } : candidate;
+  };
   for (const candidate of [...dom, ...network]) {
     const key = withoutFragment(candidate.mediaUrl);
     const at = seen.get(key);
     if (at === undefined) {
+      if (isNetworkHls(candidate)) {
+        const path = originAndPath(candidate.mediaUrl);
+        const file = merged.findIndex(
+          (c) =>
+            c.kind === 'file' &&
+            c.source === 'dom' &&
+            path !== undefined &&
+            originAndPath(c.mediaUrl) === path,
+        );
+        if (file >= 0) {
+          replace(file, candidate);
+          seen.set(key, file);
+          continue;
+        }
+      }
       seen.set(key, merged.length);
       merged.push(candidate);
-    } else if (
-      candidate.source === 'network' &&
-      candidate.kind === 'hls' &&
-      merged[at]?.kind === 'file'
-    ) {
-      merged[at] = candidate;
+    } else if (isNetworkHls(candidate) && merged[at]?.kind === 'file') {
+      replace(at, candidate);
     }
   }
   return merged;
