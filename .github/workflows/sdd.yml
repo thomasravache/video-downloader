@@ -24,6 +24,19 @@ jobs:
           fetch-depth: 0 # histórico completo: verify/pr-check comparam com a branch alvo
           persist-credentials: false
 
+      # O pr-check do SDD só avisa (WARN) quando o título foge do modelo; aqui isso bloqueia o merge.
+      # Modelo: <tipo>(<escopo>)?: <descrição> [SPEC-NNNN] — ou [no-spec] (PR do Dependabot: "build(deps) [no-spec]: …").
+      - name: Título do PR no modelo Conventional Commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          prefix='^(feat|fix|docs|refactor|test|chore|ci|build|perf|style|revert)(\([a-z0-9._/-]+\))?( \[no-spec\])?!?: [^[:space:]]'
+          ref='(SPEC-[0-9]{4,}|\[no-spec\])'
+          if ! [[ "$PR_TITLE" =~ $prefix ]] || ! [[ "$PR_TITLE" =~ $ref ]] || [ "${#PR_TITLE}" -gt 100 ]; then
+            echo "::error::Título fora do modelo: use '<tipo>(<escopo>): <descrição no imperativo> [SPEC-NNNN]' (ou [no-spec]), até 100 caracteres. Recebido: $PR_TITLE"
+            exit 1
+          fi
+
       - name: Specs e ADRs válidos (G0)
         run: python3 tools/sdd/spec_graph.py validate --exclude-drafts
 
