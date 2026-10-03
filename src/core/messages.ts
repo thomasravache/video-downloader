@@ -17,11 +17,12 @@ export function validateMessage(
   if (typeof message !== 'object' || message === null || Array.isArray(message)) {
     return INVALID;
   }
-  const { type, tabId, candidateId, variantIndex, jobId } = message as {
+  const { type, tabId, candidateId, variantIndex, audioIndex, jobId } = message as {
     type?: unknown;
     tabId?: unknown;
     candidateId?: unknown;
     variantIndex?: unknown;
+    audioIndex?: unknown;
     jobId?: unknown;
   };
   switch (type) {
@@ -33,12 +34,23 @@ export function validateMessage(
       if (typeof candidateId !== 'string' || candidateId === '') {
         return INVALID;
       }
-      if (!('variantIndex' in message) || variantIndex === undefined) {
-        return { ok: true, message: { type, candidateId } };
+      const isIndex = (value: unknown): value is number =>
+        typeof value === 'number' && Number.isInteger(value) && value >= 0;
+      if (variantIndex !== undefined && !isIndex(variantIndex)) {
+        return INVALID;
       }
-      return typeof variantIndex === 'number' && Number.isInteger(variantIndex) && variantIndex >= 0
-        ? { ok: true, message: { type, candidateId, variantIndex } }
-        : INVALID;
+      if (audioIndex !== undefined && !isIndex(audioIndex)) {
+        return INVALID;
+      }
+      return {
+        ok: true,
+        message: {
+          type,
+          candidateId,
+          ...(variantIndex !== undefined && { variantIndex }),
+          ...(audioIndex !== undefined && { audioIndex }),
+        },
+      };
     }
     case 'job':
     case 'cancel':

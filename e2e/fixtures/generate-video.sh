@@ -77,3 +77,33 @@ ffmpeg -y -loglevel error \
   -map_metadata -1 -fflags +bitexact -flags:v +bitexact -flags:a +bitexact \
   -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
   -hls_segment_filename hls/single-file/media.mp4 hls/single-file/media.m3u8
+
+# SPEC-0014: hls/split-av/ — vídeo e áudio em ARQUIVOS SEPARADOS, como o HLS dos sites de curso: cada trilha é um
+# fMP4 de arquivo único (video.mp4 só H.264 `-an`; audio.mp4 só AAC `-vn`, ambas com track_ID 1) com a sua
+# playlist (EXT-X-MAP + EXT-X-BYTERANGE), e master.m3u8 com EXT-X-STREAM-INF AUDIO="a1" + EXT-X-MEDIA (6 s, 320x180).
+# master-enc-audio.m3u8 aponta para audio-enc.m3u8 (mesma faixa, mas com EXT-X-KEY AES-128: a chave não existe;
+# a extensão deve recusar sem baixar nada).
+rm -rf hls/split-av
+mkdir -p hls/split-av
+ffmpeg -y -loglevel error \
+  -f lavfi -i "testsrc2=size=320x180:rate=25:duration=6" \
+  -an -c:v libx264 -threads 1 -preset veryfast -profile:v main -b:v 120k -maxrate 120k -bufsize 120k \
+  -g 50 -keyint_min 50 -sc_threshold 0 -pix_fmt yuv420p \
+  -map_metadata -1 -fflags +bitexact -flags:v +bitexact \
+  -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
+  -hls_segment_filename hls/split-av/video.mp4 hls/split-av/video.m3u8
+ffmpeg -y -loglevel error \
+  -f lavfi -i "sine=frequency=440:duration=6" \
+  -vn -c:a aac -b:a 48k -ar 44100 -ac 1 \
+  -map_metadata -1 -fflags +bitexact -flags:a +bitexact \
+  -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags single_file \
+  -hls_segment_filename hls/split-av/audio.mp4 hls/split-av/audio.m3u8
+cat > hls/split-av/master.m3u8 <<'M'
+#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a1",NAME="English",LANGUAGE="en",DEFAULT=YES,AUTOSELECT=YES,URI="audio.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=200000,RESOLUTION=320x180,CODECS="avc1.4d4015,mp4a.40.2",AUDIO="a1"
+video.m3u8
+M
+sed 's#^\(\#EXT-X-VERSION.*\)$#\1\n\#EXT-X-KEY:METHOD=AES-128,URI="key.bin"#' hls/split-av/audio.m3u8 > hls/split-av/audio-enc.m3u8
+sed 's#audio.m3u8#audio-enc.m3u8#' hls/split-av/master.m3u8 > hls/split-av/master-enc-audio.m3u8

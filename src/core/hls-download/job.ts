@@ -23,6 +23,13 @@ export interface JobState {
 /** Limite de memória: 1,5 GiB bufferizados (ADR-0013). */
 export const MAX_BUFFERED_BYTES = 1.5 * 1024 * 1024 * 1024;
 
+/**
+ * Limite da soma vídeo + áudio num job com junção (SPEC-0014, ADR-0014): 512 MiB. A junção mantém cópias das
+ * trilhas (Blobs), da saída da biblioteca e do Blob final: o pico medido é ~4x a entrada, e a regra da spec é
+ * pico <= 2 GiB.
+ */
+export const MAX_MERGE_BUFFERED_BYTES = 512 * 1024 * 1024;
+
 export type JobEvent =
   | { type: 'start'; segmentsTotal: number }
   | { type: 'progress'; segmentsDone: number; bytesDone: number }

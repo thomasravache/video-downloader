@@ -85,7 +85,13 @@ export interface Provider extends ProviderManifest {
 
 export type DetectMessage = { type: 'detect'; tabId: number };
 /** `variantIndex` (SPEC-0012): posição em `HlsInfo.variants`; padrão 0 (a maior). */
-export type DownloadMessage = { type: 'download'; candidateId: string; variantIndex?: number };
+export type DownloadMessage = {
+  type: 'download';
+  candidateId: string;
+  variantIndex?: number;
+  /** SPEC-0014: posição em `HlsInfo.audio`; padrão: a faixa DEFAULT do grupo da variante. */
+  audioIndex?: number;
+};
 export type DiagnosticsMessage = { type: 'diagnostics' };
 export type ResolveHlsMessage = { type: 'resolveHls'; candidateId: string };
 export type JobMessage = { type: 'job'; jobId: string };

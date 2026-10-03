@@ -2,6 +2,14 @@
 import type { JobError } from './errors';
 import type { ByteRange } from './segments';
 
+/** Faixa de áudio separada de um job com junção (SPEC-0014); mesma forma de `urls`/`ranges` do vídeo. */
+export interface OffscreenAudio {
+  urls: string[];
+  initUrl?: string;
+  ranges?: (ByteRange | null | undefined)[];
+  initRange?: ByteRange;
+}
+
 export interface OffscreenStart {
   target: 'offscreen';
   type: 'start';
@@ -16,6 +24,8 @@ export interface OffscreenStart {
   ranges?: (ByteRange | null | undefined)[];
   /** Faixa do `initUrl` (SPEC-0013); só com `initUrl`. */
   initRange?: ByteRange;
+  /** Faixa de áudio a juntar ao vídeo num único MP4 (SPEC-0014). */
+  audio?: OffscreenAudio;
 }
 export interface OffscreenCancel {
   target: 'offscreen';

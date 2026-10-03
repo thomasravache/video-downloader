@@ -72,6 +72,62 @@ export function flavorFromEnv(mode: string): Flavor {
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 
+interface BundleItem {
+  type: string;
+  fileName?: string;
+  code?: string;
+  moduleIds?: string[];
+  dynamicImports?: string[];
+}
+
+/**
+ * MPL-2.0 (ADR-0014): o minificador descarta o cabeçalho `/*! ... *\/` da mediabunny (ele fica preso a
+ * `import`s que o bundler remove). Este plugin o recoloca no início de todo chunk que contém a biblioteca,
+ * lendo o texto do pacote instalado (sem duplicar se já estiver lá). O cabeçalho fica nos chunks com código da
+ * mediabunny (o `merge-*.js`, carregado por `import()`) e, por ficar à vista no ponto de uso, também no chunk que
+ * os importa (o offscreen); o custo desse segundo cabeçalho é de ~0,5 KB.
+ */
+export function legalCommentsPlugin(root: string = ROOT) {
+  const readHeader = (): string => {
+    const file = join(root, 'node_modules/mediabunny/dist/modules/src/index.js');
+    const match = /^\s*(\/\*![\s\S]*?\*\/)/.exec(readFileSync(file, 'utf8'));
+    if (!match?.[1]) {
+      throw new Error('cabeçalho de licença da mediabunny não encontrado');
+    }
+    return match[1];
+  };
+  return {
+    name: 'preserve-mediabunny-legal',
+    apply: 'build' as const,
+    generateBundle(_options: unknown, bundle: Record<string, BundleItem>): void {
+      const chunks = Object.values(bundle).filter(
+        (item) => item.type === 'chunk' && item.code !== undefined,
+      );
+      const withLibrary = new Set(
+        chunks
+          .filter((c) => c.moduleIds?.some((id) => id.includes('/node_modules/mediabunny/')))
+          .map((c) => c.fileName),
+      );
+      // Também o chunk que a carrega por `import()` (o offscreen): o aviso fica à vista no ponto de uso.
+      const marked = chunks.filter(
+        (c) =>
+          withLibrary.has(c.fileName) || c.dynamicImports?.some((name) => withLibrary.has(name)),
+      );
+      if (marked.length === 0) {
+        return;
+      }
+      const header = readHeader();
+      for (const chunk of marked) {
+        const code = chunk.code ?? '';
+        // Idempotente: o texto pode já estar no chunk (o bundler às vezes o mantém); nunca duplica.
+        if (!code.includes(header)) {
+          chunk.code = `${header}\n${code}`;
+        }
+      }
+    },
+  };
+}
+
 function registryOptions(mode: string) {
   const extraDir = process.env['PROVIDERS_EXTRA_DIR'];
   return {
@@ -96,7 +152,7 @@ export default defineConfig({
     define: {
       'import.meta.env.FLAVOR': JSON.stringify(flavorFromEnv(mode)),
     },
-    plugins: [providersPlugin(registryOptions(mode))],
+    plugins: [providersPlugin(registryOptions(mode)), legalCommentsPlugin()],
   }),
   hooks: {
     'build:done': (wxt) => {

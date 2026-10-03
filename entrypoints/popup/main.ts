@@ -44,6 +44,7 @@ const text: ViewText = {
   hlsErrorParse: t('hlsErrorParse'),
   hlsErrorGeneric: t('hlsErrorGeneric'),
   duration: (formatted) => t('hlsDuration', formatted),
+  audioIncluded: (name) => t('audioIncluded', name),
   progressLabel: t('jobProgressLabel'),
   cancelDownload: t('buttonCancelDownload'),
   retryDownload: t('buttonRetryDownload'),

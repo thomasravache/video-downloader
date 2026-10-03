@@ -16,8 +16,8 @@ import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
 import { HlsParseError, parseHlsPlaylist } from './hls';
 import type { HlsInfo } from './hls';
-import { createJobManager, parseMediaSegments } from './hls-download';
-import type { JobManager } from './hls-download';
+import { chooseAudio, createJobManager, parseMediaSegments } from './hls-download';
+import type { JobManager, MediaSegments } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
@@ -231,6 +231,7 @@ export function createService(deps: ServiceDeps): Service {
   async function download(
     candidateId: string,
     variantIndex: number | undefined,
+    audioIndex: number | undefined,
     fallbackId: string,
   ): Promise<DownloadResponse> {
     const correlationId = correlations.get(candidateId) ?? fallbackId;
@@ -250,7 +251,7 @@ export function createService(deps: ServiceDeps): Service {
       return { ok: false, error: 'PROTECTED' };
     }
     if (candidate.kind === 'hls') {
-      return downloadHls(candidate, variantIndex, correlationId, fields);
+      return downloadHls(candidate, variantIndex, audioIndex, correlationId, fields);
     }
     if (candidate.support !== 'downloadable') {
       diagnostics.log('warn', 'download.unsupported', correlationId, fields);
@@ -310,7 +311,52 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
+  /** Extensões típicas de segmento fMP4/CMAF (o caminho, sem consulta/fragmento). */
+  const FMP4_SEGMENT = /\.(?:m4s|mp4|m4a|m4v|cmfv|cmfa)(?:[?#]|$)/i;
+
   type HlsRefusal = Extract<DownloadResponse, { ok: false }>;
+
+  type ApprovedPlaylist =
+    | { ok: true; media: MediaSegments; fmp4WithoutInit: boolean }
+    | { ok: false; error: HlsRefusal['error']; event: string };
+
+  /** Busca e aprova uma playlist de mídia (allowlist de criptografia, ao vivo, http(s), byte range). */
+  async function approvePlaylist(url: string): Promise<ApprovedPlaylist> {
+    const notResolved = {
+      ok: false,
+      error: 'HLS_NOT_RESOLVED',
+      event: 'download.not_resolved',
+    } as const;
+    let text: string;
+    try {
+      if (!deps.playlists || !isHttp(url)) {
+        throw new Error('playlist indisponível');
+      }
+      text = await deps.playlists.fetchPlaylist(url);
+    } catch {
+      return notResolved;
+    }
+    try {
+      const info = parseHlsPlaylist(text, url);
+      if (info.encrypted) {
+        return { ok: false, error: 'ENCRYPTED', event: 'download.encrypted' };
+      }
+      if (info.type !== 'media') {
+        return notResolved;
+      }
+      if (info.live) {
+        return { ok: false, error: 'LIVE', event: 'download.live' };
+      }
+      const media = parseMediaSegments(text, url);
+      // fMP4 sem init utilizável: tem EXT-X-MAP sem URI ou segmentos com extensão de fMP4 sem MAP.
+      const fmp4WithoutInit =
+        !media.fmp4 &&
+        (/^\s*#EXT-X-MAP/m.test(text) || media.urls.some((u) => FMP4_SEGMENT.test(u)));
+      return { ok: true, media, fmp4WithoutInit };
+    } catch {
+      return notResolved;
+    }
+  }
 
   /**
    * Download de HLS (SPEC-0012). Nunca confia no estado guardado: re-busca e re-analisa a playlist da
@@ -319,6 +365,7 @@ export function createService(deps: ServiceDeps): Service {
   async function downloadHls(
     candidate: VideoCandidate,
     variantIndex: number | undefined,
+    audioIndex: number | undefined,
     correlationId: string,
     fields: Record<string, unknown>,
   ): Promise<DownloadResponse> {
@@ -359,32 +406,36 @@ export function createService(deps: ServiceDeps): Service {
       return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
     }
 
-    // Re-busca a playlist da variante escolhida: é ela (não o master) que decide.
-    let text: string;
-    try {
-      if (!deps.playlists) {
-        throw new Error('playlist indisponível');
-      }
-      text = await deps.playlists.fetchPlaylist(playlistUrl);
-    } catch {
-      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
+    // Faixa de áudio separada (SPEC-0014): `invalid` (índice de outro grupo/inexistente) é recusado.
+    const audioTrack = chooseAudio(hls, chosen, audioIndex);
+    if (audioTrack === 'invalid') {
+      return refuse('UNSUPPORTED', 'download.unsupported');
     }
-    let info: HlsInfo;
-    let media: ReturnType<typeof parseMediaSegments>;
-    try {
-      info = parseHlsPlaylist(text, playlistUrl);
-      if (info.encrypted) {
-        return refuse('ENCRYPTED', 'download.encrypted');
+
+    // Re-busca as playlists envolvidas (vídeo e, se houver, áudio): são elas (não o master) que decidem,
+    // e NENHUMA mídia é pedida antes de todas serem aprovadas.
+    const approved = await approvePlaylist(playlistUrl);
+    if (!approved.ok) {
+      return refuse(approved.error, approved.event);
+    }
+    const media = approved.media;
+    let audioMedia: MediaSegments | undefined;
+    let noInit = approved.fmp4WithoutInit;
+    if (audioTrack !== 'none') {
+      const approvedAudio = await approvePlaylist(audioTrack.url);
+      if (!approvedAudio.ok) {
+        return refuse(approvedAudio.error, approvedAudio.event);
       }
-      if (info.type !== 'media') {
+      audioMedia = approvedAudio.media;
+      noInit ||= approvedAudio.fmp4WithoutInit;
+      // fMP4 sem EXT-X-MAP utilizável: a playlist não se resolve (antes de qualquer requisição de mídia).
+      if (noInit) {
         return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
       }
-      if (info.live) {
-        return refuse('LIVE', 'download.live');
+      // A junção só trabalha com fMP4 nas duas pontas (SPEC-0014).
+      if (!media.fmp4 || !audioMedia.fmp4) {
+        return refuse('UNSUPPORTED', 'download.unsupported');
       }
-      media = parseMediaSegments(text, playlistUrl);
-    } catch {
-      return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
     }
 
     const created = await jobs.create({
@@ -398,6 +449,15 @@ export function createService(deps: ServiceDeps): Service {
       fmp4: media.fmp4,
       ...(media.ranges !== undefined && { ranges: media.ranges }),
       ...(media.initRange !== undefined && { initRange: media.initRange }),
+      ...(audioMedia !== undefined && {
+        audio: {
+          urls: audioMedia.urls,
+          ...(audioMedia.initUrl !== undefined && { initUrl: audioMedia.initUrl }),
+          ...(audioMedia.ranges !== undefined && { ranges: audioMedia.ranges }),
+          ...(audioMedia.initUrl !== undefined &&
+            audioMedia.initRange !== undefined && { initRange: audioMedia.initRange }),
+        },
+      }),
     });
     if (!created.ok) {
       return refuse(created.error, 'download.refused');
@@ -448,9 +508,15 @@ export function createService(deps: ServiceDeps): Service {
       }
       const { durationSec, segmentCount } = second.info;
       const { durationSec: _d, segmentCount: _s, ...master } = first.info;
+      // SPEC-0014: a playlist de áudio padrão do grupo do melhor variante (1 busca extra, melhor esforço):
+      // criptografada marca o candidato; falha não derruba o resolve nem muda encrypted/live.
+      const defaultAudio = chooseAudio(first.info, 0);
+      const audioRead =
+        typeof defaultAudio === 'object' ? await readPlaylist(defaultAudio.url) : undefined;
+      const audioEncrypted = audioRead?.ok === true && audioRead.info.encrypted;
       hls = {
         ...master,
-        encrypted: first.info.encrypted || second.info.encrypted,
+        encrypted: first.info.encrypted || second.info.encrypted || audioEncrypted,
         live: second.info.live,
         fmp4: second.info.fmp4,
         ...(durationSec !== undefined && { durationSec }),
@@ -529,7 +595,7 @@ export function createService(deps: ServiceDeps): Service {
         case 'detect':
           return detect(valid.tabId, correlationId);
         case 'download':
-          return download(valid.candidateId, valid.variantIndex, correlationId);
+          return download(valid.candidateId, valid.variantIndex, valid.audioIndex, correlationId);
         case 'diagnostics':
           return { ok: true, entries: diagnostics.snapshot() };
         case 'resolveHls':
