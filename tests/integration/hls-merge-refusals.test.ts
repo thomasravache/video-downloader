@@ -251,3 +251,47 @@ describe('opções inválidas e trilhas que não são fMP4', () => {
     expectNothingFetchedOrSaved();
   });
 });
+
+/** Segmentos fMP4 (`.m4s`) SEM EXT-X-MAP: fMP4 sem init utilizável (revisão M3). */
+const m4sPlaylist = (prefix: string): string =>
+  [
+    '#EXTM3U',
+    '#EXT-X-VERSION:7',
+    '#EXT-X-TARGETDURATION:2',
+    '#EXTINF:2.0,',
+    `${prefix}0.m4s`,
+    '#EXTINF:2.0,',
+    `${prefix}1.m4s`,
+    '#EXT-X-ENDLIST',
+    '',
+  ].join('\n');
+
+describe('fMP4 sem init (EXT-X-MAP) utilizável', () => {
+  it('SPEC-0014:IT-05 áudio fMP4 (.m4s) sem EXT-X-MAP: HLS_NOT_RESOLVED antes de criar o job, sem requisição de mídia', async () => {
+    const state = await serve({
+      '/av/a0.m4s': body('x', 'video/iso.segment'),
+      '/av/a1.m4s': body('x', 'video/iso.segment'),
+    });
+    const { candidate } = await observeAndResolve(bg, o('/av/master.m3u8'));
+    state.audio = m4sPlaylist('a');
+
+    const response = await startSplitDownload(bg, candidate.id);
+
+    expect(response).toEqual({ ok: false, error: 'HLS_NOT_RESOLVED' });
+    expectNothingFetchedOrSaved();
+  });
+
+  it('SPEC-0014:IT-05 vídeo fMP4 (.m4s) sem EXT-X-MAP com áudio fMP4: HLS_NOT_RESOLVED, sem requisição de mídia', async () => {
+    const state = await serve({
+      '/av/v0.m4s': body('x', 'video/iso.segment'),
+      '/av/v1.m4s': body('x', 'video/iso.segment'),
+    });
+    const { candidate } = await observeAndResolve(bg, o('/av/master.m3u8'));
+    state.video = m4sPlaylist('v');
+
+    const response = await startSplitDownload(bg, candidate.id);
+
+    expect(response).toEqual({ ok: false, error: 'HLS_NOT_RESOLVED' });
+    expectNothingFetchedOrSaved();
+  });
+});

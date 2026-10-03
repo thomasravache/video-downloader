@@ -12,7 +12,7 @@
  * License, v. 2.0 ... *\/`; os padrões abaixo aceitam qualquer quebra de linha/asterisco entre as palavras.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -66,7 +66,7 @@ function reachable(entry: string): Set<string> {
     }
     seen.add(file);
     const text = readFileSync(file, 'utf8');
-    for (const match of text.matchAll(/["'](\.{1,2}\/[^"'\s]+\.js)["']/g)) {
+    for (const match of text.matchAll(/["'`](\.{1,2}\/[^"'`\s]+\.js)["'`]/g)) {
       queue.push(resolve(dirname(file), match[1] as string));
     }
   }
@@ -111,6 +111,34 @@ describe('avisos de terceiros no pacote (MPL-2.0 / Apache-2.0)', () => {
       // O texto da licença (não só o nome).
       expect(normalized, flavor).toMatch(/Mozilla Public License,? Version 2\.0/i);
       expect(normalized, flavor).toMatch(/Apache License,? Version 2\.0/i);
+    }
+  }, 600_000);
+
+  it('SPEC-0014:UT-06 o texto cita as dependências empacotadas de m3u8-parser e mux.js (nome, versão instalada, licença MIT)', () => {
+    build();
+    const installed = (owner: string, name: string): string => {
+      const parent = dirname(
+        dirname(realpathSync(join(ROOT, 'node_modules', owner, 'package.json'))),
+      );
+      const meta = JSON.parse(readFileSync(join(parent, name, 'package.json'), 'utf8')) as {
+        version: string;
+      };
+      return meta.version;
+    };
+    const bundled = [
+      { owner: 'mux.js', name: '@babel/runtime', holder: 'Sebastian McKenzie' },
+      { owner: 'm3u8-parser', name: '@videojs/vhs-utils', holder: 'brandonocasey' },
+      { owner: 'm3u8-parser', name: 'global', holder: 'Colingo' },
+    ];
+    for (const flavor of flavors) {
+      const text = readFileSync(join(out(flavor), NOTICES), 'utf8');
+      for (const { owner, name, holder } of bundled) {
+        const version = installed(owner, name);
+        expect(text, `${flavor}: ${name} ${version}`).toContain(`${name} ${version}`);
+        expect(text, `${flavor}: titular de ${name}`).toContain(holder);
+      }
+      expect(flat(text), flavor).toMatch(/Permission is hereby granted, free of charge/);
+      expect(flat(text), flavor).toMatch(/License: MIT/);
     }
   }, 600_000);
 });
