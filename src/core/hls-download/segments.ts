@@ -192,11 +192,11 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
   }
   if (ranges !== undefined) {
     // Playlist malformada: segmento inteiro apontando para um recurso que também é fatiado (ou o init).
-    const sliced = new Set(urls.filter((_url, i) => ranges?.[i] !== undefined));
+    const sliced = new Set(urls.filter((_url, i) => ranges[i] !== undefined));
     if (initUrl !== undefined) {
       sliced.add(initUrl);
     }
-    if (urls.some((url, i) => ranges?.[i] === undefined && sliced.has(url))) {
+    if (urls.some((url, i) => ranges[i] === undefined && sliced.has(url))) {
       throw new HlsParseError();
     }
   }
