@@ -21,10 +21,12 @@ approved_at: 2026-10-03
 # SPEC-0016 — Contexto de requisição da página para buscar playlists e segmentos recusados com 403
 
 ## 1. Visão Geral
-Plataformas de curso servem HLS por uma CDN (`vod.cdn-exemplo.test`) que só responde quando a requisição traz o **contexto do player**: `Origin: https://player.exemplo.test` e `Referer: https://player.exemplo.test/` (o acesso em si é decidido por um token na própria URL, `hdnts=…`, sem cookie). A extensão busca playlists no service worker e segmentos no offscreen document, ambos com origem `chrome-extension://…`, e a CDN responde **403**. O popup mostra "Could not read this video's playlist" para todas as playlists. Esta spec faz a extensão, **somente depois de um 401/403**, repetir a busca com o `Origin`/`Referer` do frame que originalmente fez a requisição (informação que o navegador já nos dá), no flavor `local`.
+Plataformas de curso como a Hotmart servem HLS por uma CDN (`vod-akm.play.hotmart.com`) que só responde quando a requisição traz o **contexto do player**: `Origin: https://cf-embed.play.hotmart.com` e `Referer: https://cf-embed.play.hotmart.com/` (o acesso em si é decidido por um token na própria URL, `hdnts=…`, sem cookie). A extensão busca playlists no service worker e segmentos no offscreen document, ambos com origem `chrome-extension://…`, e a CDN responde **403**. O popup mostra "Could not read this video's playlist" para todas as playlists. Esta spec faz a extensão, **somente depois de um 401/403**, repetir a busca com o `Origin`/`Referer` do frame que originalmente fez a requisição (informação que o navegador já nos dá), no flavor `local`.
 
 ## 2. Motivação & Escopo
-**Motivação:** diagnóstico real de uma plataforma de curso (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists; o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
+**Motivação:** diagnóstico real na Hotmart (2026-10-03): `hls.failed: HLS_FETCH_FAILED: status 403` nas três playlists (master, qualidade e legenda); o DevTools do usuário mostra a requisição do player com os dois cabeçalhos e sem `Cookie`.
+
+**Plataforma-alvo:** Hotmart (`hotmart.com`, player em `cf-embed.play.hotmart.com`, CDN `vod-akm.play.hotmart.com`); os testes usam hosts de exemplo (`*.exemplo.test`).
 
 **Objetivos (dentro do escopo):**
 - Guardar, para cada candidato observado na rede, a **origem do iniciador** da requisição (`initiatorOrigin`, só esquema+host+porta, vinda do `webRequest`).
@@ -246,3 +248,4 @@ N/A
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0016`. -->
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-10-03 | a plataforma-alvo (Hotmart) passa a ser citada nesta spec | decisão do Thomas: a spec de implementação pode nomear a plataforma que se quer fazer funcionar; contrato inalterado | N/A | thomas (chat, 2026-10-03) |

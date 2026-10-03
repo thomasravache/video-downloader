@@ -24,7 +24,9 @@ approved_at: 2026-10-03
 Hoje qualquer tag de chave diferente de `#EXT-X-KEY:METHOD=NONE` faz o vídeo aparecer como "protegido" e ser recusado. O ADR-0015 (aceito em 2026-10-03) permite uma exceção estreita: **HLS `METHOD=AES-128` com a chave entregue por URI ao player da própria sessão do usuário**. Nesta spec a funcionalidade existe só no flavor `local`; o alcance por build é decisão do Thomas e fica fora do ADR. Esta spec implementa essa exceção (caso real de uma plataforma de curso: master com `EXT-X-SESSION-KEY:METHOD=AES-128` e chave em URL assinada). O download busca a chave na URL da playlist, descriptografa cada segmento no offscreen com WebCrypto e segue o fluxo normal de montagem. DRM de verdade, outros métodos/formatos de chave e o flavor `public` continuam recusando.
 
 ## 2. Motivação & Escopo
-**Motivação:** teste manual numa plataforma de curso (2026-10-03): a master traz `EXT-X-SESSION-KEY:METHOD=AES-128,URI="https://keys.cdn-exemplo.test/…key?hdntl=…"`; o usuário toca o vídeo na própria conta e pediu poder baixá-lo (aprovado no ADR-0015, começando só pelo `local`).
+**Motivação:** teste manual na Hotmart (2026-10-03): a master traz `EXT-X-SESSION-KEY:METHOD=AES-128,URI="https://contentplayer.hotmart.com/…key?hdntl=…"`; o usuário toca o vídeo na própria conta e pediu poder baixá-lo (aprovado no ADR-0015, começando só pelo `local`).
+
+**Plataforma-alvo:** Hotmart; os testes e fixtures usam hosts de exemplo (`*.exemplo.test`).
 
 **Objetivos (dentro do escopo):**
 - Classificar chaves com **allowlist estrita**: `METHOD=NONE` (limpo) e `METHOD=AES-128` com atributos exatamente permitidos; tudo mais continua "protegido".
@@ -289,3 +291,4 @@ N/A
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0017`. -->
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-10-03 | a plataforma-alvo (Hotmart) passa a ser citada nesta spec | decisão do Thomas: a spec de implementação pode nomear a plataforma que se quer fazer funcionar; contrato inalterado | N/A | thomas (chat, 2026-10-03) |
