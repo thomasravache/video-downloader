@@ -4,7 +4,7 @@ title: "Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
@@ -14,8 +14,8 @@ touches: [src/core/**, entrypoints/popup/**, public/_locales/**, e2e/support/**,
 adrs: [ADR-0006, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-02
 ---
 
 # SPEC-0015 — Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio
@@ -153,6 +153,21 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+**Fase 1: Agrupamento e seletor**
+- [ ] Red: UT-01..UT-05, CT-01, IT-01, IT-02 com a tag `SPEC-0015:<ID>`
+- [ ] Green: `groupCandidates`, `mediaResources`, buscas condicionadas, popup (`related-sources`, `audio-select`), i18n pt_BR/en
+- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+
+**Fase 2: Jornada E2E**
+- [ ] Red: E2E-01 e E2E-02 falhando pelo motivo certo
+- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->

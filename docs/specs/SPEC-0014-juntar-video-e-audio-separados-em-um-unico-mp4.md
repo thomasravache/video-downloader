@@ -4,7 +4,7 @@ title: Juntar vídeo e áudio separados em um único MP4
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
@@ -14,8 +14,8 @@ touches: [package.json, pnpm-lock.yaml, wxt.config.ts, .dependency-cruiser.cjs, 
 adrs: [ADR-0014, ADR-0013, ADR-0008, ADR-0006, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-02
 ---
 
 # SPEC-0014 — Juntar vídeo e áudio separados em um único MP4
@@ -193,6 +193,25 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
+**Fase 1: Prova de conceito da biblioteca (portão)**
+- [ ] Red: IT-01 (fMP4 só vídeo + só áudio gerados por ffmpeg) falhando
+- [ ] Green com `mediabunny` (ADR-0014): 2 trilhas, amostras iguais, durações ±0,2 s, ffprobe, pico de memória e tamanho do bundle registrados; se falhar: PARAR e reportar SPEC_DEFECT (plano B por emenda)
+
+**Fase 2: Parser, contrato e segurança**
+- [ ] Red: UT-01..UT-07, CT-01, IT-02..IT-09 com a tag `SPEC-0014:<ID>`
+- [ ] Green: `HlsInfo.audio`/`audioGroup`, `chooseAudio`, `download.audioIndex`, `start.audio`, recusas em todas as playlists, limite combinado (valor final pela medição), licenças no build
+- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+
+**Fase 3: Jornada E2E**
+- [ ] Red: E2E-01 e E2E-02 falhando pelo motivo certo
+- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
