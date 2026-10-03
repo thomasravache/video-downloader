@@ -1,4 +1,4 @@
-/** Escolha da faixa de áudio de um download HLS (SPEC-0014:UT-03). Só a assinatura: sem lógica. */
+/** Escolha da faixa de áudio de um download HLS (SPEC-0014:UT-03). */
 import type { HlsAudioTrack, HlsInfo } from '../hls';
 
 /**
@@ -7,9 +7,19 @@ import type { HlsAudioTrack, HlsInfo } from '../hls';
  * ou não inteiro.
  */
 export function chooseAudio(
-  _info: HlsInfo,
-  _variantIndex: number,
-  _audioIndex?: number,
+  info: HlsInfo,
+  variantIndex: number,
+  audioIndex?: number,
 ): HlsAudioTrack | 'none' | 'invalid' {
-  throw new Error('NotImplemented: chooseAudio (SPEC-0014)');
+  const group = info.variants[variantIndex]?.audioGroup;
+  const tracks = (info.audio ?? []).filter((track) => track.groupId === group);
+  if (group === undefined || tracks.length === 0) {
+    return audioIndex === undefined ? 'none' : 'invalid';
+  }
+  if (audioIndex === undefined) {
+    return tracks.find((track) => track.default) ?? (tracks[0] as HlsAudioTrack);
+  }
+  return Number.isInteger(audioIndex)
+    ? (tracks.find((track) => track.index === audioIndex) ?? 'invalid')
+    : 'invalid';
 }

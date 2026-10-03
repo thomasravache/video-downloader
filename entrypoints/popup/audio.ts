@@ -1,14 +1,16 @@
-/** Texto "Inclui áudio: <nome>" do cartão HLS (SPEC-0014:UT-05). Só a assinatura: sem lógica. */
+/** Texto "Inclui áudio: <nome>" do cartão HLS (SPEC-0014:UT-05). */
 import type { HlsInfo } from '../../src/core/hls';
+import { chooseAudio } from '../../src/core/hls-download';
 
 /**
  * Função pura (sem DOM): o texto quando o download da variante `variantIndex` vai juntar uma faixa de áudio
  * (`chooseAudio` devolve uma faixa), com `format(nome)` fornecendo a tradução; `undefined` caso contrário.
  */
 export function audioIncludedText(
-  _hls: HlsInfo,
-  _variantIndex: number,
-  _format: (name: string) => string,
+  hls: HlsInfo,
+  variantIndex: number,
+  format: (name: string) => string,
 ): string | undefined {
-  throw new Error('NotImplemented: audioIncludedText (SPEC-0014)');
+  const track = chooseAudio(hls, variantIndex);
+  return typeof track === 'object' ? format(track.name) : undefined;
 }
