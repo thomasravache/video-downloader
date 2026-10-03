@@ -215,7 +215,22 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
  * dadas, únicos, na ordem de aparição, no máximo 32 (`HlsInfo.mediaResources`, SPEC-0015).
  */
 export function deriveMediaResources(
-  _playlists: readonly Pick<MediaSegments, 'urls' | 'initUrl'>[],
+  playlists: readonly Pick<MediaSegments, 'urls' | 'initUrl'>[],
 ): string[] {
-  throw new Error('NotImplemented: deriveMediaResources (SPEC-0015)');
+  const found = new Set<string>();
+  for (const playlist of playlists) {
+    for (const url of [
+      ...(playlist.initUrl === undefined ? [] : [playlist.initUrl]),
+      ...playlist.urls,
+    ]) {
+      if (found.size >= MAX_MEDIA_RESOURCES) {
+        return [...found];
+      }
+      const { origin, pathname } = new URL(url);
+      found.add(`${origin}${pathname}`);
+    }
+  }
+  return [...found];
 }
+
+const MAX_MEDIA_RESOURCES = 32;

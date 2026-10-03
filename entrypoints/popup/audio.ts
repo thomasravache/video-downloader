@@ -29,6 +29,16 @@ export interface AudioOption {
  * Função pura (sem DOM): opções do `audio-select` da variante `variantIndex`: as faixas do grupo dela, na
  * ordem de `hls.audio`; lista vazia quando o grupo tem 0 ou 1 faixa (sem seletor; fica o "Inclui áudio").
  */
-export function audioOptions(_hls: HlsInfo, _variantIndex: number): AudioOption[] {
-  throw new Error('NotImplemented: audioOptions (SPEC-0015)');
+export function audioOptions(hls: HlsInfo, variantIndex: number): AudioOption[] {
+  const group = hls.variants[variantIndex]?.audioGroup;
+  const tracks = (hls.audio ?? []).filter((track) => track.groupId === group);
+  if (group === undefined || tracks.length < 2) {
+    return [];
+  }
+  const chosen = chooseAudio(hls, variantIndex);
+  return tracks.map((track) => ({
+    index: track.index,
+    label: track.language === undefined ? track.name : `${track.name} (${track.language})`,
+    default: typeof chosen === 'object' && chosen.index === track.index,
+  }));
 }
