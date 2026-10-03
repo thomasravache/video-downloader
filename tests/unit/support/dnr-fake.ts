@@ -8,6 +8,9 @@ import type { ContextRule } from '../../../src/core/request-context';
 
 export interface SessionRule {
   id: number;
+  priority?: number;
+  action?: unknown;
+  condition?: { requestDomains?: string[]; initiatorDomains?: string[]; resourceTypes?: string[] };
 }
 
 export interface DnrFake extends DnrPort {
@@ -19,6 +22,8 @@ export interface DnrFake extends DnrPort {
   calls: { addRules: SessionRule[]; removeRuleIds: number[] }[];
   /** Toda regra já adicionada (mesmo as removidas depois), em ordem. */
   everAdded(): SessionRule[];
+  /** Maior número de regras ativas ao mesmo tempo. */
+  peak(): number;
   /** Planta regras (ex.: órfãs de um service worker anterior) sem passar pelo histórico. */
   seed(rules: SessionRule[]): void;
 }
@@ -27,11 +32,13 @@ export function createDnrFake(): DnrFake {
   const active = new Map<number, SessionRule>();
   const calls: DnrFake['calls'] = [];
   const added: SessionRule[] = [];
+  let peak = 0;
   return {
     calls,
     rules: () => [...active.values()],
     ids: () => [...active.keys()],
     everAdded: () => [...added],
+    peak: () => peak,
     seed(rules) {
       for (const rule of rules) {
         active.set(rule.id, rule);
@@ -57,6 +64,7 @@ export function createDnrFake(): DnrFake {
         active.set(rule.id, rule);
         added.push(rule);
       }
+      peak = Math.max(peak, active.size);
       return Promise.resolve();
     },
     getSessionRules: () => Promise.resolve([...active.values()]),
