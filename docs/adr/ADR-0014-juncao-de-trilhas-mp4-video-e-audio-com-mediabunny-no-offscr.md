@@ -10,7 +10,7 @@ consulted: []
 informed: []
 supersedes:
 superseded_by:
-enforced_by: "teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); prova de conceito da SPEC-0014 (fase 1) com ffprobe"
+enforced_by: "teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); testes de build de licença (SPEC-0014:UT-06/UT-07); prova de conceito da SPEC-0014 (fase 1) com ffprobe"
 ---
 
 # ADR-0014 — Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen
@@ -36,7 +36,8 @@ Plataformas de curso entregam HLS em que **vídeo e áudio são arquivos fMP4 se
 
 **Regras (verificáveis):**
 1. `mediabunny` só pode ser importado em `entrypoints/offscreen/**` (regra do dependency-cruiser, como `mux.js`); nunca em `src/core` ou no popup.
-2. Versão exata fixada (sem `^`/`~`), licença MPL-2.0 declarada em `THIRD-PARTY` do build; qualquer alteração em arquivos da biblioteca é proibida (só uso como dependência).
+2. Versão exata fixada (sem `^`/`~`); nenhuma alteração nos arquivos da biblioteca (só uso como dependência), para não acionar a obrigação de publicar modificações da MPL-2.0.
+6. **Licença no pacote, sem nada na interface:** os comentários de licença/copyright da biblioteca são preservados no chunk do offscreen (o minificador não pode removê-los; a MPL-2.0 proíbe retirar esses cabeçalhos) e `THIRD_PARTY_NOTICES.txt` vai na raiz dos zips, listando mediabunny (MPL-2.0), mux.js e m3u8-parser (Apache-2.0) com versão e texto da licença. Verificado por teste no build (SPEC-0014:UT-06/UT-07).
 3. Somente cópia de pacotes: nenhum recodificar; criptografia (`sinf`/`schm`) no init de qualquer trilha ⇒ recusa, como na SPEC-0012.
 4. O limite de 1,5 GiB considera a **soma** dos bytes das duas trilhas.
 5. A biblioteca é carregada só no offscreen e só quando há faixa de áudio separada (importação dinâmica).
@@ -59,7 +60,7 @@ Plataformas de curso entregam HLS em que **vídeo e áudio são arquivos fMP4 se
 | Esforço e risco de manutenção nossos (4) | 5 | 3 | 1 | 4 |
 | Manutenção ativa do projeto (3) | 5 | 4 | 3 | 2 |
 | Tipos TypeScript e API para ler/escrever (3) | 5 | 3 | 4 | 3 |
-| **Total ponderado** | **109** | **89** | **83** | **66** |
+| **Total ponderado** | **102** | **84** | **80** | **64** |
 
 Pesos e notas são julgamento do arquiteto, a serem confirmados pela prova de conceito (a nota de "resultado correto" de A é hipótese até a fase 1).
 
@@ -69,4 +70,6 @@ Dados verificados no registro npm em 2026-10-02 (`npm view`):
 - `mp4box` 2.4.1 — BSD-3-Clause, atualizada em 2026-06-19, 2,3 MB.
 - `@ffmpeg/ffmpeg` 0.12.15 (MIT) + `@ffmpeg/core` 0.12.10 — GPL-2.0-or-later, 64,7 MB, última atualização em 2025-04-07.
 - `mux.js` 6.3.0 (já em uso, Apache-2.0): transmuxa TS→MP4 mas não junta duas trilhas de MP4 fragmentado.
+- README oficial da mediabunny (consultado em 2026-10-02, github.com/Vanilagy/mediabunny): MPL-2.0, "free to use for any purpose, including closed-source commercial use", sem royalties; patrocínio é opcional; obrigações: publicar modificações do código da biblioteca, não remover cabeçalhos de licença/copyright, não usar a marca; implementação em TypeScript puro, sem dependências.
+- Teste manual do usuário (2026-10-02): `ffmpeg -i video.mp4 -i audio.mp4 -c copy` com os arquivos reais do curso gerou um MP4 reproduzível, indício de que a junção sem recodificar é viável para esse formato.
 - Não verificado ainda: se a API da `mediabunny` aceita os dois fMP4 como entradas sem decodificar e escreve um MP4 não fragmentado com o tamanho de memória esperado — é o objetivo da fase 1.

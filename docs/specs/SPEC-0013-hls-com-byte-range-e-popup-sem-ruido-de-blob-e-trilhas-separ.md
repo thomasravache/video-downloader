@@ -1,6 +1,6 @@
 ---
 id: SPEC-0013
-title: HLS com faixas de bytes (fMP4 de arquivo único) e popup sem ruído de blob
+title: HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo
 tier: full
 type: feature
 user_facing: true
@@ -18,7 +18,7 @@ approved_by:
 approved_at:
 ---
 
-# SPEC-0013 — HLS com faixas de bytes (fMP4 de arquivo único) e popup sem ruído de blob
+# SPEC-0013 — HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo
 
 ## 1. Visão Geral
 Plataformas de curso servem HLS em que a playlist aponta para **trechos de um único arquivo `.mp4`** (`#EXT-X-BYTERANGE`, e `#EXT-X-MAP` com `BYTERANGE` para o cabeçalho de inicialização). Hoje o download recusa essas playlists (decisão da revisão da SPEC-0012, para não gerar arquivo corrompido) e o popup mostra "Could not read this video's playlist", embora a playlist tenha sido lida. Esta spec faz o download buscar cada trecho com um cabeçalho `Range` e montar o MP4 normalmente, e tira do popup o cartão `blob` ("Not supported yet"), que é só o `<video>` do player usando Media Source e nunca terá o que baixar.
@@ -30,6 +30,7 @@ Plataformas de curso servem HLS em que a playlist aponta para **trechos de um ú
 - Baixar HLS sem criptografia cujos segmentos e `EXT-X-MAP` usam `BYTERANGE`, com requisições `Range`, no mesmo fluxo de job, progresso e cancelamento da SPEC-0012.
 - Validar rigorosamente a resposta: só `206` com `Content-Range` coerente com o pedido; servidor que ignora `Range` (200) é falha, nunca "segmento".
 - Recusar cedo (sem baixar mídia) quando a soma dos trechos excede o limite de 1,5 GiB.
+- Corrigir o cartão "arquivo" vindo da página que aponta para a própria playlist HLS (URL sem extensão, mesma origem e caminho, query diferente): hoje ele oferece Download e baixaria o texto da playlist. O candidato HLS da rede passa a substituí-lo, herdando o título da página.
 - Esconder do popup o cartão `blob` (`unsupported-stream`) quando houver outra fonte baixável ou HLS na mesma aba; mantê-lo quando for a única coisa detectada.
 
 **Não-objetivos (fora do escopo):**
@@ -94,6 +95,11 @@ interface MediaSegments {
 // Limite: soma(ranges.length) + initRange.length > 1,5 GiB => failed TOO_LARGE antes da 1ª requisição de mídia.
 
 // src/core/candidates.ts
+mergeCandidates(dom, network)   // src/core/network.ts — regra nova, além da igualdade exata de URL:
+  um candidato DOM kind==='file' é SUBSTITUÍDO por um candidato network kind==='hls' quando ambos têm
+  a mesma origem+caminho (query e fragmento ignorados). O substituto herda o title do DOM se não tiver title.
+  Outros pares com mesma origem+caminho e query diferente continuam separados (não é dedup genérica).
+
 hideRedundantCandidates(list):
   remove candidatos com support==='unsupported-stream' E mediaUrl que não é http(s) (ex.: blob:)
   quando list contém ao menos um OUTRO candidato com support==='downloadable' ou kind==='hls'.
@@ -116,6 +122,7 @@ hideRedundantCandidates(list):
 | Comando inválido | `ranges` de tamanho errado, item inválido, `initRange` sem `initUrl` | comando rejeitado pelo offscreen | UT-07 |
 | Compatibilidade | `start` e `HlsInfo` sem os campos novos | continuam aceitos | CT-01 |
 | Cabeçalho | offset 1573, length 1060672 | `Range: bytes=1573-1062244` | UT-08 |
+| Master vista como arquivo | DOM `file` e rede `hls` com mesma origem+caminho, query diferente | um cartão HLS com o título da página; nenhum Download do texto da playlist | UT-10, E2E-02 |
 | Filtro do popup | `blob` + (arquivo ou HLS) / `blob` sozinho / só arquivos | `blob` some / `blob` fica / lista igual | UT-09, E2E-02 |
 | Download com byte range | servidor com 206 correto | job `done`; MP4 = init + trechos na ordem; todas as requisições de mídia com `Range` | IT-01, E2E-01 |
 | Servidor ignora `Range` | resposta 200 | job `failed` `FETCH_FAILED`; nada baixado/salvo | IT-02 |
@@ -140,6 +147,8 @@ N/A — o comportamento sem byte range já é coberto por `hls-segments*.test.ts
 - **UT-08** — Dado `{offset:1573, length:1060672}`, quando o cabeçalho é montado, então vale `bytes=1573-1062244`.
 - **UT-09** — Dado listas com `blob:` + arquivo, `blob:` + HLS, `blob:` sozinho, `blob:` + só outro `unsupported-stream`, e sem `blob:`, quando `hideRedundantCandidates` roda, então remove o `blob` só nos dois primeiros casos, preserva a ordem e não muta a entrada.
 
+- **UT-10** — Dado um candidato DOM `file` `https://h/x/0dc195?sig=a` com título e um candidato rede `hls` `https://h/x/0dc195?sig=b` sem título, quando `mergeCandidates` roda, então resta um único candidato `hls` com o título do DOM; e dois arquivos `file` com mesma origem+caminho e queries diferentes continuam separados (guarda).
+
 ### 7.3 Testes de Integração
 - **IT-01** — Dado um servidor local com suporte a `Range` servindo um fMP4 de arquivo único e a playlist com byte range, quando o job roda no offscreen real (harness da SPEC-0012), então termina `done`, o Blob é `init + trechos` na ordem (bytes conferidos) e toda requisição ao arquivo de mídia tem `Range` correto.
 - **IT-02** — Dado um servidor que ignora `Range` e responde 200, quando o job roda, então termina `failed` `FETCH_FAILED` e `downloads.download` não é chamado.
@@ -153,7 +162,7 @@ N/A — o comportamento sem byte range já é coberto por `hls-segments*.test.ts
 
 ### 7.5 Testes E2E
 - **E2E-01** — Dado uma página que carrega um HLS de arquivo único com byte range (fixture gerada com `ffmpeg`, servida com `Range`) [jornada: baixar-hls], quando o usuário abre o popup e clica em baixar, então aparece o progresso, o arquivo `.mp4` é salvo e é um MP4 válido (`ftyp` primeiro, `moov` e `mdat`, uma trilha de vídeo 320×180, duração ±0,6 s), em menos de 10 s, com axe sem violações sérias.
-- **E2E-02** — Dado uma página com `<video>` por `blob:` e um HLS observado na rede, quando o popup abre, então não há `badge-unsupported` do `blob`; e com a página só com `blob:` o cartão continua (guarda: passa antes da mudança).
+- **E2E-02** — Dado uma página com `<video>` por `blob:` e um HLS observado na rede, quando o popup abre, então não há `badge-unsupported` do `blob`, e um `<video>`/`<source>` cuja URL (com query diferente) é a mesma playlist vista na rede aparece como **um** cartão HLS com o título da página; com a página só com `blob:` o cartão continua.
 
 ### 7.6 Outros
 - **Desempenho:** tempo do E2E-01 registrado no relatório (alvo < 10 s).
@@ -172,7 +181,7 @@ N/A — o comportamento sem byte range já é coberto por `hls-segments*.test.ts
 - **Etapas de migração/coexistência:** N/A.
 
 ## 9. Questões em Aberto
-Nenhuma. (Premissas a confirmar no H1: esconder o `blob` só quando há outra fonte; a mensagem de erro existente `errorHlsNotResolved` não muda.)
+Nenhuma. (Premissas a confirmar no H1: esconder o `blob` só quando há outra fonte; a mensagem de erro existente `errorHlsNotResolved` não muda; a substituição DOM→HLS por origem+caminho só vale para o par `file`(DOM)→`hls`(rede).)
 
 ## 10. Aprovação (H1)
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
@@ -184,7 +193,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
-| G0 Spec | PASS | validate: 0 erro(s) — 69b3d0a | 2026-10-02 |
+| G0 Spec | PASS | validate: 0 erro(s) — 2482d6e (árvore suja) | 2026-10-02 |
 | G1 Red | PENDING | | |
 | G2 Green | PENDING | | |
 | G3 Arquitetura | PENDING | | |

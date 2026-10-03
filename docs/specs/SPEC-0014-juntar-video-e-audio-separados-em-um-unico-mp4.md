@@ -10,7 +10,7 @@ parent: SPEC-0008
 depends_on: []
 consumes_contract: [SPEC-0011@1, SPEC-0012@1, SPEC-0013@1]
 contract_version: 1
-touches: [package.json, pnpm-lock.yaml, .dependency-cruiser.cjs, src/core/**, entrypoints/offscreen/**, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
+touches: [package.json, pnpm-lock.yaml, wxt.config.ts, .dependency-cruiser.cjs, public/THIRD_PARTY_NOTICES.txt, src/core/**, entrypoints/offscreen/**, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
 adrs: [ADR-0014, ADR-0013, ADR-0008, ADR-0006, ADR-0001]
 external: []
 size: M
@@ -21,178 +21,172 @@ approved_at:
 # SPEC-0014 — Juntar vídeo e áudio separados em um único MP4
 
 ## 1. Visão Geral
-Em muitos sites de curso o HLS entrega **vídeo e áudio em playlists e arquivos separados**: a playlist master lista as qualidades (`#EXT-X-STREAM-INF … AUDIO="grupo"`) e as faixas de áudio (`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="grupo",URI="…"`). Hoje a extensão só baixa a playlist do vídeo (resultado sem som) e o popup mistura o vídeo, o áudio, os dois MP4 soltos e a playlist master em cartões separados. Esta spec faz o download **buscar também a faixa de áudio, juntá-la ao vídeo num único MP4** (cópia de pacotes, sem recodificar) e deixar no popup **um cartão só**, com escolha de qualidade e, havendo mais de uma, de idioma.
+Em muitos sites de curso o HLS entrega **vídeo e áudio em playlists e arquivos separados**: a playlist master lista as qualidades (`#EXT-X-STREAM-INF … AUDIO="grupo"`) e as faixas de áudio (`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="grupo",URI="…"`). Hoje a extensão baixa só a playlist de vídeo, e o arquivo sai **sem som**. Esta spec faz o download pela master **buscar também a faixa de áudio e juntar as duas trilhas num único MP4** (cópia de pacotes, sem recodificar), mantendo o seletor de qualidade que o cartão já tem. A limpeza do popup e o seletor de idioma ficam na SPEC-0015.
 
 ## 2. Motivação & Escopo
-**Motivação:** teste manual da rc.2 num site de curso (2026-10-02): o popup listou 11 cartões para uma aula (`blob`, um arquivo sem extensão duplicado, `…_1080p.mp4` 57,9 MB só de vídeo, `…_en_192k.mp4` 5 MB só de áudio, `…_480p.mp4`, as playlists `1080p`, `en_192k`, `480p` e a master com seletor de qualidade). Nenhum baixa vídeo com áudio.
+**Motivação:** teste manual da rc.2 num site de curso (2026-10-02): nenhum cartão baixava vídeo com áudio; o usuário juntou à mão `…_1080p.mp4` e `…_en_192k.mp4` com `ffmpeg -c copy` e o resultado tocou corretamente (evidência de que os arquivos aceitam junção sem recodificar).
 
 **Objetivos (dentro do escopo):**
-- Ler `#EXT-X-MEDIA TYPE=AUDIO` e o atributo `AUDIO=` das variantes na master; expor as faixas no candidato HLS (`HlsInfo.audio`, `HlsVariant.audioGroup`).
-- Baixar a faixa de áudio escolhida (padrão: `DEFAULT=YES`, senão a primeira) junto com o vídeo e produzir **um único MP4** com as duas trilhas, via a biblioteca decidida no ADR-0014 (prova de conceito na fase 1; plano B: módulo próprio).
-- Passar pelas mesmas recusas de segurança em **todas** as playlists envolvidas: criptografia, DRM, ao vivo; jamais entregar vídeo mudo quando o áudio esperado não pôde ser obtido.
-- Popup: um cartão por vídeo; seletor de áudio quando houver mais de um idioma; esconder cartões redundantes (playlists de variante/áudio e arquivos diretos que são os mesmos recursos da master) e o duplicado sem extensão que aponta para a própria master.
+- Ler `#EXT-X-MEDIA TYPE=AUDIO` e o atributo `AUDIO=` das variantes; expor as faixas no candidato HLS (`HlsInfo.audio`, `HlsVariant.audioGroup`).
+- Baixar, junto com a variante escolhida, a faixa de áudio do grupo dela (`DEFAULT=YES`, senão a primeira; `audioIndex` opcional no contrato para a SPEC-0015) e produzir **um único MP4** com as duas trilhas, via a biblioteca do ADR-0014 (prova de conceito na fase 1; plano B: módulo próprio).
+- Aplicar as recusas de segurança a **todas** as playlists envolvidas (criptografia, DRM, ao vivo) e nunca entregar vídeo mudo quando o áudio esperado não pôde ser obtido.
+- No cartão HLS, mostrar "Inclui áudio: <nome>" quando o download vai juntar áudio.
+- Cumprir a licença MPL-2.0 da biblioteca: comentários legais preservados no bundle e arquivo de avisos de terceiros no pacote (com `mux.js` e `m3u8-parser`, Apache-2.0).
 
 **Não-objetivos (fora do escopo):**
-- Recodificar, mudar resolução/bitrate, extrair só o áudio como arquivo à parte, legendas (`TYPE=SUBTITLES`).
-- Áudio ou vídeo em TS/ADTS com faixa separada (só fMP4 nas duas pontas; outro formato ⇒ `UNSUPPORTED`).
+- Esconder/recolher cartões redundantes e seletor de idioma: SPEC-0015.
+- Recodificar, mudar resolução/bitrate, extrair só o áudio, legendas.
+- Áudio ou vídeo em TS com faixa separada (só fMP4 nas duas pontas; outro formato ⇒ `UNSUPPORTED`).
 - DASH, MSE/`blob:`, criptografia/DRM de qualquer tipo.
-- Casar áudio e vídeo sem playlist master (por nome de arquivo ou heurística): sem master, o cartão da playlist de vídeo baixa só o vídeo, como hoje.
+- Casar áudio e vídeo sem playlist master (por nome de arquivo): sem master, a playlist de vídeo baixa só o vídeo, como hoje.
 
 ## 3. Dependências
 - **Implementações necessárias:** N/A (vínculo por contrato).
-- **Contratos consumidos:** SPEC-0011@1 (`HlsInfo`, `HlsVariant`, `parseHlsPlaylist`: **estendidos de forma aditiva** — registrar Emenda v2 aditiva na SPEC-0011 ao integrar); SPEC-0012@1 (mensagens e job); SPEC-0013@1 (`ByteRange`, `MediaSegments.ranges`, `start.ranges`: o áudio do curso também é arquivo único com byte range). Ordem de execução: SPEC-0013 antes desta (mesmos arquivos em `src/core/hls-download/**`).
-- **Pré-requisitos externos:** biblioteca `mediabunny` (ADR-0014, proposta, só vale se a fase 1 passar); `ffmpeg`/`ffprobe` locais para gerar fixtures e evidência manual.
+- **Contratos consumidos:** SPEC-0011@1 (`HlsInfo`, `HlsVariant`, `parseHlsPlaylist`: **estendidos de forma aditiva**; registrar Emenda v2 aditiva na SPEC-0011 ao integrar); SPEC-0012@1 (mensagens e job); SPEC-0013@1 (`ByteRange`, `MediaSegments.ranges`, `start.ranges`: o áudio do curso também é arquivo único com byte range). Execução **depois** da SPEC-0013 (mesmos arquivos em `src/core/hls-download/**`).
+- **Pré-requisitos externos:** biblioteca `mediabunny` (ADR-0014, aceito só se a fase 1 passar); `ffmpeg`/`ffprobe` locais para gerar fixtures e evidência manual.
 
 ## 4. Decisão Arquitetural
-**Contexto:** mesmo desenho da SPEC-0012: núcleo puro em `src/core`, montagem de blobs no offscreen, `m3u8-parser` só no núcleo, nova biblioteca de mídia só no offscreen (regra de dependência como a do `mux.js`). Segue `src/core/hls/index.ts`, `src/core/hls-download/*`, `entrypoints/offscreen/{assemble,run-job,commands}.ts`, `src/core/candidates.ts`.
+**Contexto:** mesmo desenho da SPEC-0012: núcleo puro em `src/core`, montagem de blobs no offscreen, `m3u8-parser` só no núcleo, biblioteca de mídia nova só no offscreen (regra de dependência igual à do `mux.js`). Segue `src/core/hls/index.ts`, `src/core/hls-download/*`, `entrypoints/offscreen/{assemble,run-job,commands}.ts`.
 
-**Decisão:** (1) o parser passa a expor faixas de áudio e o grupo de cada variante; (2) o `download` ganha `audioIndex?` opcional; o serviço re-busca e re-analisa **a playlist de vídeo e a de áudio** (mesmas regras: allowlist de criptografia, `live`, http(s), byte range da SPEC-0013) e só então cria o job; (3) o `start` do offscreen ganha `audio?` (segmentos, init e ranges da faixa de áudio); (4) o offscreen baixa as duas trilhas, monta cada uma como fMP4 completo e as junta em `assembleMerged` (ADR-0014); (5) o `resolve` do popup busca também as playlists de áudio e das demais variantes (limites abaixo) para preencher `mediaResources` e detectar áudio criptografado; (6) `hideRedundantCandidates` (SPEC-0013) ganha as regras de redundância.
+**Decisão:** (1) o parser expõe faixas de áudio e o grupo de cada variante; (2) `download` ganha `audioIndex?`; o serviço re-busca e re-analisa **a playlist de vídeo e a de áudio** (allowlist de criptografia, `live`, http(s), byte range) e só então cria o job; (3) o `start` do offscreen ganha `audio?`; (4) o offscreen baixa as duas trilhas, monta cada uma como fMP4 completo e as junta em `assembleMerged` (ADR-0014), carregando a biblioteca por importação dinâmica só nesse caso; (5) no resolve, além do melhor variante (SPEC-0011), busca-se a playlist de áudio padrão do grupo dele para marcar `encrypted` de forma conservadora (1 requisição a mais).
 
-**Justificativa:** reutiliza job, agendador, progresso, cancelamento e limites existentes; a fronteira de segurança continua no serviço (nada é baixado antes de todas as playlists serem vistas e aprovadas).
+**Justificativa:** reutiliza job, agendador, progresso, cancelamento e limites; a fronteira de segurança continua no serviço (nada é baixado antes de todas as playlists serem aprovadas).
 
-**Desvio do padrão existente:** uma dependência nova (`mediabunny`), coberta pelo ADR-0014 (a ser aceito junto com o H1); sem a prova de conceito, fallback para módulo próprio sem dependência (emenda registrada).
+**Desvio do padrão existente:** dependência nova (`mediabunny`), coberta pelo ADR-0014 (aceito junto com o H1, condicionado à fase 1); sem a prova de conceito, plano B por emenda.
 
-**Alternativas descartadas:** ffmpeg.wasm (GPL, 65 MB); entregar dois arquivos (UX ruim); casar áudio por nome de arquivo (frágil); baixar o áudio só no clique (impede esconder redundâncias e detectar áudio criptografado antes do download).
+**Alternativas descartadas:** ffmpeg.wasm (GPL, 65 MB); entregar dois arquivos (UX ruim); código próprio como primeira opção (estimativa de centenas a mais de mil linhas na parte de tempos, `moov` e edit lists, com risco de dessincronia); casar áudio por nome de arquivo (frágil).
 
 **ADRs:** ADR-0014 (novo), ADR-0013, ADR-0008, ADR-0006, ADR-0001.
 
 ## 5. Requisitos Não-Funcionais
-- **Desempenho e escala:** aula de 3:40 (≈ 63 MB) concluída em < 10 s no E2E; resolve busca no máximo 1 playlist por faixa de áudio (até 4) e até 4 variantes no total, com 10 s e 1 MiB por busca (limites do `playlist-fetcher`), em paralelo; falha de busca extra só reduz a limpeza de redundâncias.
-- **Segurança:** áudio criptografado/ao vivo/inválido ⇒ recusa total, sem nenhuma requisição de mídia (IT-03, IT-04, IT-07); `sinf/schm` no init de qualquer trilha ⇒ `ENCRYPTED`; nomes de faixa tratados como texto (`textContent`), truncados e sem caracteres de controle (UT-02).
+- **Desempenho e escala:** fixture de 6 s concluída em < 10 s no E2E; aula real de 3:40 (≈ 63 MB) medida manualmente na rc. Resolve: no máximo 1 busca extra (a playlist de áudio padrão), 10 s e 1 MiB (limites do `playlist-fetcher`).
+- **Segurança:** áudio criptografado/ao vivo/inválido ⇒ recusa total, sem nenhuma requisição de mídia (IT-03, IT-04, IT-07); `sinf/schm` no init de qualquer trilha ⇒ `ENCRYPTED`; nomes de faixa como texto (`textContent`), truncados e sem caracteres de controle (UT-02).
 - **Privacidade e dados pessoais:** tokens e `expires` das URLs de áudio/vídeo nunca em logs, diagnósticos, erros ou estado do job (IT-09).
-- **Disponibilidade e resiliência:** mesmas tentativas e cancelamento; cancelar interrompe as duas trilhas; limite de memória: **1 GiB** na soma das duas trilhas (pico estimado ≈ 3× por cópias: trilhas, mesclagem e Blob), `TOO_LARGE` antes da 1ª requisição quando declarado (IT-06).
-- **Acessibilidade (UI):** seletor de áudio com `label`, alcançável por teclado; axe sem violações sérias (E2E-01).
-- **Custo:** N/A. **Tamanho do pacote:** medir o acréscimo do bundle do offscreen na fase 1 (meta: < 500 KB minificado; registrar o valor).
+- **Disponibilidade e resiliência:** mesmas tentativas e cancelamento; cancelar interrompe as duas trilhas. **Memória:** o pico real da junção é **medido na fase 1** (IT-01, sintético de ≈ 200 MB) e o limite combinado de jobs com junção é fixado a partir dele como `pico ≤ 2 GiB`; valor provisório até a medição: 1 GiB na soma das duas trilhas, com `TOO_LARGE` antes da 1ª requisição quando declarado (IT-06). A medição e o valor final entram no Relatório de Entrega.
+- **Acessibilidade (UI):** só o texto "Inclui áudio" novo, em `p.status` existente; axe sem violações sérias (E2E-01).
+- **Custo:** N/A. **Tamanho do pacote:** registrar o acréscimo do bundle do offscreen na fase 1 (meta < 500 KB minificado).
+- **Licença:** comentários legais da biblioteca presentes no bundle do offscreen e `THIRD_PARTY_NOTICES.txt` na raiz dos dois zips, sem nada na interface (UT-07).
 
 ## 6. Artefato A — Contrato
-**Interface:** `parseHlsPlaylist` / `HlsInfo` (src/core/hls/index.ts); mensagem `download` (src/core/contracts); comando `start` do offscreen (src/core/hls-download/protocol.ts); `assembleMerged` (entrypoints/offscreen/assemble.ts); `hideRedundantCandidates` (src/core/candidates.ts).
+**Interface:** `parseHlsPlaylist` / `HlsInfo` (src/core/hls/index.ts); `chooseAudio` (src/core/hls-download); mensagem `download` (src/core/contracts); comando `start` do offscreen (src/core/hls-download/protocol.ts); `assembleMerged` (entrypoints/offscreen).
 
 ```text
 // Extensões ADITIVAS de HlsInfo (SPEC-0011@1):
 interface HlsAudioTrack {
   index: number            // posição na lista devolvida
-  groupId: string         // GROUP-ID
-  name: string            // NAME, sem controles, <= 80 caracteres
-  language?: string       // LANGUAGE, <= 16 caracteres
-  default: boolean        // DEFAULT=YES
-  url: string             // URI resolvida; só http(s); faixa sem URI (áudio embutido na variante) não entra
+  groupId: string          // GROUP-ID
+  name: string             // NAME, sem controles, <= 80 caracteres
+  language?: string        // LANGUAGE, <= 16 caracteres
+  default: boolean         // DEFAULT=YES
+  url: string              // URI resolvida; só http(s); faixa sem URI (áudio embutido na variante) não entra
 }
-HlsVariant.audioGroup?: string       // AUDIO="grupo" da STREAM-INF
-HlsInfo.audio?: HlsAudioTrack[]      // máx. 20; ausente se a master não tem faixas com URI
-HlsInfo.mediaResources?: string[]    // origem+caminho (sem query/fragmento) dos arquivos de mídia
-                                    // referenciados pelas playlists buscadas no resolve; únicos; máx. 32
-// Qualquer EXT-X-MEDIA TYPE=AUDIO com EXT-X-KEY? Não existe: criptografia de áudio é detectada
-// nas playlists de áudio buscadas (allowlist da SPEC-0011) e marca HlsInfo.encrypted = true.
+HlsVariant.audioGroup?: string     // AUDIO="grupo" da STREAM-INF
+HlsInfo.audio?: HlsAudioTrack[]    // máx. 20; ausente se a master não tem faixas com URI
+// Resolve: se a playlist de áudio padrão do grupo do melhor variante for criptografada => HlsInfo.encrypted = true.
+// Falha nessa busca extra não falha o resolve nem muda encrypted/live.
+
+// chooseAudio(info, variantIndex, audioIndex?): HlsAudioTrack | 'none' | 'invalid'
+//   variante sem audioGroup ou grupo sem faixas => 'none' (sem áudio separado, comportamento atual)
+//   sem audioIndex => DEFAULT=YES do grupo, senão a primeira do grupo
+//   audioIndex de outro grupo, inexistente, negativo ou não inteiro => 'invalid'
 
 // Mensagem download (SPEC-0012@1) + campo opcional:
 { type:'download', candidateId, variantIndex?, audioIndex? }
-// audioIndex: índice em HlsInfo.audio dentro do grupo da variante escolhida.
-// Sem audioIndex: faixa DEFAULT=YES do grupo, senão a primeira do grupo.
-// Variante sem audioGroup, ou grupo sem faixas com URI: não há áudio separado (comportamento atual).
-// audioIndex fora do grupo/inexistente => UNSUPPORTED. Faixa de áudio ou vídeo que não seja fMP4 => UNSUPPORTED.
-// Playlist de áudio: refetch + parse; erro de busca/parse => HLS_NOT_RESOLVED; criptografada => ENCRYPTED;
-// ao vivo => LIVE. Nenhuma requisição de mídia antes de TODAS as playlists serem aprovadas.
+// 'invalid' => UNSUPPORTED. Faixa de áudio ou vídeo que não seja fMP4 => UNSUPPORTED.
+// Playlist de áudio: refetch + parse; erro => HLS_NOT_RESOLVED; criptografada => ENCRYPTED; ao vivo => LIVE.
+// Nenhuma requisição de mídia antes de TODAS as playlists serem aprovadas.
 
-// start do offscreen (SPEC-0012@1/0013@1) + campo opcional:
+// start do offscreen + campo opcional:
 { ..., audio?: { urls: string[], initUrl?: string, ranges?: (ByteRange|undefined)[], initRange?: ByteRange } }
 // progresso: segmentsTotal/segmentsDone somam vídeo + áudio.
-// Limite: bytes(vídeo)+bytes(áudio) > 1 GiB => failed TOO_LARGE. 'sinf'/'schm' em qualquer init => failed ENCRYPTED.
+// Limite combinado (provisório 1 GiB; final pela medição da fase 1) => failed TOO_LARGE.
+// 'sinf'/'schm' em qualquer init => failed ENCRYPTED.
 
-// entrypoints/offscreen/assemble.ts
+// entrypoints/offscreen (assemble.ts ou merge.ts)
 assembleMerged(video: {init, segments}, audio: {init, segments}): Promise<Uint8Array>
 // Saída: MP4 com exatamente 2 trilhas (1 vídeo, 1 áudio), pacotes copiados sem recodificar,
-// duração ≈ a das fontes (±0,2 s), contagem de amostras igual à das fontes.
-// Falha de mesclagem => AssemblyError('ASSEMBLY_FAILED'); codec não suportado => 'UNSUPPORTED_CODEC'.
+// contagem de amostras igual à das fontes, duração de cada trilha ±0,2 s da fonte.
+// Falha de junção => AssemblyError('ASSEMBLY_FAILED'); codec não suportado => 'UNSUPPORTED_CODEC'.
 
-// Resolve (service.resolveHls), master com audio: além do melhor variante (SPEC-0011), busca em paralelo
-// as playlists de áudio (<= 4) e variantes até somar 4 variantes; deriva mediaResources; se alguma
-// playlist de áudio buscada for criptografada => HlsInfo.encrypted = true (conservador). Falha numa
-// busca extra NÃO falha o resolve.
-
-// hideRedundantCandidates (estende SPEC-0013): com um candidato HLS master resolvido M na lista, remove
-//  (a) candidatos HLS cujo mediaUrl (origem+caminho) é de variante ou de faixa de áudio de M;
-//  (b) candidatos 'file' cujo origem+caminho está em M.hls.mediaResources;
-//  (c) candidatos 'file' vindos do DOM cujo origem+caminho é o do próprio M.
-// Nunca remove M; preserva a ordem; não muta a entrada; sem M resolvido não remove nada (além da regra do blob).
+// Build: comentários legais (/*! … */ e @license) da biblioteca preservados no chunk do offscreen;
+// public/THIRD_PARTY_NOTICES.txt (nome, versão, licença e texto de mediabunny, mux.js, m3u8-parser) na raiz do zip.
 ```
 
-**Design:** cartão HLS existente + (1) seletor "Áudio" (`audio-select`, mesmo padrão do `quality-select`) quando `hls.audio` do grupo da variante tem mais de uma faixa; (2) texto "Inclui áudio: <nome>" quando há uma; chaves i18n novas em pt_BR e en (`audioLabel`, `audioIncluded`). Nenhuma outra tela muda.
+**Design:** cartão HLS existente + texto "Inclui áudio: <nome>" (`audio-included`) quando `chooseAudio` da variante selecionada devolve uma faixa; chave i18n `audioIncluded` em pt_BR e en. Nenhuma outra tela muda.
 
-**Arquivos/módulos afetados:** ver `touches`; novos: `entrypoints/offscreen/merge.ts` (ou o uso da biblioteca em `assemble.ts`), fixture `e2e/fixtures/hls/split-av/**`, página `pages/hls-split-av.html`.
+**Arquivos/módulos afetados:** ver `touches`; novos: módulo de junção no offscreen, `public/THIRD_PARTY_NOTICES.txt`, fixture `e2e/fixtures/hls/split-av/**`, página `pages/hls-split-av.html`.
 
 ### 6.1 Mapa de Comportamentos
 | Cenário | Condição / Entrada | Resultado esperado | Testes |
 |---|---|---|---|
 | Parser lê áudio | master com `EXT-X-MEDIA TYPE=AUDIO` e `AUDIO=` | `audio[]` e `variant.audioGroup` corretos | UT-01 |
 | Entrada hostil | NAME gigante/controle, URI não http(s), >20 faixas, faixa sem URI | truncado/sanitizado, descartado, limitado | UT-02 |
-| Escolha de áudio | padrão, índice explícito, índice fora, sem grupo | default → primeira → erro `UNSUPPORTED`/nenhuma | UT-03 |
-| Recursos de mídia | playlists buscadas com query/token | `mediaResources` só origem+caminho, únicos, ≤ 32 | UT-04 |
-| Esconder redundantes | master resolvida + variantes/áudio/arquivos/duplicado do DOM | só a master fica; sem master nada some | UT-05, E2E-01 |
-| Comando com áudio | `audio` válido/inválido | aceito / rejeitado | UT-06 |
-| Junção correta | fMP4 só vídeo + fMP4 só áudio | MP4 com 2 trilhas, sem perda de amostras | IT-01 (prova de conceito) |
+| Escolha de áudio | padrão, índice válido, inválido, sem grupo | default → primeira; escolhida; `invalid`; `none` | UT-03 |
+| Comando com áudio | `audio` válido/inválido | aceito / rejeitado | UT-04 |
+| Texto no cartão | variante com e sem áudio separado | "Inclui áudio: <nome>" / nada | UT-05 |
+| Licença no pacote | build dos dois flavors | avisos e comentários legais presentes | UT-06, UT-07 |
+| Junção correta | fMP4 só vídeo + fMP4 só áudio | MP4 com 2 trilhas, sem perda de amostras; pico de memória medido | IT-01 (prova de conceito) |
 | Download com áudio | master + vídeo e áudio com byte range | job `done`; Blob com as duas trilhas; progresso soma ambos | IT-02, E2E-01 |
-| Áudio criptografado | `EXT-X-KEY` na playlist de áudio | `ENCRYPTED`; nenhuma requisição de mídia (nem do vídeo) | IT-03 |
+| Áudio criptografado | `EXT-X-KEY` na playlist de áudio | `ENCRYPTED`; nenhuma requisição de mídia (nem do vídeo) | IT-03, E2E-02 |
 | Áudio indisponível/ao vivo/inválido | 404, `live`, parse falha | `HLS_NOT_RESOLVED`/`LIVE`; nunca vídeo mudo; nada salvo | IT-04 |
-| Opções inválidas | `audioIndex` inexistente; áudio ou vídeo TS | `UNSUPPORTED`; nada baixado | IT-05 |
-| Limite | soma > 1 GiB | `failed` `TOO_LARGE` sem requisição de mídia | IT-06 |
+| Opções inválidas | `audioIndex` inválido; áudio ou vídeo TS | `UNSUPPORTED`; nada baixado | IT-05 |
+| Limite | soma acima do limite combinado | `failed` `TOO_LARGE` sem requisição de mídia | IT-06 |
 | `sinf/schm` no init | init de áudio ou vídeo criptografado | `failed` `ENCRYPTED`; nada salvo | IT-07 |
-| Resolve extra | master com áudio e variantes | busca extras, `mediaResources`, `encrypted` conservador; falha extra não derruba | IT-08 |
+| Resolve com áudio | master com áudio | busca a playlist de áudio padrão; `encrypted` conservador; falha extra não derruba | IT-08 |
 | Privacidade | tokens nas URLs de áudio | ausentes de diagnósticos/estado/erros | IT-09 |
 | Compatibilidade | payloads sem campos novos | continuam válidos | CT-01 |
-| Escolha de idioma | 2 faixas de áudio | seletor visível; baixar a segunda salva o idioma escolhido | E2E-02 |
-| Áudio criptografado na master | faixa criptografada | cartão `badge-encrypted`, sem baixar | E2E-03 |
 
 ## 7. Artefato B — Plano de Testes (TDD)
 
 ### 7.1 Testes de Caracterização
-N/A — o parser, o job e o popup já são cobertos pelos testes das SPEC-0011/0012/0013; UT-05 mantém a regra do `blob` (guarda: passa antes da mudança).
+N/A — parser, job e popup já cobertos pelas SPEC-0011/0012/0013; masters sem áudio separado ficam cobertas por CT-01 e pelos E2E existentes.
 
 ### 7.2 Testes Unitários
 - **UT-01** — Dado uma master com `#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a1",NAME="English",LANGUAGE="en",DEFAULT=YES,URI="a.m3u8"` e variantes com `AUDIO="a1"`, quando `parseHlsPlaylist` roda, então `audio[0]` tem nome, idioma, `default`, `url` resolvida e `variants[i].audioGroup === 'a1'`.
-- **UT-02** — Dado NAME com 10 mil caracteres/controles/aspas e vírgulas dentro de aspas, URI `javascript:`/`data:`/vazia, faixa sem URI, e 30 faixas, quando parseada, então NAME é truncado em 80 sem controles, faixas inválidas são descartadas e há no máximo 20.
-- **UT-03** — Dado variante com grupo e faixas (uma `DEFAULT`), quando `chooseAudio` roda sem índice, com índice válido, com índice de outro grupo/negativo/não inteiro, e com variante sem grupo, então devolve a default (senão a primeira), a escolhida, erro, e "sem áudio" respectivamente.
-- **UT-04** — Dado playlists com URLs `…/arq.mp4?token=x&expires=1#f` repetidas e mais de 32 recursos, quando `mediaResources` é derivado, então contém origem+caminho únicos, sem query/fragmento, no máximo 32.
-- **UT-05** — Dado listas com a master resolvida e (a) cartões de variante e de áudio, (b) arquivos `.mp4` dos recursos, (c) cartão `file` do DOM com o URL da master, (d) cartões não relacionados, (e) sem master resolvida, (f) `blob:` + master, quando `hideRedundantCandidates` roda, então remove (a)(b)(c) e o `blob` em (f), mantém (d), a master e a ordem, não remove nada em (e) além da regra do `blob`, e não muta a entrada.
-- **UT-06** — Dado comandos `start` com `audio` válido, `audio.urls` vazio, `audio.ranges` de tamanho errado e `audio.initRange` sem `initUrl`, quando `isCommand` valida, então aceita só o válido.
+- **UT-02** — Dado NAME com 10 mil caracteres/controles/aspas e vírgulas dentro de aspas, URI `javascript:`/`data:`/vazia, faixa sem URI e 30 faixas, quando parseada, então NAME é truncado em 80 sem controles, faixas inválidas são descartadas e há no máximo 20.
+- **UT-03** — Dado variante com grupo e faixas (uma `DEFAULT`), quando `chooseAudio` roda sem índice, com índice válido, com índice de outro grupo/negativo/não inteiro, e com variante sem grupo, então devolve a default (senão a primeira), a escolhida, `invalid` e `none`.
+- **UT-04** — Dado comandos `start` com `audio` válido, `audio.urls` vazio ou não-http(s), `audio.ranges` de tamanho errado e `audio.initRange` sem `initUrl`, quando `isCommand` valida, então aceita só o válido.
+- **UT-05** — Dado candidatos HLS com variante de áudio separado e sem, quando o texto do cartão é calculado, então é "Inclui áudio: English" no primeiro e ausente no segundo (função pura, sem DOM).
+- **UT-06** — Dado o build `public` e o `local`, quando os zips são inspecionados, então `THIRD_PARTY_NOTICES.txt` está na raiz e cita mediabunny (MPL-2.0), mux.js e m3u8-parser (Apache-2.0) com as versões do `package.json`.
+- **UT-07** — Dado o chunk do offscreen do build, quando inspecionado, então contém os comentários de licença da mediabunny; e `mediabunny` aparece no `package.json` com versão exata (sem `^`/`~`).
 
 ### 7.3 Testes de Integração
-- **IT-01** — (prova de conceito, fase 1) Dado um fMP4 só de vídeo (H.264) e um fMP4 só de áudio (AAC) gerados com `ffmpeg` no formato do curso, quando `assembleMerged` roda, então a saída tem `ftyp`+`moov` com exatamente 2 trilhas (`vide`, `soun`), contagem de amostras igual à das fontes e durações das trilhas dentro de ±0,2 s das fontes; o resultado é validado também com `ffprobe` como evidência manual; pico de memória e tempo registrados (sintético de ≈ 200 MB, informativo).
+- **IT-01** — (prova de conceito, fase 1, portão) Dado um fMP4 só de vídeo (H.264) e um só de áudio (AAC) gerados com `ffmpeg` no formato do curso, quando `assembleMerged` roda, então a saída tem `ftyp`+`moov` com exatamente 2 trilhas (`vide`, `soun`), contagem de amostras igual à das fontes e durações ±0,2 s; o resultado também é validado com `ffprobe` como evidência manual; pico de memória e tempo registrados com um sintético de ≈ 200 MB.
 - **IT-02** — Dado master + playlist de vídeo + playlist de áudio, todas com byte range, servidas com `Range`, quando o job roda, então termina `done`, o Blob tem as duas trilhas, o progresso soma vídeo e áudio e as requisições de ambos têm `Range` correto.
 - **IT-03** — Dado áudio com `#EXT-X-KEY:METHOD=AES-128` e vídeo limpo, quando `download` roda, então responde `ENCRYPTED` e o servidor não recebe nenhuma requisição de mídia (nem do vídeo).
-- **IT-04** — Dado playlist de áudio com 404, ao vivo, ou inválida, quando `download` roda, então responde `HLS_NOT_RESOLVED`/`LIVE`/`HLS_NOT_RESOLVED`, sem requisição de mídia e `downloads.download` não é chamado.
-- **IT-05** — Dado `audioIndex` inexistente, e áudio ou vídeo em TS, quando `download` roda, então responde `UNSUPPORTED` sem requisição de mídia.
-- **IT-06** — Dado ranges de vídeo+áudio com soma acima de 1 GiB (só metadados), quando o job inicia, então termina `failed` `TOO_LARGE` sem requisição de mídia.
+- **IT-04** — Dado playlist de áudio com 404, ao vivo ou inválida, quando `download` roda, então responde `HLS_NOT_RESOLVED`/`LIVE`/`HLS_NOT_RESOLVED`, sem requisição de mídia e sem `downloads.download`.
+- **IT-05** — Dado `audioIndex` inválido, e áudio ou vídeo em TS, quando `download` roda, então responde `UNSUPPORTED` sem requisição de mídia.
+- **IT-06** — Dado ranges de vídeo+áudio com soma acima do limite combinado (só metadados), quando o job inicia, então termina `failed` `TOO_LARGE` sem requisição de mídia.
 - **IT-07** — Dado init (de áudio e, em outro caso, de vídeo) com `sinf`/`schm`, quando o job roda, então termina `failed` `ENCRYPTED` e nada é salvo.
-- **IT-08** — Dado uma master com áudio e 3 variantes, quando `resolveHls` roda, então busca as playlists extras dentro dos limites, preenche `mediaResources`, marca `encrypted` se uma playlist de áudio for criptografada, e uma busca extra com erro não falha o resolve nem muda `encrypted`/`live`.
+- **IT-08** — Dado uma master com áudio, quando `resolveHls` roda, então busca uma única playlist extra (a de áudio padrão), marca `encrypted` se ela for criptografada, e uma falha nessa busca não falha o resolve nem muda `encrypted`/`live`.
 - **IT-09** — Dado URLs de vídeo e áudio com `?token=…&expires=…`, quando o job conclui ou falha, então nenhum diagnóstico, erro ou estado do job contém o token.
 
 ### 7.4 Testes de Contrato
 - **CT-01** — Dado `HlsInfo`, `download` e `start` sem os campos novos (SPEC-0011@1, SPEC-0012@1, SPEC-0013@1), quando validados pelo código desta spec, então continuam aceitos; com os campos novos, também.
 
 ### 7.5 Testes E2E
-- **E2E-01** — Dado uma página que carrega uma master com vídeo e áudio em fMP4 de arquivo único (fixture gerada com `ffmpeg`, servida com `Range`) [jornada: baixar-hls], quando o popup abre e o usuário baixa, então há **um** cartão HLS (variantes, áudio e arquivos soltos escondidos), o arquivo salvo é um MP4 válido com **duas trilhas** (`vide` 320×180 e `soun`), duração ±0,6 s, em < 10 s, e o axe não acusa violações sérias.
-- **E2E-02** — Dado uma master com duas faixas de áudio (en e pt), quando o usuário escolhe a segunda no seletor "Áudio" e baixa, então o MP4 salvo tem a trilha de áudio com idioma `por`.
-- **E2E-03** — Dado uma master cujo áudio é criptografado, quando o popup abre, então o cartão mostra `badge-encrypted` e não há botão de baixar.
+- **E2E-01** — Dado uma página que carrega uma master com vídeo e áudio em fMP4 de arquivo único (fixture `ffmpeg`, servida com `Range`) [jornada: baixar-hls], quando o popup abre, então o cartão master mostra "Inclui áudio", e ao baixar o arquivo salvo é um MP4 válido com **duas trilhas** (`vide` 320×180 e `soun`), duração ±0,6 s, em < 10 s, com axe sem violações sérias.
+- **E2E-02** — Dado uma master cujo áudio é criptografado, quando o popup abre, então o cartão mostra `badge-encrypted` e não há botão de baixar.
 
 ### 7.6 Outros
-- **Tamanho:** registrar o acréscimo do bundle do offscreen (`pnpm build`), meta < 500 KB minificado.
+- **Tamanho:** acréscimo do bundle do offscreen registrado (meta < 500 KB minificado).
 - **Segurança:** IT-03, IT-04, IT-07 e o fuzz do parser (UT-02).
 
-**Dublês e dados de teste:** servidor com `Range` (SPEC-0013); fixtures `e2e/fixtures/hls/split-av/` (`ffmpeg -an`/`-vn`, `-hls_segment_type fmp4 -hls_flags single_file`, `-metadata:s:a language=por`); a master do curso real (sem token) como fixture textual para UT-01.
+**Dublês e dados de teste:** servidor com `Range` (SPEC-0013); fixtures `e2e/fixtures/hls/split-av/` (`ffmpeg -an`/`-vn`, `-hls_segment_type fmp4 -hls_flags single_file`), comando acrescentado a `generate-video.sh`.
 
 **Ambiente de execução:** Vitest e Playwright com Chromium real, local e no CI.
 
 ## 8. Plano de Rollout
 - **Estratégia:** deploy direto na próxima rc; sem flag. A biblioteca é importada dinamicamente só quando há áudio separado.
 - **Dados/schema:** N/A.
-- **Compatibilidade:** campos aditivos; candidatos e mensagens antigos seguem válidos; masters sem áudio separado funcionam como hoje.
+- **Compatibilidade:** campos aditivos; masters sem áudio separado funcionam como hoje.
 - **Observabilidade:** estado do job com os erros existentes; nenhum evento novo com URL.
 - **Rollback:** reverter o PR e publicar nova rc; sem dados persistidos.
 - **Etapas de migração/coexistência:** N/A.
-- **Fase 1 (portão):** a prova de conceito IT-01 decide a biblioteca. Se falhar, o Implementer **para** e reporta `SPEC_DEFECT`; o arquiteto abre emenda para o plano B (módulo próprio, ADR-0014 vira nota de decisão).
+- **Fase 1 (portão):** a prova de conceito IT-01 decide a biblioteca. Se falhar, o Implementer **para** e reporta `SPEC_DEFECT`; o arquiteto abre emenda para o plano B (módulo próprio) e o ADR-0014 é substituído.
 
 ## 9. Questões em Aberto
-Nenhuma. (Premissas a confirmar no H1: o conteúdo real da master do curso deve seguir o padrão `EXT-X-MEDIA`/`AUDIO=` do RFC 8216; limite combinado de 1 GiB para jobs com mesclagem; ADR-0014 aceito apenas se a fase 1 passar.)
+Nenhuma. (Premissas a confirmar no H1: a master do curso segue o padrão `EXT-X-MEDIA`/`AUDIO=` do RFC 8216; limite combinado provisório de 1 GiB até a medição; ADR-0014 aceito apenas se a fase 1 passar.)
 
 ## 10. Aprovação (H1)
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
@@ -204,7 +198,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
-| G0 Spec | PASS | validate: 0 erro(s) — 69b3d0a | 2026-10-02 |
+| G0 Spec | PASS | validate: 0 erro(s) — 2482d6e (árvore suja) | 2026-10-02 |
 | G1 Red | PENDING | | |
 | G2 Green | PENDING | | |
 | G3 Arquitetura | PENDING | | |
