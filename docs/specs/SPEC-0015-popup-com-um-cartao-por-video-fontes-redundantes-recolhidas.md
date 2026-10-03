@@ -4,13 +4,13 @@ title: "Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
 consumes_contract: [SPEC-0013@1, SPEC-0014@1]
 contract_version: 1
-touches: [src/core/**, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
+touches: [src/core/**, entrypoints/offscreen/merge.ts, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**]
 adrs: [ADR-0006, ADR-0001]
 external: []
 size: M
@@ -174,12 +174,12 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 2482d6e (árvore suja) | 2026-10-02 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
-| G5 Integração & CI | PENDING | | |
-| H2 Integração aprovada | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/30]⎯) — fb76f79 | 2026-10-03 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 247 ms); test exit 0 (Duration  44.14s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 150 ms); coverage exit 0 (================================================================================) — 2be6d42 | 2026-10-03 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (51 modules, 110 dependencies cruised)) — 2be6d42 | 2026-10-03 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs de foco, mesma origem e extras criptografado/ao vivo corrigidos (7d24206..87454d2); demais MINOR aceitos — 87454d2 | 2026-10-03 |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 345 ms); test exit 0 (Duration  51.32s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (at least ~381ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (64 passed (1.3m)); arch_test exit 0 (✔ no dependency violations found (52 modules, 111 dependencies cruised)); security_scan exit 0 ([90m2:45AM[0m [32mINF[0m [1mno leaks found[0m) — f0073ff | 2026-10-03 |
+| H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-03 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
@@ -187,6 +187,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-10-03 | G2 | spec | A junção da SPEC-0014 grava o áudio mesclado com idioma 'und': addAudioTrack é chamado sem metadados; o E2E-02 (idioma por) falha nos dois flavors | Implementer parou conforme a nota 5; o conserto está em entrypoints/offscreen/merge.ts, fora do touches da SPEC-0015 | Architect | Emenda de escopo (touches + idioma preservado na junção), registrada na seção Emendas | 2026-10-03 |
 
 ## 14. Relatório de Entrega
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
@@ -227,3 +228,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0015`. -->
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo, IMP-01) | 2026-10-03 | `touches` ganha `entrypoints/offscreen/merge.ts`; comportamento: a junção da SPEC-0014 preserva o código de idioma da trilha de áudio de origem (`languageCode` do `mdhd`) no MP4 mesclado, em vez de gravar `und`; teste de integração novo (idioma preservado) acompanha o E2E-02 | o E2E-02 (idioma `por` após escolher a segunda faixa) falha porque `addAudioTrack` é chamado sem metadados; sem o idioma, players mostram a faixa como indefinida e o seletor de idioma perde o sentido | SPEC-0014 (comportamento de `assembleMerged`; contrato inalterado) | thomas (delegação no chat, 2026-10-02: seguir o recomendado) |

@@ -209,3 +209,28 @@ export function parseMediaSegments(text: string, baseUrl: string): MediaSegments
     ...(initRange !== undefined && { initRange }),
   };
 }
+
+/**
+ * Origem+caminho (sem query nem fragmento) dos arquivos citados (segmentos e init) pelas playlists de mídia
+ * dadas, únicos, na ordem de aparição, no máximo 32 (`HlsInfo.mediaResources`, SPEC-0015).
+ */
+export function deriveMediaResources(
+  playlists: readonly Pick<MediaSegments, 'urls' | 'initUrl'>[],
+): string[] {
+  const found = new Set<string>();
+  for (const playlist of playlists) {
+    for (const url of [
+      ...(playlist.initUrl === undefined ? [] : [playlist.initUrl]),
+      ...playlist.urls,
+    ]) {
+      if (found.size >= MAX_MEDIA_RESOURCES) {
+        return [...found];
+      }
+      const { origin, pathname } = new URL(url);
+      found.add(`${origin}${pathname}`);
+    }
+  }
+  return [...found];
+}
+
+const MAX_MEDIA_RESOURCES = 32;

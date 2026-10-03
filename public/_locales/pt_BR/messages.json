@@ -213,5 +213,19 @@
         "example": "English"
       }
     }
+  },
+  "relatedSources": {
+    "message": "Outras fontes ($COUNT$)",
+    "description": "Resumo da lista recolhida de fontes redundantes sob o cartão principal",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "8"
+      }
+    }
+  },
+  "audioLabel": {
+    "message": "Áudio",
+    "description": "Rótulo do seletor de faixa de áudio do cartão HLS"
   }
 }

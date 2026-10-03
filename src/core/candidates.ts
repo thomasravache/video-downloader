@@ -77,3 +77,71 @@ export function hideRedundantCandidates(candidates: VideoCandidate[]): VideoCand
   );
   return hasSource ? candidates.filter((c) => !isNoise(c)) : [...candidates];
 }
+
+/** Cartão em destaque e as fontes redundantes recolhidas sob ele (SPEC-0015). */
+export interface CandidateGroup {
+  primary: VideoCandidate;
+  related: VideoCandidate[];
+}
+
+/**
+ * Agrupa por master HLS resolvida: variantes, faixas de áudio e arquivos de `hls.mediaResources` viram
+ * `related` da primeira master que os reivindica; os demais candidatos são grupos de um elemento
+ * (SPEC-0015 §6). Aplica antes `hideRedundantCandidates`, preserva a ordem e não muta a entrada.
+ */
+export function groupCandidates(candidates: VideoCandidate[]): CandidateGroup[] {
+  const list = hideRedundantCandidates(candidates);
+  const keys = list.map((c) => pathKey(c.mediaUrl));
+  /** Posição do candidato -> posição da master que o reivindicou. */
+  const claimedBy = new Map<number, number>();
+  const primaries = new Set<number>();
+  list.forEach((candidate, at) => {
+    const hls = candidate.hls;
+    if (candidate.kind !== 'hls' || hls?.type !== 'master' || claimedBy.has(at)) {
+      return;
+    }
+    primaries.add(at);
+    const playlists = new Set<string | undefined>([
+      ...hls.variants.map((v) => pathKey(v.url)),
+      ...(hls.audio ?? []).map((a) => pathKey(a.url)),
+    ]);
+    const files = new Set<string | undefined>((hls.mediaResources ?? []).map(pathKey));
+    list.forEach((other, to) => {
+      const key = keys[to];
+      if (to === at || key === undefined || claimedBy.has(to) || primaries.has(to)) {
+        return;
+      }
+      if (
+        (other.kind === 'hls' && playlists.has(key)) ||
+        (other.kind === 'file' && files.has(key))
+      ) {
+        claimedBy.set(to, at);
+      }
+    });
+  });
+  const entries = new Map<number, { position: number; group: CandidateGroup }>();
+  list.forEach((candidate, at) => {
+    if (!claimedBy.has(at)) {
+      entries.set(at, { position: at, group: { primary: candidate, related: [] } });
+    }
+  });
+  list.forEach((candidate, at) => {
+    const entry = entries.get(claimedBy.get(at) ?? -1);
+    if (entry) {
+      entry.group.related.push(candidate);
+      entry.position = Math.min(entry.position, at);
+    }
+  });
+  const groups = [...entries.values()];
+  return groups.sort((a, b) => a.position - b.position).map((entry) => entry.group);
+}
+
+/** Origem+caminho (sem consulta/fragmento) de uma URL http(s); `undefined` para o resto. */
+function pathKey(url: string): string | undefined {
+  try {
+    const { protocol, origin, pathname } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:' ? `${origin}${pathname}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
