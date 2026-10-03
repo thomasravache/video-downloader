@@ -192,5 +192,19 @@
         "example": "English"
       }
     }
+  },
+  "relatedSources": {
+    "message": "Other sources ($COUNT$)",
+    "description": "Summary of the collapsed list of redundant sources under the main card",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "8"
+      }
+    }
+  },
+  "audioLabel": {
+    "message": "Audio",
+    "description": "Label of the audio track selector of the HLS card"
   }
 }

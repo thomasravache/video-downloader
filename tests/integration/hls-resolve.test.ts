@@ -253,6 +253,8 @@ describe('resolveHls: privacidade (NFR)', () => {
         `${TOKEN_MASTER}?token=abc123`,
         '/hls/tv1080.m3u8?token=var789',
         '/hls/missing.m3u8?token=zzz999',
+        // SPEC-0015: missing.m3u8 é candidato hls da mesma origem, então a busca extra condicionada da variante baixa ocorre.
+        '/hls/tv480.m3u8?token=low456',
       ].sort(),
     );
   });

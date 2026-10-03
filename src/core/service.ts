@@ -15,8 +15,13 @@ import { redactUrls } from './diagnostics';
 import type { Diagnostics } from './diagnostics';
 import { toFilename } from './filename';
 import { HlsParseError, parseHlsPlaylist } from './hls';
-import type { HlsInfo } from './hls';
-import { chooseAudio, createJobManager, parseMediaSegments } from './hls-download';
+import type { HlsAudioTrack, HlsInfo } from './hls';
+import {
+  chooseAudio,
+  createJobManager,
+  deriveMediaResources,
+  parseMediaSegments,
+} from './hls-download';
 import type { JobManager, MediaSegments } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
@@ -77,8 +82,11 @@ export interface Service {
   }): Promise<void>;
 }
 
+/** Teto de playlists de variante e de áudio buscadas no resolve da master (SPEC-0015). */
+const MAX_EXTRA_PLAYLISTS = 4;
+
 type PlaylistRead =
-  | { ok: true; info: HlsInfo }
+  | { ok: true; info: HlsInfo; text: string; url: string }
   | { ok: false; error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED'; reason?: string };
 
 function stripQuery(url: string): string {
@@ -301,7 +309,7 @@ export function createService(deps: ServiceDeps): Service {
       return { ok: false, error: 'HLS_FETCH_FAILED', reason: reasonOf(error) };
     }
     try {
-      return { ok: true, info: parseHlsPlaylist(text, url) };
+      return { ok: true, info: parseHlsPlaylist(text, url), text, url };
     } catch (error) {
       return {
         ok: false,
@@ -466,6 +474,23 @@ export function createService(deps: ServiceDeps): Service {
     return { ok: true, jobId: created.jobId };
   }
 
+  /** SPEC-0015: a aba tem outro candidato `file`/`hls` da mesma origem da master (vale buscar as extras). */
+  async function hasRelatableCandidates(master: VideoCandidate): Promise<boolean> {
+    const origin = originOf(master.mediaUrl);
+    if (origin === undefined) {
+      return false;
+    }
+    const fromNetwork = await (deps.network?.forTab(master.tabId) ?? Promise.resolve([])).catch(
+      (): VideoCandidate[] => [],
+    );
+    return [...store.forTab(master.tabId), ...fromNetwork].some(
+      (c) =>
+        c.id !== master.id &&
+        (c.kind === 'file' || c.kind === 'hls') &&
+        originOf(c.mediaUrl) === origin,
+    );
+  }
+
   async function resolveHlsOnce(
     candidateId: string,
     fallbackId: string,
@@ -499,7 +524,38 @@ export function createService(deps: ServiceDeps): Service {
     let hls = first.info;
     const best = first.info.variants[0];
     if (first.info.type === 'master' && best) {
-      const second = await readPlaylist(best.url);
+      // SPEC-0015: buscas extras (<= 4 variantes, <= 4 áudios, em paralelo) só se a aba tem candidatos
+      // relacionáveis; o áudio padrão do grupo da melhor variante (SPEC-0014) é sempre buscado.
+      const defaultAudio = chooseAudio(first.info, 0);
+      const relatable = await hasRelatableCandidates(candidate);
+      // As extras (só para `mediaResources`) vão apenas à origem da master; fora dela são ignoradas.
+      const masterOrigin = originOf(candidate.mediaUrl);
+      const sameOrigin = (url: string): boolean => originOf(url) === masterOrigin;
+      const audioTracks: HlsAudioTrack[] = [];
+      if (typeof defaultAudio === 'object') {
+        audioTracks.push(defaultAudio);
+      }
+      if (relatable) {
+        for (const track of first.info.audio ?? []) {
+          if (
+            audioTracks.length < MAX_EXTRA_PLAYLISTS &&
+            !audioTracks.includes(track) &&
+            sameOrigin(track.url)
+          ) {
+            audioTracks.push(track);
+          }
+        }
+      }
+      const extraVariants = relatable
+        ? first.info.variants
+            .slice(1, MAX_EXTRA_PLAYLISTS)
+            .filter((variant) => sameOrigin(variant.url))
+        : [];
+      const [second, ...others] = await Promise.all([
+        readPlaylist(best.url),
+        ...audioTracks.map((track) => readPlaylist(track.url)),
+        ...extraVariants.map((variant) => readPlaylist(variant.url)),
+      ]);
       if (!second.ok) {
         return fail(second.error, 'variant', second.reason);
       }
@@ -508,12 +564,22 @@ export function createService(deps: ServiceDeps): Service {
       }
       const { durationSec, segmentCount } = second.info;
       const { durationSec: _d, segmentCount: _s, ...master } = first.info;
-      // SPEC-0014: a playlist de áudio padrão do grupo do melhor variante (1 busca extra, melhor esforço):
-      // criptografada marca o candidato; falha não derruba o resolve nem muda encrypted/live.
-      const defaultAudio = chooseAudio(first.info, 0);
-      const audioRead =
-        typeof defaultAudio === 'object' ? await readPlaylist(defaultAudio.url) : undefined;
+      // SPEC-0014: playlist de áudio padrão, melhor esforço: criptografada marca o candidato; falha não
+      // derruba o resolve nem muda encrypted/live. As extras da SPEC-0015 nunca mudam nada disso.
+      const audioRead = typeof defaultAudio === 'object' ? others[0] : undefined;
       const audioEncrypted = audioRead?.ok === true && audioRead.info.encrypted;
+      const mediaResources = deriveMediaResources(
+        [second, ...others].flatMap((read) => {
+          if (!read.ok || read.info.type !== 'media' || read.info.encrypted || read.info.live) {
+            return [];
+          }
+          try {
+            return [parseMediaSegments(read.text, read.url)];
+          } catch {
+            return [];
+          }
+        }),
+      );
       hls = {
         ...master,
         encrypted: first.info.encrypted || second.info.encrypted || audioEncrypted,
@@ -521,6 +587,7 @@ export function createService(deps: ServiceDeps): Service {
         fmp4: second.info.fmp4,
         ...(durationSec !== undefined && { durationSec }),
         ...(segmentCount !== undefined && { segmentCount }),
+        ...(mediaResources.length > 0 && { mediaResources }),
       };
     }
 

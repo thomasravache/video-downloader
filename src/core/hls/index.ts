@@ -45,6 +45,8 @@ export interface HlsInfo {
   fmp4: boolean;
   /** Faixas de áudio separadas da master (máx. 20); ausente se não há faixa com URI (SPEC-0014). */
   audio?: HlsAudioTrack[];
+  /** SPEC-0015: origem+caminho (sem query/fragmento) dos arquivos de mídia citados pelas playlists de variante/áudio buscadas no resolve; únicos; máx. 32. */
+  mediaResources?: string[];
 }
 
 /** Playlist vazia ou inválida. */
@@ -60,6 +62,7 @@ export type HlsInfoValidation = { ok: true; value: HlsInfo } | { ok: false; erro
 
 const MAX_VARIANTS = 50;
 const MAX_AUDIO_TRACKS = 20;
+const MAX_MEDIA_RESOURCES = 32;
 const MAX_NAME = 80;
 const MAX_LANGUAGE = 16;
 const MAX_GROUP_ID = 200;
@@ -313,6 +316,18 @@ export function validateHlsInfo(input: unknown): HlsInfoValidation {
   const audio = input['audio'];
   if (!optional(audio, (v) => Array.isArray(v) && (v as unknown[]).every(isAudioTrack))) {
     return { ok: false, error: 'audio inválido (index, groupId, name, default e url http(s))' };
+  }
+  const resources = input['mediaResources'];
+  if (
+    !optional(
+      resources,
+      (v) =>
+        Array.isArray(v) &&
+        v.length <= MAX_MEDIA_RESOURCES &&
+        (v as unknown[]).every((item) => typeof item === 'string'),
+    )
+  ) {
+    return { ok: false, error: 'mediaResources inválido (lista de até 32 textos)' };
   }
   return { ok: true, value: input as unknown as HlsInfo };
 }
