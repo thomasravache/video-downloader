@@ -11,6 +11,24 @@ export interface HlsVariant {
   height?: number;
   codecs?: string;
   label: string;
+  /** AUDIO="grupo" da STREAM-INF (SPEC-0014). */
+  audioGroup?: string;
+}
+
+/** Faixa de áudio de `#EXT-X-MEDIA:TYPE=AUDIO` com URI (SPEC-0014); extensão ADITIVA de HlsInfo. */
+export interface HlsAudioTrack {
+  /** Posição na lista devolvida. */
+  index: number;
+  /** GROUP-ID. */
+  groupId: string;
+  /** NAME, sem caracteres de controle, no máximo 80 caracteres. */
+  name: string;
+  /** LANGUAGE, no máximo 16 caracteres. */
+  language?: string;
+  /** DEFAULT=YES. */
+  default: boolean;
+  /** URI resolvida; só http(s). */
+  url: string;
 }
 
 export interface HlsInfo {
@@ -25,6 +43,8 @@ export interface HlsInfo {
   live: boolean;
   /** EXT-X-MAP presente. */
   fmp4: boolean;
+  /** Faixas de áudio separadas da master (máx. 20); ausente se não há faixa com URI (SPEC-0014). */
+  audio?: HlsAudioTrack[];
 }
 
 /** Playlist vazia ou inválida. */
