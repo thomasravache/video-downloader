@@ -4,8 +4,8 @@
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 16 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 7, implemented 5
+- Validação (G0): **0 erro(s), 18 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 3, in-progress 7, implemented 5
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -21,7 +21,7 @@ Perfil: **padrao**
 | Fluxo de mudança | coberto | ADR-0005 |
 | Segredos e dados sensíveis | coberto | ADR-0006 |
 | Identidade e acesso | coberto | ADR-0007, ADR-0012 |
-| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013, ADR-0014 |
+| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013, ADR-0014, ADR-0015 |
 | Observabilidade | coberto | ADR-0009 |
 | Resiliência e recuperação | dispensado | extensão 100% local, sem servidor nem dados persistentes de valor; retomada/falha de download tratada nas specs de feature |
 | Dados e migrações | dispensado | sem banco; só preferências em chrome.storage — migração de schema de preferências coberta por teste na spec que introduzir a primeira mudança |
@@ -33,7 +33,7 @@ Perfil: **padrao**
 |---|---|---|
 | Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005 |
 | Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo | planejada | SPEC-0009 |
-| Usuário escolhe a qualidade de um vídeo HLS sem criptografia e baixa um MP4 válido | planejada | SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015 |
+| Usuário escolhe a qualidade de um vídeo HLS sem criptografia e baixa um MP4 válido | planejada | SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0016, SPEC-0017 |
 
 ## Plano de Execução
 
@@ -51,13 +51,15 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
+| 8 | SPEC-0016 | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full/M | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013, SPEC-0007; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
+| 9 | SPEC-0017 | HLS com criptografia AES-128 por chave de sessão no flavor local | full/M | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013, SPEC-0007; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015; saiu da onda 8: arquivos em comum com SPEC-0016 |
 
 ## Épicos
 
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
-| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 0/7 implementadas |
+| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 0/9 implementadas |
 
 ## Grafo de Dependências
 
@@ -78,6 +80,8 @@ flowchart LR
     S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::inprogress
     S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::inprogress
+    S0016["SPEC-0016<br/>Contexto de requisição da página para b…"]:::proposed
+    S0017["SPEC-0017<br/>HLS com criptografia AES-128 por chave …"]:::proposed
   end
   S0002 --> S0007
   S0005 --> S0009
@@ -91,6 +95,14 @@ flowchart LR
   S0013 -. contrato v1 .-> S0014
   S0013 -. contrato v1 .-> S0015
   S0014 -. contrato v1 .-> S0015
+  S0011 -. contrato v1 .-> S0016
+  S0012 -. contrato v1 .-> S0016
+  S0015 -. contrato v1 .-> S0016
+  S0011 -. contrato v1 .-> S0017
+  S0012 -. contrato v1 .-> S0017
+  S0013 -. contrato v1 .-> S0017
+  S0014 -. contrato v1 .-> S0017
+  S0016 -. contrato v1 .-> S0017
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
   classDef inprogress fill:#ede9fe,stroke:#7c3aed,color:#111
@@ -117,6 +129,8 @@ flowchart LR
 | [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
 | [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
+| [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | proposed | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
+| [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | proposed | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 
 ## ADRs
 
@@ -136,3 +150,4 @@ flowchart LR
 | [ADR-0012](../adr/ADR-0012-permissoes-por-flavor-acesso-amplo-no-local-por-site-no-publ.md) | Permissões por flavor: acesso amplo no local, por site no público | accepted | teste de integração sobre o manifest.json gerado de cada flavor (SPEC-0009:IT-05) + teste de que o bundle público não declara host_permissions |
 | [ADR-0013](../adr/ADR-0013-montagem-de-hls-m3u8-parser-e-mux-js-em-offscreen-document.md) | Montagem de HLS: m3u8-parser e mux.js em offscreen document | accepted | teste de arquitetura: m3u8-parser só em src/core; mux.js só no offscreen (dependency-cruiser); versões fixadas no package.json (ADR-0008) |
 | [ADR-0014](../adr/ADR-0014-juncao-de-trilhas-mp4-video-e-audio-com-mediabunny-no-offscr.md) | Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen | accepted | teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); testes de build de licença (SPEC-0014:UT-06/UT-07); prova de conceito da SPEC-0014 (fase 1) com ffprobe |
+| [ADR-0015](../adr/ADR-0015-hls-com-criptografia-aes-128-por-chave-de-sessao-permitido-s.md) | HLS com criptografia AES-128 por chave de sessão: permitido só no flavor local | accepted | flavor-guard (nenhum código de descriptografia no zip public) + teste de arquitetura; testes de segurança da spec que implementar a regra; allowlist de criptografia da SPEC-0011 estendida só para AES-128 + KEYFORMAT identity |
