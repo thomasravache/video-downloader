@@ -11,7 +11,7 @@ import { expect, vi } from 'vitest';
 import { CLIP_DIR } from '../../unit/support/hls-clip';
 import type { BackgroundHarness } from './background';
 import { injected, page } from './background';
-import { HLS_TYPE } from './playlist-server';
+import { HLS_TYPE, rangeHandler } from './playlist-server';
 import type { Handler } from './playlist-server';
 import type { DetectResponse, VideoCandidate } from '../../../src/core/contracts';
 import type { JobState } from '../../../src/core/hls-download';
@@ -36,8 +36,14 @@ function filesUnder(dir: string, prefix = ''): string[] {
 }
 
 export function fileHandler(bytes: Uint8Array | string, contentType: string): Handler {
-  return (_req, res) => {
-    const body = typeof bytes === 'string' ? Buffer.from(bytes) : Buffer.from(bytes);
+  const buf = typeof bytes === 'string' ? Buffer.from(bytes) : bytes;
+  const ranged = rangeHandler(buf, { contentType });
+  return (req, res) => {
+    if (req.headers['range']) {
+      ranged(req, res);
+      return;
+    }
+    const body = Buffer.from(buf);
     res.writeHead(200, { 'content-type': contentType, 'content-length': body.byteLength });
     res.end(body);
   };

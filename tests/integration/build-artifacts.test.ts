@@ -26,6 +26,10 @@ const EXTRA_DIR = join(ROOT, 'tests/fixtures/providers');
 const MARKER = 'skeleton-local-only';
 const MODE = { public: 'public', local: 'flavor-local' } as const;
 const flavors = ['public', 'local'] as const;
+/** SPEC-0016: a única permissão a mais do flavor local; as asserções antigas comparam as permissões sem ela. */
+const DNR_PERMISSION = 'declarativeNetRequestWithHostAccess';
+const withoutDnr = (permissions: unknown): string[] =>
+  ((permissions as string[] | undefined) ?? []).filter((p) => p !== DNR_PERMISSION);
 
 function sh(cmd: string, args: string[], env: Record<string, string> = {}) {
   const r = spawnSync(cmd, args, {
@@ -83,7 +87,11 @@ describe('manifesto dos builds reais', () => {
     build();
     for (const flavor of flavors) {
       const manifest = readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
-      expect([...((manifest['permissions'] as string[] | undefined) ?? [])].sort(), flavor).toEqual(
+      const permissions =
+        flavor === 'local'
+          ? withoutDnr(manifest['permissions'])
+          : ((manifest['permissions'] as string[] | undefined) ?? []);
+      expect([...permissions].sort(), flavor).toEqual(
         // SPEC-0012 (ADR-0012): `offscreen` entra com a spec que o usa.
         ['activeTab', 'downloads', 'offscreen', 'scripting', 'storage', 'webRequest'],
       );
@@ -125,7 +133,10 @@ describe('permissões de host por flavor (ADR-0012)', () => {
   it('SPEC-0009:IT-05 os dois flavors mantêm as permissões da SPEC-0005 (mais webRequest da SPEC-0010) e nenhuma outra', () => {
     build();
     for (const flavor of flavors) {
-      expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual(SPEC_0005_PERMISSIONS);
+      const permissions = manifestOf(flavor)['permissions'];
+      expect(sorted(flavor === 'local' ? withoutDnr(permissions) : permissions), flavor).toEqual(
+        SPEC_0005_PERMISSIONS,
+      );
     }
   }, 600_000);
 });
@@ -139,7 +150,8 @@ describe('permissões da detecção por rede (SPEC-0010)', () => {
   it('SPEC-0010:IT-04 os dois manifestos têm exatamente activeTab, scripting, downloads, storage e webRequest', () => {
     build();
     for (const flavor of flavors) {
-      expect(sorted(manifestOf(flavor)['permissions']), flavor).toEqual([
+      const permissions = manifestOf(flavor)['permissions'];
+      expect(sorted(flavor === 'local' ? withoutDnr(permissions) : permissions), flavor).toEqual([
         'activeTab',
         'downloads',
         'offscreen', // SPEC-0012 (ADR-0012)
@@ -250,5 +262,41 @@ describe('offscreen document do download HLS (SPEC-0012, ADR-0013)', () => {
         `${flavor}: fora do popup`,
       ).toEqual([]);
     }
+  }, 600_000);
+});
+
+describe('permissão do contexto de requisição por flavor (SPEC-0016, ADR-0012)', () => {
+  const manifestOf = (flavor: (typeof flavors)[number]) =>
+    readManifest(join(ROOT, '.output', `chrome-mv3-${flavor}`));
+  const sorted = (value: unknown) => [...((value as string[] | undefined) ?? [])].sort();
+  const PUBLIC_PERMISSIONS = [
+    'activeTab',
+    'downloads',
+    'offscreen',
+    'scripting',
+    'storage',
+    'webRequest',
+  ];
+
+  it('SPEC-0016:IT-06 só o manifest local tem declarativeNetRequestWithHostAccess', () => {
+    build();
+
+    expect(sorted(manifestOf('local')['permissions'])).toContain(DNR_PERMISSION);
+    expect(sorted(manifestOf('public')['permissions'])).not.toContain(DNR_PERMISSION);
+    for (const flavor of flavors) {
+      expect(JSON.stringify(manifestOf(flavor)), flavor).not.toContain('"declarativeNetRequest"');
+      expect(JSON.stringify(manifestOf(flavor)), flavor).not.toContain(
+        '"declarativeNetRequestFeedback"',
+      );
+    }
+  }, 600_000);
+
+  it('SPEC-0016:IT-06 a lista de permissões do public não muda e a do local é a mesma mais só essa permissão', () => {
+    build();
+
+    expect(sorted(manifestOf('public')['permissions'])).toEqual(PUBLIC_PERMISSIONS);
+    expect(sorted(manifestOf('local')['permissions'])).toEqual(
+      [...PUBLIC_PERMISSIONS, DNR_PERMISSION].sort(),
+    );
   }, 600_000);
 });

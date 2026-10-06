@@ -4,12 +4,12 @@
  * do `downloads.onChanged` e do popup nunca se atropelam.
  */
 import type { Diagnostics } from '../diagnostics';
-import type { DownloadPort, JobStoragePort, OffscreenPort } from '../ports';
+import type { DownloadPort, JobStoragePort, OffscreenPort, RequestContextLease } from '../ports';
 import { JOB_ERRORS } from './errors';
 import type { JobError } from './errors';
 import { newJob, reduceJob } from './job';
 import type { JobEvent, JobState } from './job';
-import type { OffscreenAudio, OffscreenEvent, OffscreenStart } from './protocol';
+import type { EncryptionPlan, OffscreenAudio, OffscreenEvent, OffscreenStart } from './protocol';
 import type { ByteRange } from './segments';
 
 const JOBS_KEY = 'vd:jobs';
@@ -43,6 +43,8 @@ export interface JobPlan {
   initRange?: ByteRange;
   /** Faixa de áudio a juntar ao vídeo (SPEC-0014); o progresso soma as duas trilhas. */
   audio?: OffscreenAudio;
+  /** Plano de criptografia AES-128 (SPEC-0017). */
+  encryption?: EncryptionPlan;
 }
 
 export type CreateJobResult =
@@ -58,7 +60,11 @@ export interface JobManagerDeps {
 }
 
 export interface JobManager {
-  create(plan: JobPlan): Promise<CreateJobResult>;
+  /**
+   * `lease` (SPEC-0016): regra de contexto da página que cobre o job; passa a ser do job e é removida quando
+   * ele deixa de buscar (montagem) ou termina (feito, falha, cancelado). Se a criação é recusada, fica com o chamador.
+   */
+  create(plan: JobPlan, lease?: RequestContextLease): Promise<CreateJobResult>;
   get(jobId: string): Promise<JobState | undefined>;
   cancel(jobId: string): Promise<boolean>;
   /** Mensagem `{target:'background', jobId, event}` vinda do offscreen. */
@@ -135,6 +141,15 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
   const { store, offscreen, downloads, diagnostics } = deps;
   const newId = deps.newId ?? (() => crypto.randomUUID());
   let queue: Promise<unknown> = Promise.resolve();
+  /** jobId -> regra de contexto da página enquanto o job busca mídia (só em memória; órfãs saem na partida). */
+  const leases = new Map<string, RequestContextLease>();
+
+  /** Remove a regra do job (idempotente); falha ao remover não derruba o job. */
+  function releaseLease(jobId: string): void {
+    const lease = leases.get(jobId);
+    leases.delete(jobId);
+    void lease?.release().catch(() => undefined);
+  }
 
   async function load(): Promise<Records> {
     const stored = await store.get(JOBS_KEY);
@@ -196,6 +211,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
   }
 
   function finish(record: JobRecord): void {
+    releaseLease(record.job.jobId);
     const { state, error } = record.job;
     if (state === 'done') {
       diagnostics.countJob('done');
@@ -241,7 +257,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
   }
 
   return {
-    create(plan) {
+    create(plan, lease) {
       return mutate(async (records): Promise<CreateJobResult> => {
         await reclaimOrphans(records);
         const active = Object.values(records).filter((record) => isActive(record.job));
@@ -269,6 +285,9 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           seq,
         };
         records[jobId] = record;
+        if (lease !== undefined) {
+          leases.set(jobId, lease);
+        }
         prune(records);
         log('info', 'job.created', record, {
           segments: plan.urls.length + (plan.audio?.urls.length ?? 0),
@@ -286,6 +305,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           ...(plan.initUrl !== undefined &&
             plan.initRange !== undefined && { initRange: plan.initRange }),
           ...(plan.audio !== undefined && { audio: plan.audio }),
+          ...(plan.encryption !== undefined && { encryption: plan.encryption }),
         };
         try {
           await offscreen.ensure();
@@ -382,6 +402,8 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           }
           case 'assembling':
             apply(record, { type: 'assemble' });
+            // Toda a mídia já foi buscada: a regra de contexto não é mais necessária.
+            releaseLease(jobId);
             return true;
           case 'failed':
             apply(record, { type: 'fail', error: event.error });
@@ -391,6 +413,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
             }
             return true;
           case 'ready': {
+            releaseLease(jobId);
             apply(record, { type: 'assemble' });
             if (record.job.state !== 'assembling') {
               // Cancelado, falhou ou já terminou: nada a baixar, e a blob URL não pode vazar.

@@ -15,6 +15,8 @@ export interface NetworkResponse {
   contentType?: string;
   /** De Content-Length ou do total de Content-Range. */
   contentLength?: number;
+  /** SPEC-0016: valor cru de `details.initiator` (origem do frame que fez a requisição). */
+  initiator?: string;
 }
 
 export interface NetworkClassification {
@@ -233,9 +235,14 @@ export function mergeCandidates(
   const merged: VideoCandidate[] = [];
   const isNetworkHls = (c: VideoCandidate): boolean => c.source === 'network' && c.kind === 'hls';
   const replace = (at: number, candidate: VideoCandidate): void => {
-    const title = merged[at]?.title;
-    merged[at] =
-      candidate.title === undefined && title !== undefined ? { ...candidate, title } : candidate;
+    const existing = merged[at];
+    const title = existing?.title;
+    const isDrm = existing?.protection === 'drm';
+    merged[at] = {
+      ...candidate,
+      ...(candidate.title === undefined && title !== undefined ? { title } : {}),
+      ...(isDrm ? { protection: 'drm' as const } : {}),
+    };
   };
   for (const candidate of [...dom, ...network]) {
     const key = withoutFragment(candidate.mediaUrl);

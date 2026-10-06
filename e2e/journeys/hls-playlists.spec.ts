@@ -71,11 +71,16 @@ test.describe('playlists HLS', () => {
   });
 
   test('SPEC-0011:E2E-02 playlist com EXT-X-KEY AES-128: o popup mostra badge-encrypted e nenhum botão de download', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
   }) => {
+    test.skip(
+      flavor !== 'public',
+      'a recusa de AES-128 só se aplica ao flavor public após a SPEC-0017',
+    );
     const workerRequests: string[] = [];
     context.on('request', (request) => {
       if (request.serviceWorker()) {

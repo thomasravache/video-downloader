@@ -28,9 +28,11 @@
  *    O comportamento do documento (executar o job) é de tests/integration/support/offscreen.ts.
  */
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import background from '../../../entrypoints/background';
+import { installDnr } from './dnr';
+import type { DnrHarness } from './dnr';
 import type {
   DetectResponse,
   FrameSnapshot,
@@ -88,6 +90,8 @@ export interface ResponseDetails {
   frameId?: number;
   /** Cabeçalhos de resposta; a ordem/caixa das chaves é preservada. */
   headers?: Record<string, string>;
+  /** SPEC-0016: `details.initiator` do `webRequest` (origem do frame que fez a requisição). */
+  initiator?: string;
 }
 
 export interface NetworkHarness {
@@ -229,7 +233,21 @@ export interface BackgroundHarness {
   downloadEvents: DownloadEventsHarness;
 }
 
-export function startBackground(): BackgroundHarness {
+export interface StartOptions {
+  /**
+   * SPEC-0016: instala o fake de `browser.declarativeNetRequest` (e faz o `fetch` do Node aplicar as regras
+   * de `modifyHeaders`) ANTES de `main()`, como o flavor local tem a API. Sem isso o background roda sem a API
+   * (flavor public).
+   */
+  dnr?: boolean;
+}
+
+export function startBackground(options: StartOptions & { dnr: true }): BackgroundHarness & {
+  dnr: DnrHarness;
+};
+export function startBackground(options?: StartOptions): BackgroundHarness;
+export function startBackground(options: StartOptions = {}): BackgroundHarness {
+  (globalThis as Record<string, unknown>)['expect'] = expect;
   fakeBrowser.reset();
   vi.spyOn(fakeBrowser.runtime, 'getManifest').mockReturnValue({
     manifest_version: 3,
@@ -249,6 +267,7 @@ export function startBackground(): BackgroundHarness {
   const stub = installWebRequestStub();
   const downloadEvents = installDownloadsChangedStub();
   const offscreen = installOffscreenStub();
+  const dnr = options.dnr === true ? installDnr() : undefined;
   background.main();
 
   const ownId = fakeBrowser.runtime.id;
@@ -306,8 +325,17 @@ export function startBackground(): BackgroundHarness {
 
   const network: NetworkHarness = {
     ...stub,
-    async respond({ url, tabId, statusCode = 200, method = 'GET', frameId = 0, headers = {} }) {
+    async respond({
+      url,
+      tabId,
+      statusCode = 200,
+      method = 'GET',
+      frameId = 0,
+      headers = {},
+      initiator,
+    }) {
       await stub.responseStarted.emit({
+        ...(initiator !== undefined && { initiator }),
         url,
         tabId,
         statusCode,
@@ -343,6 +371,7 @@ export function startBackground(): BackgroundHarness {
   }
 
   return {
+    ...(dnr !== undefined && { dnr }),
     send,
     executeScript,
     contains,

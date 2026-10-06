@@ -3,6 +3,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'wxt';
 import { providersPlugin, writeRegistryModule } from './src/providers/build/plugin';
+import {
+  aes128Plugin,
+  writeAes128PolicyModule,
+  writeAes128DecryptModule,
+} from './scripts/build/aes128-plugin';
 
 export type Flavor = 'public' | 'local';
 
@@ -33,7 +38,16 @@ export function buildManifest(flavor: Flavor): BuildManifest {
     description: '__MSG_extDescription__',
     // Permissões mínimas (ADR-0007) sem CSP customizada; `webRequest` só observa (SPEC-0010) e vê
     // apenas os hosts de cada flavor (ADR-0012); `offscreen` (SPEC-0012) hospeda a montagem do HLS.
-    permissions: ['activeTab', 'scripting', 'downloads', 'storage', 'webRequest', 'offscreen'],
+    // `declarativeNetRequestWithHostAccess` (SPEC-0016) só no local: contexto de requisição da página.
+    permissions: [
+      'activeTab',
+      'scripting',
+      'downloads',
+      'storage',
+      'webRequest',
+      'offscreen',
+      ...(flavor === 'local' ? ['declarativeNetRequestWithHostAccess'] : []),
+    ],
     // local: acesso amplo; public: opcional, pedido por site com gesto do usuário (popup).
     ...(flavor === 'local'
       ? { host_permissions: [...HOST_PATTERNS] }
@@ -140,9 +154,14 @@ function registryOptions(mode: string) {
 export default defineConfig({
   manifestVersion: 3,
   // O Vitest não aplica os plugins do `vite` abaixo: lá `virtual:providers` vira um alias.
-  alias: process.env['VITEST']
-    ? { 'virtual:providers': writeRegistryModule(registryOptions('public')) }
-    : {},
+  alias:
+    process.env['VITEST'] && !process.argv.includes('build')
+      ? {
+          'virtual:providers': writeRegistryModule(registryOptions('public')),
+          'virtual:aes128-policy': writeAes128PolicyModule({ root: ROOT, flavor: 'local' }),
+          'virtual:aes128-decrypt': writeAes128DecryptModule({ root: ROOT, flavor: 'local' }),
+        }
+      : {},
   outDirTemplate: `{{browser}}-mv{{manifestVersion}}-${process.env['FLAVOR'] ?? '{{mode}}'}`,
   manifest: ({ mode }) => {
     const { manifest_version: _ignored, ...rest } = buildManifest(flavorFromEnv(mode));
@@ -152,7 +171,11 @@ export default defineConfig({
     define: {
       'import.meta.env.FLAVOR': JSON.stringify(flavorFromEnv(mode)),
     },
-    plugins: [providersPlugin(registryOptions(mode)), legalCommentsPlugin()],
+    plugins: [
+      providersPlugin(registryOptions(mode)),
+      aes128Plugin({ flavor: flavorFromEnv(mode), root: ROOT }),
+      legalCommentsPlugin(),
+    ],
   }),
   hooks: {
     'build:done': (wxt) => {

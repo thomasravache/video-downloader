@@ -1,11 +1,11 @@
 # Índice de Specs
 
-> Gerado por `spec_graph.py index` em 2026-10-03 — não edite manualmente.
+> Gerado por `spec_graph.py index` em 2026-10-06 — não edite manualmente.
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 16 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 7, implemented 5
+- Validação (G0): **0 erro(s), 11 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, in-progress 7, implemented 7
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -21,7 +21,7 @@ Perfil: **padrao**
 | Fluxo de mudança | coberto | ADR-0005 |
 | Segredos e dados sensíveis | coberto | ADR-0006 |
 | Identidade e acesso | coberto | ADR-0007, ADR-0012 |
-| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013, ADR-0014 |
+| Dependências e ciclo de vida da stack | coberto | ADR-0008, ADR-0013, ADR-0014, ADR-0015 |
 | Observabilidade | coberto | ADR-0009 |
 | Resiliência e recuperação | dispensado | extensão 100% local, sem servidor nem dados persistentes de valor; retomada/falha de download tratada nas specs de feature |
 | Dados e migrações | dispensado | sem banco; só preferências em chrome.storage — migração de schema de preferências coberta por teste na spec que introduzir a primeira mudança |
@@ -33,7 +33,7 @@ Perfil: **padrao**
 |---|---|---|
 | Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005 |
 | Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo | planejada | SPEC-0009 |
-| Usuário escolhe a qualidade de um vídeo HLS sem criptografia e baixa um MP4 válido | planejada | SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015 |
+| Usuário escolhe a qualidade de um vídeo HLS e baixa um MP4 válido | provada | SPEC-0016, SPEC-0017 |
 
 ## Plano de Execução
 
@@ -57,7 +57,7 @@ Perfil: **padrao**
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
-| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 0/7 implementadas |
+| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 2/9 implementadas |
 
 ## Grafo de Dependências
 
@@ -117,6 +117,8 @@ flowchart LR
 | [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
 | [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
+| [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
+| [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 
 ## ADRs
 
@@ -136,3 +138,4 @@ flowchart LR
 | [ADR-0012](../adr/ADR-0012-permissoes-por-flavor-acesso-amplo-no-local-por-site-no-publ.md) | Permissões por flavor: acesso amplo no local, por site no público | accepted | teste de integração sobre o manifest.json gerado de cada flavor (SPEC-0009:IT-05) + teste de que o bundle público não declara host_permissions |
 | [ADR-0013](../adr/ADR-0013-montagem-de-hls-m3u8-parser-e-mux-js-em-offscreen-document.md) | Montagem de HLS: m3u8-parser e mux.js em offscreen document | accepted | teste de arquitetura: m3u8-parser só em src/core; mux.js só no offscreen (dependency-cruiser); versões fixadas no package.json (ADR-0008) |
 | [ADR-0014](../adr/ADR-0014-juncao-de-trilhas-mp4-video-e-audio-com-mediabunny-no-offscr.md) | Junção de trilhas MP4 (vídeo e áudio) com Mediabunny no offscreen | accepted | teste de arquitetura: mediabunny só em entrypoints/offscreen (dependency-cruiser); versão fixada no package.json (ADR-0008); testes de build de licença (SPEC-0014:UT-06/UT-07); prova de conceito da SPEC-0014 (fase 1) com ffprobe |
+| [ADR-0015](../adr/ADR-0015-hls-com-criptografia-aes-128-por-chave-de-sessao-permitido-s.md) | HLS com criptografia AES-128 por chave de sessão | accepted | testes de segurança das specs que implementarem a regra (fuzz da allowlist de chave, privacidade da chave/token) e a allowlist de criptografia da SPEC-0011 estendida só para AES-128 + KEYFORMAT identity |

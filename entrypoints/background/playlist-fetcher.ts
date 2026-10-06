@@ -3,8 +3,13 @@ import type { PlaylistFetcherPort } from '../../src/core/ports';
 /** Falha na busca de uma playlist (rede, status, limites). */
 export class PlaylistFetchError extends Error {
   readonly code = 'HLS_FETCH_FAILED';
-  constructor(message = 'HLS_FETCH_FAILED') {
+  /** Status HTTP da resposta recusada (SPEC-0016); ausente nas demais falhas. */
+  readonly status?: number;
+  constructor(message = 'HLS_FETCH_FAILED', status?: number) {
     super(message);
+    if (status !== undefined) {
+      this.status = status;
+    }
     this.name = 'PlaylistFetchError';
   }
 }
@@ -108,7 +113,10 @@ export function createPlaylistFetcher(options: PlaylistFetcherOptions = {}): Pla
           throw new PlaylistFetchError('HLS_FETCH_FAILED: final_scheme');
         }
         if (!response.ok) {
-          throw new PlaylistFetchError(`HLS_FETCH_FAILED: status ${String(response.status)}`);
+          throw new PlaylistFetchError(
+            `HLS_FETCH_FAILED: status ${String(response.status)}`,
+            response.status,
+          );
         }
         if (!acceptedType(response.headers.get('content-type'))) {
           throw new PlaylistFetchError('HLS_FETCH_FAILED: content_type');

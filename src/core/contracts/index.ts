@@ -70,6 +70,8 @@ export interface VideoCandidate {
   source: CandidateSource;
   /** v4 (SPEC-0011): preenchido depois de `resolveHls`. */
   hls?: HlsInfo;
+  /** SPEC-0016: origem (esquema+host+porta) do frame que fez a requisição; ausente se desconhecida. */
+  initiatorOrigin?: string;
 }
 
 export interface DetectContext {
@@ -126,6 +128,16 @@ export type DetectResponseValidation =
 
 const HTTP_ORIGIN = /^https?:\/\/[^\s/?#]+$/i;
 
+/** Exatamente uma origem http(s) (`https://host[:porta]`): sem caminho, query, fragmento ou credenciais. */
+export function isHttpOrigin(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === value;
+  } catch {
+    return false;
+  }
+}
+
 function isCandidate(value: unknown): value is VideoCandidate {
   if (typeof value !== 'object' || value === null) {
     return false;
@@ -144,7 +156,9 @@ function isCandidate(value: unknown): value is VideoCandidate {
     typeof c['frameUrl'] === 'string' &&
     (c['kind'] === 'file' || c['kind'] === 'hls' || c['kind'] === 'dash') &&
     (c['source'] === 'dom' || c['source'] === 'network') &&
-    (c['hls'] === undefined || validateHlsInfo(c['hls']).ok)
+    (c['hls'] === undefined || validateHlsInfo(c['hls']).ok) &&
+    (c['initiatorOrigin'] === undefined ||
+      (typeof c['initiatorOrigin'] === 'string' && isHttpOrigin(c['initiatorOrigin'])))
   );
 }
 
@@ -211,10 +225,45 @@ export type ResolveHlsResponse =
   | {
       ok: false;
       error: 'CANDIDATE_NOT_FOUND' | 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED' | 'INVALID_MESSAGE';
+      /** SPEC-0016: status HTTP quando o erro é `HLS_FETCH_FAILED` por resposta HTTP. */
+      status?: number;
     };
 
+const RESOLVE_HLS_ERRORS: readonly string[] = [
+  'CANDIDATE_NOT_FOUND',
+  'HLS_FETCH_FAILED',
+  'HLS_PARSE_FAILED',
+  'INVALID_MESSAGE',
+];
+
+export type ResolveHlsResponseValidation =
+  { ok: true; value: ResolveHlsResponse } | { ok: false; error: string };
+
+/** Valida a resposta de `resolveHls` (SPEC-0016:CT-01). */
+export function validateResolveHlsResponse(input: unknown): ResolveHlsResponseValidation {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    return { ok: false, error: 'resposta deve ser um objeto' };
+  }
+  const { ok, error, status, hls } = input as Record<string, unknown>;
+  if (ok === true) {
+    return validateHlsInfo(hls).ok
+      ? { ok: true, value: input as ResolveHlsResponse }
+      : { ok: false, error: 'hls inválido' };
+  }
+  if (ok !== false) {
+    return { ok: false, error: 'ok deve ser booleano' };
+  }
+  if (!RESOLVE_HLS_ERRORS.includes(error as string)) {
+    return { ok: false, error: 'error desconhecido' };
+  }
+  if (status !== undefined && !(typeof status === 'number' && Number.isInteger(status))) {
+    return { ok: false, error: 'status deve ser inteiro' };
+  }
+  return { ok: true, value: input as ResolveHlsResponse };
+}
+
 export type DiagnosticsResponse =
-  { ok: true; entries: LogEntry[] } | { ok: false; error: 'INVALID_MESSAGE' };
+  { ok: true; entries: LogEntry[]; text?: string } | { ok: false; error: 'INVALID_MESSAGE' };
 
 export type ManifestValidation =
   { ok: true; value: ProviderManifest } | { ok: false; error: string };

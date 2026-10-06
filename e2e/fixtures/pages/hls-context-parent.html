@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aula com player em outra origem</title>
+  </head>
+  <body>
+    <h1>Aula em 127.0.0.1 com o player de outra origem (localhost)</h1>
+    <iframe id="player-frame" title="Player embutido" width="320" height="180"></iframe>
+    <script>
+      // O player (outra origem = outro nome de host, mesma porta) busca o HLS de um terceiro servidor
+      // que só atende com o Origin/Referer do player: ?src=<url do master>.
+      const src = new URLSearchParams(location.search).get('src');
+      document.getElementById('player-frame').src =
+        'http://localhost:' +
+        location.port +
+        '/pages/hls-context-player.html?src=' +
+        encodeURIComponent(src);
+    </script>
+  </body>
+</html>

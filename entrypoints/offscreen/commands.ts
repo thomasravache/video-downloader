@@ -29,12 +29,62 @@ function isByteRange(value: unknown): boolean {
   );
 }
 
+function isEncryptionKey(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const { url, iv } = value as Record<string, unknown>;
+  if (!isHttpUrl(url)) {
+    return false;
+  }
+  if (iv !== undefined) {
+    if (typeof iv !== 'string' || !/^[0-9a-f]{32}$/.test(iv)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isEncryptionPlan(value: unknown, urlCount: number): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const { keys, segmentKeys, initKey, mediaSequence } = value as Record<string, unknown>;
+  if (!Array.isArray(keys) || keys.length < 1 || keys.length > 8 || !keys.every(isEncryptionKey)) {
+    return false;
+  }
+  if (
+    !Array.isArray(segmentKeys) ||
+    segmentKeys.length !== urlCount ||
+    !segmentKeys.every(
+      (k) =>
+        k === null || (typeof k === 'number' && Number.isInteger(k) && k >= 0 && k < keys.length),
+    )
+  ) {
+    return false;
+  }
+  if (typeof mediaSequence !== 'number' || !Number.isInteger(mediaSequence) || mediaSequence < 0) {
+    return false;
+  }
+  if (
+    initKey !== undefined &&
+    initKey !== null &&
+    (typeof initKey !== 'number' ||
+      !Number.isInteger(initKey) ||
+      initKey < 0 ||
+      initKey >= keys.length)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 /** Faixa de áudio do `start` (SPEC-0014): mesmas regras de `urls`/`ranges`/`initUrl`/`initRange` do vídeo. */
 function isAudioTrack(value: unknown): boolean {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
-  const { urls, initUrl, ranges, initRange } = value as Record<string, unknown>;
+  const { urls, initUrl, ranges, initRange, encryption } = value as Record<string, unknown>;
   return (
     Array.isArray(urls) &&
     urls.length > 0 &&
@@ -44,7 +94,8 @@ function isAudioTrack(value: unknown): boolean {
       (Array.isArray(ranges) &&
         ranges.length === urls.length &&
         ranges.every((item) => item === undefined || item === null || isByteRange(item)))) &&
-    (initRange === undefined || (initUrl !== undefined && isByteRange(initRange)))
+    (initRange === undefined || (initUrl !== undefined && isByteRange(initRange))) &&
+    (encryption === undefined || isEncryptionPlan(encryption, urls.length))
   );
 }
 
@@ -63,7 +114,7 @@ export function isCommand(message: unknown): message is OffscreenCommand {
     case 'revoke':
       return typeof record['blobUrl'] === 'string';
     case 'start': {
-      const { urls, initUrl, fmp4, ranges, initRange, audio } = record;
+      const { urls, initUrl, fmp4, ranges, initRange, audio, encryption } = record;
       return (
         Array.isArray(urls) &&
         urls.length > 0 &&
@@ -76,7 +127,8 @@ export function isCommand(message: unknown): message is OffscreenCommand {
             ranges.length === urls.length &&
             ranges.every((item) => item === undefined || item === null || isByteRange(item)))) &&
         (initRange === undefined || (initUrl !== undefined && isByteRange(initRange))) &&
-        (!('audio' in record) || audio === undefined || isAudioTrack(audio))
+        (!('audio' in record) || audio === undefined || isAudioTrack(audio)) &&
+        (encryption === undefined || isEncryptionPlan(encryption, urls.length))
       );
     }
     default:

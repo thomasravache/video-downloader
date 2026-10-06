@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Player embutido que busca o HLS</title>
+  </head>
+  <body>
+    <p>Player</p>
+    <script>
+      fetch(new URLSearchParams(location.search).get('src'))
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('status ' + response.status);
+          }
+          return response.text();
+        })
+        .then(() => {
+          document.body.dataset.fetched = 'done';
+        })
+        .catch(() => {
+          document.body.dataset.fetched = 'error';
+        });
+    </script>
+  </body>
+</html>

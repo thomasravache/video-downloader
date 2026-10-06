@@ -3,6 +3,7 @@ import type { HlsInfo } from '../../src/core/hls';
 import type { CandidateGroup } from '../../src/core/candidates';
 import type { JobState } from '../../src/core/hls-download';
 import { audioIncludedText, audioOptions } from './audio';
+import { hlsErrorText } from './errors';
 import { syncChildren } from './dom';
 
 export interface ViewText {
@@ -16,6 +17,8 @@ export interface ViewText {
   accessDenied: string;
   badgeEncrypted: string;
   badgeLive: string;
+  /** Texto da nota AES-128 (SPEC-0017). */
+  aes128Note?: string;
   hlsLoading: string;
   hlsQuality: string;
   /** Rótulo do seletor de áudio (SPEC-0015). */
@@ -25,6 +28,8 @@ export interface ViewText {
   hlsErrorFetch: string;
   hlsErrorParse: string;
   hlsErrorGeneric: string;
+  /** SPEC-0016: o servidor recusou (401/403); o link pode ter expirado. */
+  hlsErrorExpired: string;
   duration(formatted: string): string;
   /** "Inclui áudio: <nome>" (SPEC-0014). */
   audioIncluded(name: string): string;
@@ -317,6 +322,11 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
     return;
   }
   const parts: HTMLElement[] = [];
+  if (hls.aes128 === true && text.aes128Note) {
+    const note = element('p', 'status', text.aes128Note);
+    note.dataset['testid'] = 'aes128-note';
+    parts.push(note);
+  }
   if (hls.durationSec !== undefined) {
     parts.push(element('p', 'status', text.duration(formatDuration(hls.durationSec))));
   }
@@ -386,15 +396,7 @@ export function renderHlsResult(
     fillHls(slot, response.hls, text, context);
     return;
   }
-  const message = element(
-    'p',
-    'status status-error',
-    response?.error === 'HLS_FETCH_FAILED'
-      ? text.hlsErrorFetch
-      : response?.error === 'HLS_PARSE_FAILED'
-        ? text.hlsErrorParse
-        : text.hlsErrorGeneric,
-  );
+  const message = element('p', 'status status-error', hlsErrorText(response, text));
   message.dataset['testid'] = 'hls-error';
   slot.replaceChildren(message, unsupportedBadge(text));
 }
