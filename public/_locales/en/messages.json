@@ -110,6 +110,9 @@
   "hlsErrorGeneric": {
     "message": "Could not read the playlist. Reopen the popup and try again."
   },
+  "hlsErrorExpired": {
+    "message": "The server refused access to the video (the link may have expired). Reopen the lesson and try again."
+  },
   "jobProgressLabel": {
     "message": "Download progress"
   },

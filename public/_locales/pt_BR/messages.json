@@ -131,6 +131,10 @@
     "message": "Não foi possível ler a playlist. Reabra o popup e tente de novo.",
     "description": "Erro inesperado ao resolver o HLS"
   },
+  "hlsErrorExpired": {
+    "message": "O servidor recusou o acesso ao vídeo (o link pode ter expirado). Reabra a aula e tente de novo.",
+    "description": "A playlist HLS foi recusada com 401/403, provável token expirado"
+  },
   "jobProgressLabel": {
     "message": "Progresso do download"
   },

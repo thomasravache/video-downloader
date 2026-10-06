@@ -33,7 +33,16 @@ export function buildManifest(flavor: Flavor): BuildManifest {
     description: '__MSG_extDescription__',
     // Permissões mínimas (ADR-0007) sem CSP customizada; `webRequest` só observa (SPEC-0010) e vê
     // apenas os hosts de cada flavor (ADR-0012); `offscreen` (SPEC-0012) hospeda a montagem do HLS.
-    permissions: ['activeTab', 'scripting', 'downloads', 'storage', 'webRequest', 'offscreen'],
+    // `declarativeNetRequestWithHostAccess` (SPEC-0016) só no local: contexto de requisição da página.
+    permissions: [
+      'activeTab',
+      'scripting',
+      'downloads',
+      'storage',
+      'webRequest',
+      'offscreen',
+      ...(flavor === 'local' ? ['declarativeNetRequestWithHostAccess'] : []),
+    ],
     // local: acesso amplo; public: opcional, pedido por site com gesto do usuário (popup).
     ...(flavor === 'local'
       ? { host_permissions: [...HOST_PATTERNS] }

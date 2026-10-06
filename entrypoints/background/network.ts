@@ -40,6 +40,7 @@ export function toNetworkResponse(details: RequestDetails): NetworkResponse {
     statusCode: details.statusCode,
     tabId: details.tabId,
     frameId: details.frameId,
+    ...(details.initiator !== undefined && { initiator: details.initiator }),
     ...(contentType !== undefined && { contentType }),
     ...(contentLength !== undefined && { contentLength }),
   };

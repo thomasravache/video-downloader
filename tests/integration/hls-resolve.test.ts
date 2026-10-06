@@ -177,14 +177,14 @@ describe('resolveHls: leitura da playlist HLS no background', () => {
     const missing = await observe(`${server.origin}/hls/missing.m3u8`);
     const dropped = await observe(`${server.origin}/hls/drop.m3u8`);
 
-    expect(await resolve(missing.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
+    expect(await resolve(missing.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED', status: 404 });
     expect(await resolve(dropped.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
   });
 
   it('SPEC-0011:IT-01 master cuja melhor variante dá 404 responde HLS_FETCH_FAILED', async () => {
     const candidate = await observe(`${server.origin}/hls/dead-variant-master.m3u8`);
 
-    expect(await resolve(candidate.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
+    expect(await resolve(candidate.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED', status: 404 });
   });
 
   it('SPEC-0011:IT-01 servidor inalcançável responde HLS_FETCH_FAILED', async () => {
@@ -237,7 +237,7 @@ describe('resolveHls: privacidade (NFR)', () => {
     };
 
     expect(resolved).toMatchObject({ ok: true, hls: { type: 'master' } });
-    expect(failed).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
+    expect(failed).toEqual({ ok: false, error: 'HLS_FETCH_FAILED', status: 404 });
     expect(diagnostics.ok).toBe(true);
     const serialized = JSON.stringify(diagnostics.entries);
     for (const secret of ['token=', 'abc123', 'var789', 'low456', 'zzz999', 'pagina']) {
@@ -316,7 +316,7 @@ describe('resolveHls: estado do candidato guardado (Emenda 1)', () => {
     const missing = await observe(`${server.origin}/hls/missing.m3u8`);
     const html = await observe(`${server.origin}/hls/html.m3u8`);
 
-    expect(await resolve(missing.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED' });
+    expect(await resolve(missing.id)).toEqual({ ok: false, error: 'HLS_FETCH_FAILED', status: 404 });
     expect(await resolve(html.id)).toEqual({ ok: false, error: 'HLS_PARSE_FAILED' });
     const missingAgain = await detectAgain(missing);
     const htmlAgain = await detectAgain(html);
