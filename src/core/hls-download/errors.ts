@@ -8,7 +8,9 @@ export type JobError =
   | 'ASSEMBLY_FAILED'
   | 'DOWNLOAD_FAILED'
   | 'ENCRYPTED'
-  | 'LIVE';
+  | 'LIVE'
+  | 'KEY_FAILED'
+  | 'DECRYPT_FAILED';
 
 export const JOB_ERRORS = [
   'FETCH_FAILED',
@@ -18,6 +20,8 @@ export const JOB_ERRORS = [
   'DOWNLOAD_FAILED',
   'ENCRYPTED',
   'LIVE',
+  'KEY_FAILED',
+  'DECRYPT_FAILED',
 ] as const satisfies readonly JobError[];
 
 /** Um segmento falhou definitivamente (depois das retentativas). */

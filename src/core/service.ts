@@ -22,7 +22,7 @@ import {
   deriveMediaResources,
   parseMediaSegments,
 } from './hls-download';
-import type { JobManager, JobPlan, MediaSegments } from './hls-download';
+import type { EncryptionPlan, JobManager, JobPlan, MediaSegments } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
@@ -33,6 +33,7 @@ import type {
   DownloadPort,
   JobStoragePort,
   OffscreenPort,
+  KeyPolicyPort,
   PermissionsPort,
   PlaylistFetcherPort,
   RequestContextLease,
@@ -68,6 +69,8 @@ export interface ServiceDeps {
   offscreen?: OffscreenPort;
   /** Contexto de requisição da página (SPEC-0016); ausente (flavor public) = sem repetição com contexto. */
   requestContext?: RequestContextPort;
+  /** Política de chave AES-128 (SPEC-0017); ausente no flavor public. */
+  keyPolicy?: KeyPolicyPort;
 }
 
 export interface Service {
@@ -353,7 +356,7 @@ export function createService(deps: ServiceDeps): Service {
       };
     }
     try {
-      return { ok: true, info: parseHlsPlaylist(text, url), text, url };
+      return { ok: true, info: parseHlsPlaylist(text, url, deps.keyPolicy), text, url };
     } catch (error) {
       return {
         ok: false,
@@ -369,7 +372,12 @@ export function createService(deps: ServiceDeps): Service {
   type HlsRefusal = Extract<DownloadResponse, { ok: false }>;
 
   type ApprovedPlaylist =
-    | { ok: true; media: MediaSegments; fmp4WithoutInit: boolean }
+    | {
+        ok: true;
+        media: MediaSegments;
+        fmp4WithoutInit: boolean;
+        encryption?: EncryptionPlan;
+      }
     | { ok: false; error: HlsRefusal['error']; event: string };
 
   /** Busca e aprova uma playlist de mídia (allowlist de criptografia, ao vivo, http(s), byte range). */
@@ -386,7 +394,7 @@ export function createService(deps: ServiceDeps): Service {
       return notResolved;
     }
     try {
-      const info = parseHlsPlaylist(text, url);
+      const info = parseHlsPlaylist(text, url, deps.keyPolicy);
       if (info.encrypted) {
         return { ok: false, error: 'ENCRYPTED', event: 'download.encrypted' };
       }
@@ -396,12 +404,26 @@ export function createService(deps: ServiceDeps): Service {
       if (info.live) {
         return { ok: false, error: 'LIVE', event: 'download.live' };
       }
+      let encryption: EncryptionPlan | undefined = undefined;
+      if (info.aes128 && deps.keyPolicy) {
+        const verdict = deps.keyPolicy.classify(text, url);
+        if (verdict.kind === 'aes128') {
+          encryption = verdict.plan;
+        } else {
+          return { ok: false, error: 'ENCRYPTED', event: 'download.encrypted' };
+        }
+      }
       const media = parseMediaSegments(text, url);
       // fMP4 sem init utilizável: tem EXT-X-MAP sem URI ou segmentos com extensão de fMP4 sem MAP.
       const fmp4WithoutInit =
         !media.fmp4 &&
         (/^\s*#EXT-X-MAP/m.test(text) || media.urls.some((u) => FMP4_SEGMENT.test(u)));
-      return { ok: true, media, fmp4WithoutInit };
+      return {
+        ok: true,
+        media,
+        fmp4WithoutInit,
+        ...(encryption !== undefined && { encryption }),
+      };
     } catch {
       return notResolved;
     }
@@ -470,9 +492,10 @@ export function createService(deps: ServiceDeps): Service {
     }
     const media = approved.media;
     let audioMedia: MediaSegments | undefined;
+    let approvedAudio: ApprovedPlaylist | undefined;
     let noInit = approved.fmp4WithoutInit;
     if (audioTrack !== 'none') {
-      const approvedAudio = await approvePlaylist(audioTrack.url, scope);
+      approvedAudio = await approvePlaylist(audioTrack.url, scope);
       if (!approvedAudio.ok) {
         return refuse(approvedAudio.error, approvedAudio.event);
       }
@@ -499,6 +522,7 @@ export function createService(deps: ServiceDeps): Service {
       fmp4: media.fmp4,
       ...(media.ranges !== undefined && { ranges: media.ranges }),
       ...(media.initRange !== undefined && { initRange: media.initRange }),
+      ...(approved.encryption !== undefined && { encryption: approved.encryption }),
       ...(audioMedia !== undefined && {
         audio: {
           urls: audioMedia.urls,
@@ -506,6 +530,10 @@ export function createService(deps: ServiceDeps): Service {
           ...(audioMedia.ranges !== undefined && { ranges: audioMedia.ranges }),
           ...(audioMedia.initUrl !== undefined &&
             audioMedia.initRange !== undefined && { initRange: audioMedia.initRange }),
+          ...(approvedAudio?.ok === true &&
+            approvedAudio.encryption !== undefined && {
+              encryption: approvedAudio.encryption,
+            }),
         },
       }),
     };
@@ -535,14 +563,18 @@ export function createService(deps: ServiceDeps): Service {
     scope: ContextScope,
     correlationId: string,
   ): Promise<RequestContextLease | undefined> {
-    if (!scope.used || scope.origin === undefined || !deps.requestContext) {
+    const hasEncryption =
+      (plan.encryption?.keys.length ?? 0) > 0 || (plan.audio?.encryption?.keys.length ?? 0) > 0;
+    if ((!scope.used && !hasEncryption) || scope.origin === undefined || !deps.requestContext) {
       return undefined;
     }
     const urls = [
       ...plan.urls,
       ...(plan.initUrl !== undefined ? [plan.initUrl] : []),
+      ...(plan.encryption?.keys.map((k) => k.url) ?? []),
       ...(plan.audio?.urls ?? []),
       ...(plan.audio?.initUrl !== undefined ? [plan.audio.initUrl] : []),
+      ...(plan.audio?.encryption?.keys.map((k) => k.url) ?? []),
     ];
     const hosts = [...new Set(urls.flatMap((url) => hostOf(url) ?? []))];
     try {
@@ -678,6 +710,7 @@ export function createService(deps: ServiceDeps): Service {
           }
         }),
       );
+      const isAes128 = (first.info.aes128 || second.info.aes128) && !audioEncrypted;
       hls = {
         ...master,
         encrypted: first.info.encrypted || second.info.encrypted || audioEncrypted,
@@ -686,6 +719,7 @@ export function createService(deps: ServiceDeps): Service {
         ...(durationSec !== undefined && { durationSec }),
         ...(segmentCount !== undefined && { segmentCount }),
         ...(mediaResources.length > 0 && { mediaResources }),
+        ...(isAes128 && { aes128: true }),
       };
     }
 
@@ -761,8 +795,10 @@ export function createService(deps: ServiceDeps): Service {
           return detect(valid.tabId, correlationId);
         case 'download':
           return download(valid.candidateId, valid.variantIndex, valid.audioIndex, correlationId);
-        case 'diagnostics':
-          return { ok: true, entries: diagnostics.snapshot() };
+        case 'diagnostics': {
+          const entries = diagnostics.snapshot();
+          return { ok: true, entries, text: JSON.stringify(entries) };
+        }
         case 'resolveHls':
           return resolveHls(valid.candidateId, correlationId);
         case 'job': {

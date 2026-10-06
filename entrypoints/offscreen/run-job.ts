@@ -12,7 +12,17 @@ import type {
   OffscreenEvent,
   OffscreenStart,
 } from '../../src/core/hls-download';
+import type { EncryptionPlan } from '../../src/core/hls-download/protocol';
 import { assembleFmp4, assembleTs, initIsEncrypted } from './assemble';
+
+async function getAes128Handler() {
+  try {
+    const mod = await import('virtual:aes128-decrypt');
+    return mod.aes128Handler;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface OffscreenJobDeps {
   fetch: typeof fetch;
@@ -68,12 +78,29 @@ interface TrackRequest {
 
 const isAborted = (signal: AbortSignal): boolean => signal.aborted;
 
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
 function errorCode(error: unknown): JobError {
   if (error instanceof AssemblyError) {
     return error.code;
   }
   if (error instanceof SegmentFetchError) {
     return 'FETCH_FAILED';
+  }
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = error.code;
+    if (code === 'KEY_FAILED') {
+      return 'KEY_FAILED';
+    }
+    if (code === 'DECRYPT_FAILED') {
+      return 'DECRYPT_FAILED';
+    }
   }
   return 'ASSEMBLY_FAILED';
 }
@@ -128,8 +155,6 @@ export async function runOffscreenJob(
       if (!response.ok) {
         throw new Error('status');
       }
-      // Com Range só vale 206 com Content-Range igual ao pedido: 200 (Range ignorado) ou outro
-      // intervalo não é o trecho, e usá-lo corromperia o arquivo.
       if (range && !contentRangeMatches(response, range)) {
         throw new Error('range');
       }
@@ -196,6 +221,9 @@ export async function runOffscreenJob(
     deps.emit({ type: 'ready', blobUrl, bytes: mp4.byteLength });
   };
 
+  let videoKeys: Map<number, CryptoKey> | undefined;
+  let audioKeys: Map<number, CryptoKey> | undefined;
+
   try {
     // Limite decidido pelos metadados, antes da primeira requisição de mídia (inclui os inits).
     const sumRanges = (ranges: OffscreenStart['ranges'], initRange?: ByteRange): number =>
@@ -207,9 +235,63 @@ export async function runOffscreenJob(
       flags.tooLarge = true;
       throw new AssemblyError('TOO_LARGE');
     }
+
+    const hasEncryption =
+      request.encryption !== undefined || request.audio?.encryption !== undefined;
+    const aes128Handler = hasEncryption ? await getAes128Handler() : undefined;
+
+    const loadEncryptionKeys = async (
+      encryption: EncryptionPlan | undefined,
+    ): Promise<Map<number, CryptoKey>> => {
+      const keysMap = new Map<number, CryptoKey>();
+      if (!encryption) {
+        return keysMap;
+      }
+      if (!aes128Handler) {
+        throw new AssemblyError('ENCRYPTED');
+      }
+      const handler = aes128Handler;
+      await Promise.all(
+        encryption.keys.map(async (keyDef, index) => {
+          let response: Response;
+          try {
+            response = await deps.fetch(keyDef.url, {
+              signal: job.signal,
+              credentials: 'include',
+            });
+          } catch (error) {
+            if (isAborted(job.signal)) throw error;
+            throw new handler.KeyFetchError(
+              `falha ao buscar chave: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+          if (!response.ok) {
+            throw new handler.KeyFetchError(`HTTP ${String(response.status)}`);
+          }
+          const buf = await response.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          if (bytes.length !== 16) {
+            throw new handler.KeyFetchError(
+              `chave com tamanho inválido (${String(bytes.length)} bytes)`,
+            );
+          }
+          const cryptoKey = await handler.loadKey(bytes);
+          keysMap.set(index, cryptoKey);
+        }),
+      );
+      return keysMap;
+    };
+
+    videoKeys = await loadEncryptionKeys(request.encryption);
+    audioKeys = await loadEncryptionKeys(request.audio?.encryption);
+
     const { audio } = request;
     const total = request.urls.length + (audio?.urls.length ?? 0);
-    const fetchInit = async (track: TrackRequest): Promise<Uint8Array | undefined> => {
+    const fetchInit = async (
+      track: TrackRequest,
+      encryption?: EncryptionPlan,
+      cryptoKeys?: Map<number, CryptoKey>,
+    ): Promise<Uint8Array | undefined> => {
       if (track.initUrl === undefined) {
         return undefined;
       }
@@ -218,10 +300,31 @@ export async function runOffscreenJob(
         fetch: (url, options) => fetchBytes(url, options, track.initRange),
         urls: [track.initUrl],
       });
+      if (bytes && encryption?.initKey !== undefined && encryption.initKey !== null) {
+        if (!aes128Handler) {
+          throw new AssemblyError('ENCRYPTED');
+        }
+        const cryptoKey = cryptoKeys?.get(encryption.initKey);
+        if (!cryptoKey) {
+          throw new aes128Handler.KeyFetchError('chave do init não encontrada');
+        }
+        const keyDef = encryption.keys[encryption.initKey];
+        if (!keyDef?.iv) {
+          throw new AssemblyError('ENCRYPTED', 'init sem IV explícito');
+        }
+        const iv = hexToBytes(keyDef.iv);
+        return await aes128Handler.decryptSegment(cryptoKey, iv, bytes, 'fmp4');
+      }
       return bytes;
     };
-    const fetchTrack = (track: TrackRequest, doneBefore: number): Promise<Uint8Array[]> =>
-      runSegments({
+    const fetchTrack = async (
+      track: TrackRequest,
+      doneBefore: number,
+      encryption?: EncryptionPlan,
+      cryptoKeys?: Map<number, CryptoKey>,
+      type?: 'ts' | 'fmp4',
+    ): Promise<Uint8Array[]> => {
+      const rawSegments = await runSegments({
         ...common,
         fetch: (url, options) =>
           fetchBytes(url, options, track.ranges?.[options.index] ?? undefined),
@@ -235,21 +338,52 @@ export async function runOffscreenJob(
           });
         },
       });
+      if (!encryption) {
+        return rawSegments;
+      }
+      if (!aes128Handler) {
+        throw new AssemblyError('ENCRYPTED');
+      }
+      const decrypted = new Array<Uint8Array>(rawSegments.length);
+      for (let i = 0; i < rawSegments.length; i++) {
+        const raw = rawSegments[i] as Uint8Array;
+        const keyIdx = encryption.segmentKeys[i];
+        if (keyIdx === null || keyIdx === undefined) {
+          decrypted[i] = raw;
+          continue;
+        }
+        const cryptoKey = cryptoKeys?.get(keyIdx);
+        if (!cryptoKey) {
+          throw new aes128Handler.KeyFetchError('chave não encontrada');
+        }
+        const keyDef = encryption.keys[keyIdx];
+        const iv = keyDef?.iv
+          ? hexToBytes(keyDef.iv)
+          : aes128Handler.deriveIv(encryption.mediaSequence, i);
+        decrypted[i] = await aes128Handler.decryptSegment(cryptoKey, iv, raw, type);
+      }
+      return decrypted;
+    };
 
-    const videoInit = request.fmp4 ? await fetchInit(request) : undefined;
+    const videoInit = request.fmp4
+      ? await fetchInit(request, request.encryption, videoKeys)
+      : undefined;
     if (audio !== undefined) {
       if (videoInit === undefined || audio.initUrl === undefined) {
         throw new AssemblyError('ASSEMBLY_FAILED', 'junção exige fMP4 nas duas trilhas');
       }
-      const audioInit = (await fetchInit(audio)) as Uint8Array;
+      const audioInit = (await fetchInit(audio, audio.encryption, audioKeys)) as Uint8Array;
       if (initIsEncrypted(videoInit) || initIsEncrypted(audioInit)) {
         throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
       }
       // Cada trilha vira um Blob assim que baixada; os pedaços em memória são soltos (sem cópia extra).
-      const videoBlob = new Blob([videoInit, ...(await fetchTrack(request, 0))] as BlobPart[]);
+      const videoBlob = new Blob([
+        videoInit,
+        ...(await fetchTrack(request, 0, request.encryption, videoKeys, 'fmp4')),
+      ] as BlobPart[]);
       const audioBlob = new Blob([
         audioInit,
-        ...(await fetchTrack(audio, request.urls.length)),
+        ...(await fetchTrack(audio, request.urls.length, audio.encryption, audioKeys, 'fmp4')),
       ] as BlobPart[]);
       if (job.signal.aborted) {
         throw new DOMException('aborted', 'AbortError');
@@ -264,7 +398,13 @@ export async function runOffscreenJob(
       emitReady(merged);
       return;
     }
-    const segments = await fetchTrack(request, 0);
+    const segments = await fetchTrack(
+      request,
+      0,
+      request.encryption,
+      videoKeys,
+      request.fmp4 ? 'fmp4' : 'ts',
+    );
     if (job.signal.aborted) {
       throw new DOMException('aborted', 'AbortError');
     }
@@ -286,6 +426,8 @@ export async function runOffscreenJob(
       deps.emit({ type: 'failed', error: errorCode(error) });
     }
   } finally {
+    videoKeys?.clear();
+    audioKeys?.clear();
     deps.signal.removeEventListener('abort', relay);
   }
 }

@@ -28,7 +28,7 @@
  *    O comportamento do documento (executar o job) é de tests/integration/support/offscreen.ts.
  */
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import background from '../../../entrypoints/background';
 import { installDnr } from './dnr';
@@ -247,6 +247,7 @@ export function startBackground(options: StartOptions & { dnr: true }): Backgrou
 };
 export function startBackground(options?: StartOptions): BackgroundHarness;
 export function startBackground(options: StartOptions = {}): BackgroundHarness {
+  (globalThis as Record<string, unknown>)['expect'] = expect;
   fakeBrowser.reset();
   vi.spyOn(fakeBrowser.runtime, 'getManifest').mockReturnValue({
     manifest_version: 3,

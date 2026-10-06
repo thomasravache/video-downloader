@@ -50,6 +50,15 @@ O flavor é definido pela variável `FLAVOR` (`public` | `local`) e exposto como
 - HLS ao vivo não é suportado.
 - Vídeos com DRM de verdade (Widevine, PlayReady, FairPlay) são identificados como protegidos e não são baixados.
 
+## Uso responsável (HLS AES-128)
+
+Conforme o [ADR-0015](docs/adr/ADR-0015-hls-com-criptografia-aes-128-por-chave-de-sessao-permitido-s.md), o suporte à descriptografia de HLS cifrado com AES-128 no flavor `local` destina-se exclusivamente a conteúdos aos quais o próprio usuário já possui acesso legítimo, para uso pessoal e offline.
+
+- A chave é obtida através da própria sessão autenticada do usuário na plataforma.
+- A descriptografia ocorre estritamente no navegador via WebCrypto; chaves e tokens não persistem em disco nem saem do dispositivo.
+- Termos de serviço de plataformas específicas podem proibir o download; a responsabilidade pelo cumprimento das regras aplicáveis é de quem usa a ferramenta.
+- Proteções DRM (Widevine, PlayReady, FairPlay) não são suportadas e são recusadas.
+
 ## Scripts
 
 | Script                                        | O que faz                                             |

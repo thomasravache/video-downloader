@@ -51,3 +51,14 @@ export interface RequestContextLease {
 export interface RequestContextPort {
   acquire(opts: { hosts: string[]; origin: string }): Promise<RequestContextLease>;
 }
+
+/** Veredito da análise de chaves HLS (SPEC-0017). */
+export type KeyVerdict =
+  | { kind: 'none' }
+  | { kind: 'aes128'; plan: import('./hls-download/protocol').EncryptionPlan }
+  | { kind: 'protected' };
+
+/** Política de chave injetada no core (SPEC-0017); ausente no flavor public. */
+export interface KeyPolicyPort {
+  classify(playlistText: string, baseUrl: string): KeyVerdict;
+}
