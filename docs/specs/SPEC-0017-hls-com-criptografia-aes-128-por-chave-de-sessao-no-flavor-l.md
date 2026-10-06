@@ -4,7 +4,7 @@ title: HLS com criptografia AES-128 por chave de sessão no flavor local
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-03
 parent: SPEC-0008
 depends_on: []
