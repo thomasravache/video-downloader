@@ -213,21 +213,21 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
 **Fase 1: Política de chave, plano e descriptografia (núcleo)**
-- [ ] Red: UT-01..UT-07, CT-01 com a tag `SPEC-0017:<ID>` (fuzz da allowlist, plano de chaves, descriptografia, manuseio da chave)
-- [ ] Green: `src/aes128/**` (classify, plano, decrypt), porta `KeyPolicyPort`, módulos virtuais e plugin de build, `flavor-guard` com `FORBIDDEN_AES128_IN_PUBLIC`
-- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+- [x] Red: UT-01..UT-07, CT-01 com a tag `SPEC-0017:<ID>` (fuzz da allowlist, plano de chaves, descriptografia, manuseio da chave)
+- [x] Green: `src/aes128/**` (classify, plano, decrypt), porta `KeyPolicyPort`, módulos virtuais e plugin de build, `flavor-guard` com `FORBIDDEN_AES128_IN_PUBLIC`
+- [x] Refactor e validar: build + suíte + arquitetura (G2/G3)
 
 **Fase 2: Download ponta a ponta**
-- [ ] Red: IT-01..IT-09 (TS, fMP4 com range, rotação, recusas, privacidade, contexto na chave, resolve, build)
-- [ ] Green: `start.encryption`/`audio.encryption`, busca de chaves no offscreen antes da mídia, `KEY_FAILED`/`DECRYPT_FAILED`, popup (`aes128-note`)
+- [x] Red: IT-01..IT-09 (TS, fMP4 com range, rotação, recusas, privacidade, contexto na chave, resolve, build)
+- [x] Green: `start.encryption`/`audio.encryption`, busca de chaves no offscreen antes da mídia, `KEY_FAILED`/`DECRYPT_FAILED`, popup (`aes128-note`)
 
 **Fase 3: Jornada E2E e documentação**
-- [ ] Red: E2E-01..E2E-03 (fixture AES-128 gerada com ffmpeg)
-- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake; README e runbook com o uso responsável
+- [x] Red: E2E-01..E2E-03 (fixture AES-128 gerada com ffmpeg)
+- [x] Green: jornada completa nos dois flavors, 3 execuções sem flake; README e runbook com o uso responsável
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
 - [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
@@ -242,7 +242,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (64 modules, 136 dependencies cruised)) — 61fe916 | 2026-10-06 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED (20/20 tests green, ADR-0015 conformance, 0 violations, clean flavor isolation) — 61fe916 | 2026-10-06 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 298 ms); test exit 0 (Duration  54.36s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~485ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 136 dependencies cruised)); security_scan exit 0 ([90m7:32PM[0m [32mINF[0m [1mno leaks found[0m) — e36b607 | 2026-10-06 |
-| H2 Integração aprovada | PENDING | | |
+| H2 Integração aprovada | PASS | aprovado por thomas | 2026-10-06 |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
 
