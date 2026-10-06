@@ -147,3 +147,30 @@ video-hi.m3u8
 #EXT-X-STREAM-INF:BANDWIDTH=250000,RESOLUTION=160x90,CODECS="avc1.4d400b,mp4a.40.2",AUDIO="a1"
 video-lo.m3u8
 M
+
+# SPEC-0017: hls/aes128/ — HLS com criptografia AES-128 gerado com ffmpeg -hls_key_info_file (chave fixa 16 bytes).
+rm -rf hls/aes128
+mkdir -p hls/aes128
+printf '\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f' > hls/aes128/key.bin
+cat > hls/aes128/keyinfo <<'EOF'
+key.bin
+hls/aes128/key.bin
+EOF
+ffmpeg -y -loglevel error \
+  -f lavfi -i "testsrc2=size=320x180:rate=25:duration=6" \
+  -f lavfi -i "sine=frequency=440:duration=6" \
+  -c:v libx264 -threads 1 -preset veryfast -profile:v main -b:v 120k -maxrate 120k -bufsize 120k \
+  -g 50 -keyint_min 50 -sc_threshold 0 -pix_fmt yuv420p \
+  -c:a aac -b:a 48k -ar 44100 -ac 1 -shortest \
+  -map_metadata -1 -fflags +bitexact -flags:v +bitexact -flags:a +bitexact \
+  -f hls -hls_time 2 -hls_playlist_type vod -hls_flags independent_segments \
+  -hls_key_info_file hls/aes128/keyinfo \
+  -hls_segment_filename "hls/aes128/v180-%d.mpegts" "hls/aes128/v180.m3u8"
+rm -f hls/aes128/keyinfo
+cat > hls/aes128/master.m3u8 <<'M'
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:BANDWIDTH=200000,RESOLUTION=320x180,CODECS="avc1.4d4015,mp4a.40.2"
+v180.m3u8
+M
+
