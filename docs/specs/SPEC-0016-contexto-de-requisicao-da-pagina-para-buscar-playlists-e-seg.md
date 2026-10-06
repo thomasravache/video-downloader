@@ -194,10 +194,10 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 0dadeb8 | 2026-10-03 |
-| G1 Red | PENDING | | |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
-| G4 Review | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/47]⎯) — 3961a90 | 2026-10-06 |
+| G2 Green | PASS | build exit 0 (✔ Finished in 257 ms); test exit 0 (Duration  51.66s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 188 ms); coverage exit 0 (================================================================================) — 9d934a3 | 2026-10-06 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (55 modules, 123 dependencies cruised)) — 9d934a3 | 2026-10-06 |
+| G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED conformidade arquitetural, contrato e testes completos; hls-resolve.test.ts adaptado para status 404 aditivo — 9d934a3 | 2026-10-06 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
