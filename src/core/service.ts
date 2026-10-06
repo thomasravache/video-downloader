@@ -22,17 +22,21 @@ import {
   deriveMediaResources,
   parseMediaSegments,
 } from './hls-download';
-import type { JobManager, MediaSegments } from './hls-download';
+import type { JobManager, JobPlan, MediaSegments } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
 import { classifyNetworkResponse, mergeCandidates } from './network';
 import type { NetworkResponse, NetworkStore } from './network';
+import { createContextScope, hostOf, initiatorOriginOf, statusOf } from './request-context';
+import type { ContextScope } from './request-context';
 import type {
   DownloadPort,
   JobStoragePort,
   OffscreenPort,
   PermissionsPort,
   PlaylistFetcherPort,
+  RequestContextLease,
+  RequestContextPort,
   ScriptingPort,
   TabsPort,
 } from './ports';
@@ -62,6 +66,8 @@ export interface ServiceDeps {
   /** Jobs de download HLS (SPEC-0012): estado em `storage.session` e documento offscreen. */
   jobStore?: JobStoragePort;
   offscreen?: OffscreenPort;
+  /** Contexto de requisição da página (SPEC-0016); ausente (flavor public) = sem repetição com contexto. */
+  requestContext?: RequestContextPort;
 }
 
 export interface Service {
@@ -87,7 +93,13 @@ const MAX_EXTRA_PLAYLISTS = 4;
 
 type PlaylistRead =
   | { ok: true; info: HlsInfo; text: string; url: string }
-  | { ok: false; error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED'; reason?: string };
+  | {
+      ok: false;
+      error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED';
+      reason?: string;
+      /** Status HTTP da recusa (só `HLS_FETCH_FAILED` por resposta HTTP). */
+      status?: number;
+    };
 
 function stripQuery(url: string): string {
   return redactUrls(url);
@@ -259,7 +271,12 @@ export function createService(deps: ServiceDeps): Service {
       return { ok: false, error: 'PROTECTED' };
     }
     if (candidate.kind === 'hls') {
-      return downloadHls(candidate, variantIndex, audioIndex, correlationId, fields);
+      const scope = contextScope(candidate, correlationId, candidateId);
+      try {
+        return await downloadHls(candidate, variantIndex, audioIndex, correlationId, fields, scope);
+      } finally {
+        await scope.release();
+      }
     }
     if (candidate.support !== 'downloadable') {
       diagnostics.log('warn', 'download.unsupported', correlationId, fields);
@@ -297,16 +314,43 @@ export function createService(deps: ServiceDeps): Service {
     }
   }
 
+  /**
+   * Escada de busca de uma operação (SPEC-0016): `requestContext` ausente (flavor public) ou candidato sem
+   * `initiatorOrigin` = busca simples. O log registra só "contexto usado: sim/não" e o status, sem URL.
+   */
+  function contextScope(
+    candidate: Pick<VideoCandidate, 'initiatorOrigin'>,
+    correlationId: string,
+    candidateId: string,
+  ): ContextScope {
+    return createContextScope({
+      fetch: (url) => {
+        if (!deps.playlists || !isHttp(url)) {
+          return Promise.reject(new Error('playlist indisponível'));
+        }
+        return deps.playlists.fetchPlaylist(url);
+      },
+      requestContext: deps.requestContext,
+      candidate,
+      onContext: ({ used, status }) => {
+        diagnostics.log('info', 'hls.context_used', correlationId, { candidateId, used, status });
+      },
+    });
+  }
+
   /** Busca e interpreta uma playlist; falha de rede vira `fetch`, texto inválido vira `parse`. */
-  async function readPlaylist(url: string): Promise<PlaylistRead> {
+  async function readPlaylist(url: string, scope: ContextScope): Promise<PlaylistRead> {
     let text: string;
     try {
-      if (!deps.playlists || !isHttp(url)) {
-        throw new Error('playlist indisponível');
-      }
-      text = await deps.playlists.fetchPlaylist(url);
+      text = await scope.fetch(url);
     } catch (error) {
-      return { ok: false, error: 'HLS_FETCH_FAILED', reason: reasonOf(error) };
+      const status = statusOf(error);
+      return {
+        ok: false,
+        error: 'HLS_FETCH_FAILED',
+        reason: reasonOf(error),
+        ...(status !== undefined && { status }),
+      };
     }
     try {
       return { ok: true, info: parseHlsPlaylist(text, url), text, url };
@@ -329,7 +373,7 @@ export function createService(deps: ServiceDeps): Service {
     | { ok: false; error: HlsRefusal['error']; event: string };
 
   /** Busca e aprova uma playlist de mídia (allowlist de criptografia, ao vivo, http(s), byte range). */
-  async function approvePlaylist(url: string): Promise<ApprovedPlaylist> {
+  async function approvePlaylist(url: string, scope: ContextScope): Promise<ApprovedPlaylist> {
     const notResolved = {
       ok: false,
       error: 'HLS_NOT_RESOLVED',
@@ -337,10 +381,7 @@ export function createService(deps: ServiceDeps): Service {
     } as const;
     let text: string;
     try {
-      if (!deps.playlists || !isHttp(url)) {
-        throw new Error('playlist indisponível');
-      }
-      text = await deps.playlists.fetchPlaylist(url);
+      text = await scope.fetch(url);
     } catch {
       return notResolved;
     }
@@ -376,6 +417,7 @@ export function createService(deps: ServiceDeps): Service {
     audioIndex: number | undefined,
     correlationId: string,
     fields: Record<string, unknown>,
+    scope: ContextScope,
   ): Promise<DownloadResponse> {
     const refuse = (error: HlsRefusal['error'], event: string): DownloadResponse => {
       diagnostics.log('warn', event, correlationId, { ...fields, error });
@@ -422,7 +464,7 @@ export function createService(deps: ServiceDeps): Service {
 
     // Re-busca as playlists envolvidas (vídeo e, se houver, áudio): são elas (não o master) que decidem,
     // e NENHUMA mídia é pedida antes de todas serem aprovadas.
-    const approved = await approvePlaylist(playlistUrl);
+    const approved = await approvePlaylist(playlistUrl, scope);
     if (!approved.ok) {
       return refuse(approved.error, approved.event);
     }
@@ -430,7 +472,7 @@ export function createService(deps: ServiceDeps): Service {
     let audioMedia: MediaSegments | undefined;
     let noInit = approved.fmp4WithoutInit;
     if (audioTrack !== 'none') {
-      const approvedAudio = await approvePlaylist(audioTrack.url);
+      const approvedAudio = await approvePlaylist(audioTrack.url, scope);
       if (!approvedAudio.ok) {
         return refuse(approvedAudio.error, approvedAudio.event);
       }
@@ -446,7 +488,7 @@ export function createService(deps: ServiceDeps): Service {
       }
     }
 
-    const created = await jobs.create({
+    const plan: JobPlan = {
       candidateId: candidate.id,
       providerId: candidate.providerId,
       variantIndex: hls.type === 'master' ? chosen : 0,
@@ -466,12 +508,52 @@ export function createService(deps: ServiceDeps): Service {
             audioMedia.initRange !== undefined && { initRange: audioMedia.initRange }),
         },
       }),
-    });
+    };
+
+    // Se a busca das playlists precisou do contexto da página, uma regra cobre os hosts do job inteiro (init e
+    // segmentos, no offscreen) até ele terminar; a das playlists é trocada por ela antes de qualquer mídia.
+    const lease = await acquireJobContext(plan, scope, correlationId);
+    await scope.release();
+    let created: Awaited<ReturnType<JobManager['create']>>;
+    try {
+      created = await jobs.create(plan, lease);
+    } catch (error) {
+      await lease?.release();
+      throw error;
+    }
     if (!created.ok) {
+      await lease?.release();
       return refuse(created.error, 'download.refused');
     }
     diagnostics.count(candidate.providerId, 'downloadsStarted');
     return { ok: true, jobId: created.jobId };
+  }
+
+  /** Regra do job (hosts de todas as URLs do plano); falha ao instalar = o job segue sem ela (erro normal da busca). */
+  async function acquireJobContext(
+    plan: JobPlan,
+    scope: ContextScope,
+    correlationId: string,
+  ): Promise<RequestContextLease | undefined> {
+    if (!scope.used || scope.origin === undefined || !deps.requestContext) {
+      return undefined;
+    }
+    const urls = [
+      ...plan.urls,
+      ...(plan.initUrl !== undefined ? [plan.initUrl] : []),
+      ...(plan.audio?.urls ?? []),
+      ...(plan.audio?.initUrl !== undefined ? [plan.audio.initUrl] : []),
+    ];
+    const hosts = [...new Set(urls.flatMap((url) => hostOf(url) ?? []))];
+    try {
+      return await deps.requestContext.acquire({ hosts, origin: scope.origin });
+    } catch {
+      diagnostics.log('warn', 'job.context_unavailable', correlationId, {
+        candidateId: plan.candidateId,
+        hosts: hosts.length,
+      });
+      return undefined;
+    }
   }
 
   /** SPEC-0015: a aba tem outro candidato `file`/`hls` da mesma origem da master (vale buscar as extras). */
@@ -501,11 +583,27 @@ export function createService(deps: ServiceDeps): Service {
       diagnostics.log('warn', 'hls.not_found', correlationId, { candidateId });
       return { ok: false, error: 'CANDIDATE_NOT_FOUND' };
     }
+    // A regra de contexto, se instalada, vale só durante este resolve (sucesso ou falha).
+    const scope = contextScope(candidate, correlationId, candidateId);
+    try {
+      return await resolveCandidate(candidate, correlationId, scope);
+    } finally {
+      await scope.release();
+    }
+  }
+
+  async function resolveCandidate(
+    candidate: VideoCandidate,
+    correlationId: string,
+    scope: ContextScope,
+  ): Promise<ResolveHlsResponse> {
+    const { id: candidateId } = candidate;
     const fields = { candidateId, mediaUrl: stripQuery(candidate.mediaUrl) };
     const fail = (
       error: 'HLS_FETCH_FAILED' | 'HLS_PARSE_FAILED',
       stage: 'playlist' | 'variant',
       reason?: string,
+      status?: number,
     ): ResolveHlsResponse => {
       diagnostics.countHls('failed');
       diagnostics.log('warn', 'hls.failed', correlationId, {
@@ -514,12 +612,12 @@ export function createService(deps: ServiceDeps): Service {
         stage,
         ...(reason !== undefined && { reason: redactUrls(reason) }),
       });
-      return { ok: false, error };
+      return { ok: false, error, ...(status !== undefined && { status }) };
     };
 
-    const first = await readPlaylist(candidate.mediaUrl);
+    const first = await readPlaylist(candidate.mediaUrl, scope);
     if (!first.ok) {
-      return fail(first.error, 'playlist', first.reason);
+      return fail(first.error, 'playlist', first.reason, first.status);
     }
     let hls = first.info;
     const best = first.info.variants[0];
@@ -552,12 +650,12 @@ export function createService(deps: ServiceDeps): Service {
             .filter((variant) => sameOrigin(variant.url))
         : [];
       const [second, ...others] = await Promise.all([
-        readPlaylist(best.url),
-        ...audioTracks.map((track) => readPlaylist(track.url)),
-        ...extraVariants.map((variant) => readPlaylist(variant.url)),
+        readPlaylist(best.url, scope),
+        ...audioTracks.map((track) => readPlaylist(track.url, scope)),
+        ...extraVariants.map((variant) => readPlaylist(variant.url, scope)),
       ]);
       if (!second.ok) {
-        return fail(second.error, 'variant', second.reason);
+        return fail(second.error, 'variant', second.reason, second.status);
       }
       if (second.info.type !== 'media') {
         return fail('HLS_PARSE_FAILED', 'variant');
@@ -692,6 +790,7 @@ export function createService(deps: ServiceDeps): Service {
         return;
       }
       const { kind, mimeType, sizeBytes } = classification;
+      const initiatorOrigin = initiatorOriginOf(response.initiator);
       diagnostics.countNetwork(kind);
       diagnostics.log('debug', 'network.captured', diagnostics.newCorrelationId(), {
         tabId: response.tabId,
@@ -713,6 +812,7 @@ export function createService(deps: ServiceDeps): Service {
           frameUrl: '',
           kind,
           source: 'network',
+          ...(initiatorOrigin !== undefined && { initiatorOrigin }),
         });
       } catch (error) {
         diagnostics.log('warn', 'network.store_failed', diagnostics.newCorrelationId(), {

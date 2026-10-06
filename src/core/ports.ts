@@ -38,3 +38,16 @@ export interface OffscreenPort {
   /** Fecha o documento; idempotente. */
   close(): Promise<void>;
 }
+
+/** Regra de contexto instalada (SPEC-0016); `release` remove a regra e é idempotente. */
+export interface RequestContextLease {
+  release(): Promise<void>;
+}
+
+/**
+ * Contexto de requisição da página (SPEC-0016): `acquire` instala uma regra de sessão que faz as buscas da
+ * extensão aos `hosts` levarem `Origin: <origin>` e `Referer: <origin>/`. Rejeita se a regra for recusada.
+ */
+export interface RequestContextPort {
+  acquire(opts: { hosts: string[]; origin: string }): Promise<RequestContextLease>;
+}

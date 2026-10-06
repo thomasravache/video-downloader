@@ -14,6 +14,13 @@ export type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 export interface RequestRecord {
   url: string;
   range: string | undefined;
+  /** SPEC-0016: cabeçalhos de contexto recebidos (cru, como o servidor os viu). */
+  origin: string | undefined;
+  referer: string | undefined;
+  /** Veio algum `Cookie`? (nunca o valor). */
+  hasCookie: boolean;
+  /** Status da resposta, preenchido quando ela termina. */
+  status: number | undefined;
 }
 
 export interface PlaylistServer {
@@ -77,6 +84,21 @@ export function rangeHandler(
   };
 }
 
+/**
+ * SPEC-0016: o servidor da CDN que só responde com o contexto do player. Responde 403 (sem corpo) a menos
+ * que `Origin` seja exatamente `origin` e `Referer` seja `origin + '/'`; senão delega a `inner`.
+ */
+export function requireContext(origin: string, inner: Handler): Handler {
+  return (req, res) => {
+    if (req.headers['origin'] === origin && req.headers['referer'] === `${origin}/`) {
+      inner(req, res);
+      return;
+    }
+    res.writeHead(403, { 'content-type': 'text/plain', 'content-length': 9 });
+    res.end('forbidden');
+  };
+}
+
 export function redirect(location: string, status = 302): Handler {
   return (_req, res) => {
     res.writeHead(status, { location, 'content-length': 0 });
@@ -95,7 +117,22 @@ export async function startPlaylistServer(
     const url = req.url ?? '/';
     requests.push(url);
     const range = req.headers['range'];
-    log.push({ url, range: typeof range === 'string' ? range : undefined });
+    const header = (name: string): string | undefined => {
+      const value = req.headers[name];
+      return typeof value === 'string' ? value : undefined;
+    };
+    const record: RequestRecord = {
+      url,
+      range: typeof range === 'string' ? range : undefined,
+      origin: header('origin'),
+      referer: header('referer'),
+      hasCookie: header('cookie') !== undefined,
+      status: undefined,
+    };
+    log.push(record);
+    res.on('finish', () => {
+      record.status = res.statusCode;
+    });
     const handler = routes[new URL(url, 'http://127.0.0.1').pathname];
     if (handler) {
       handler(req, res);

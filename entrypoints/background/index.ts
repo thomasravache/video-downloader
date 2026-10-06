@@ -7,6 +7,8 @@ import { collectVideos } from './collect-videos';
 import { toNetworkResponse } from './network';
 import { createOffscreenPort } from './offscreen';
 import { createPlaylistFetcher } from './playlist-fetcher';
+import { createRequestContextManager } from './request-context';
+import type { DnrPort } from './request-context';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
   if (typeof value !== 'object' || value === null) {
@@ -33,6 +35,25 @@ export default defineBackground(() => {
     set: (key, value) => browser.storage.session.set({ [key]: value }),
     remove: (key) => browser.storage.session.remove(key),
     keys: async () => Object.keys(await browser.storage.session.get(null)),
+  });
+  // Contexto de requisição da página (SPEC-0016): só o flavor local tem a permissão
+  // `declarativeNetRequestWithHostAccess`; sem a API (public) não há repetição com contexto.
+  const dnr = (browser as { declarativeNetRequest?: DnrPort }).declarativeNetRequest;
+  const requestContext =
+    dnr === undefined
+      ? undefined
+      : createRequestContextManager({
+          dnr: {
+            updateSessionRules: (options) => dnr.updateSessionRules(options),
+            getSessionRules: () => dnr.getSessionRules(),
+          },
+          extensionId: browser.runtime.id,
+        });
+  // Regras órfãs de um service worker anterior saem na partida (melhor esforço).
+  void requestContext?.removeOrphans().catch((error: unknown) => {
+    diagnostics.log('warn', 'context.cleanup_failed', diagnostics.newCorrelationId(), {
+      reason: error instanceof Error ? error.name : 'unknown',
+    });
   });
   const service = createService({
     extensionId: browser.runtime.id,
@@ -72,6 +93,7 @@ export default defineBackground(() => {
       set: (key, value) => browser.storage.session.set({ [key]: value }),
     },
     offscreen: createOffscreenPort(),
+    ...(requestContext !== undefined && { requestContext }),
     tabs: {
       async getUrl(tabId) {
         return (await browser.tabs.get(tabId)).url;
