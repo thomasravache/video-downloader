@@ -10,7 +10,7 @@ parent: SPEC-0008
 depends_on: []
 consumes_contract: [SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1]
 contract_version: 1
-touches: [wxt.config.ts, .dependency-cruiser.cjs, README.md, docs/runbook.md, scripts/release/**, scripts/build/**, src/aes128/**, src/core/**, entrypoints/background/**, entrypoints/offscreen/**, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**, tests/release/**]
+touches: [wxt.config.ts, .dependency-cruiser.cjs, .gitleaksignore, README.md, docs/runbook.md, scripts/release/**, scripts/build/**, src/aes128/**, src/core/**, entrypoints/background/**, entrypoints/offscreen/**, entrypoints/popup/**, public/_locales/**, e2e/support/**, e2e/journeys/**, e2e/fixtures/**, tests/unit/**, tests/integration/**, tests/release/**]
 adrs: [ADR-0015, ADR-0013, ADR-0011, ADR-0008, ADR-0006, ADR-0001]
 external: []
 size: M
