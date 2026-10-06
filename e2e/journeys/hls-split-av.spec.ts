@@ -99,12 +99,17 @@ test.describe('vídeo e áudio separados', () => {
   });
 
   test('SPEC-0014:E2E-02 master cujo áudio é criptografado: badge-encrypted, sem botão de baixar e sem "Inclui áudio"', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
     downloadsDir,
   }) => {
+    test.skip(
+      flavor !== 'public',
+      'a recusa de AES-128 só se aplica ao flavor public após a SPEC-0017',
+    );
     const workerRequests: string[] = [];
     context.on('request', (request) => {
       if (request.serviceWorker()) {

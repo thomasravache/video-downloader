@@ -192,11 +192,16 @@ test.describe('baixar HLS', () => {
   });
 
   test('SPEC-0012:E2E-03 (guarda: passa antes da mudança) HLS com AES-128: o popup mostra badge-encrypted, nenhum botão de download e nenhum segmento sai', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
   }) => {
+    test.skip(
+      flavor !== 'public',
+      'a recusa de AES-128 só se aplica ao flavor public após a SPEC-0017',
+    );
     const requested: string[] = [];
     context.on('request', (request) => {
       requested.push(request.url());
@@ -226,12 +231,17 @@ test.describe('baixar HLS', () => {
   });
 
   test('SPEC-0012:E2E-03 a recusa vale no servidor: pedir o download do HLS criptografado ou ao vivo por mensagem responde ENCRYPTED / LIVE e nada é baixado', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
     downloadsDir,
   }) => {
+    test.skip(
+      flavor !== 'public',
+      'a recusa de AES-128 no servidor só se aplica ao flavor public após a SPEC-0017',
+    );
     const requested: string[] = [];
     context.on('request', (request) => {
       requested.push(request.url());
