@@ -47,6 +47,8 @@ export interface HlsInfo {
   audio?: HlsAudioTrack[];
   /** SPEC-0015: origem+caminho (sem query/fragmento) dos arquivos de mídia citados pelas playlists de variante/áudio buscadas no resolve; únicos; máx. 32. */
   mediaResources?: string[];
+  /** SPEC-0017: só no flavor local, quando todas as chaves são AES-128 válidas; então encrypted === false. */
+  aes128?: true;
 }
 
 /** Playlist vazia ou inválida. */
@@ -202,8 +204,23 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
     }));
 }
 
+/** Interface mínima para classificação de chaves injetada em parseHlsPlaylist (evita ciclo com ports.ts). */
+export interface KeyClassifier {
+  classify(
+    playlistText: string,
+    baseUrl: string,
+  ): { kind: 'none' | 'aes128' | 'protected'; [key: string]: unknown };
+}
+
 /** Interpreta uma playlist HLS (master ou de mídia); lança `HlsParseError` se vazia ou inválida. */
-export function parseHlsPlaylist(text: string, baseUrl: string): HlsInfo {
+export function parseHlsPlaylist(
+  text: string,
+  baseUrl: string,
+  keyPolicy?: KeyClassifier,
+): HlsInfo {
+  if (keyPolicy !== undefined) {
+    throw new Error('NotImplemented');
+  }
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r\n|\r|\n/)

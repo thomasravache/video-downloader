@@ -33,6 +33,7 @@ import type {
   DownloadPort,
   JobStoragePort,
   OffscreenPort,
+  KeyPolicyPort,
   PermissionsPort,
   PlaylistFetcherPort,
   RequestContextLease,
@@ -68,6 +69,8 @@ export interface ServiceDeps {
   offscreen?: OffscreenPort;
   /** Contexto de requisição da página (SPEC-0016); ausente (flavor public) = sem repetição com contexto. */
   requestContext?: RequestContextPort;
+  /** Política de chave AES-128 (SPEC-0017); ausente no flavor public. */
+  keyPolicy?: KeyPolicyPort;
 }
 
 export interface Service {
