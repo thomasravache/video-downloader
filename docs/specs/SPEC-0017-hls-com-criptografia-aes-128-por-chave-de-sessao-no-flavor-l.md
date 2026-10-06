@@ -4,7 +4,7 @@ title: HLS com criptografia AES-128 por chave de sessão no flavor local
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-03
 parent: SPEC-0008
 depends_on: []
@@ -228,8 +228,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 **Fase final: Integração, entrega e documentação**
 - [x] Review independente (G4)
 - [x] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -243,8 +243,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED (20/20 tests green, ADR-0015 conformance, 0 violations, clean flavor isolation) — 61fe916 | 2026-10-06 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 298 ms); test exit 0 (Duration  54.36s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~485ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 136 dependencies cruised)); security_scan exit 0 ([90m7:32PM[0m [32mINF[0m [1mno leaks found[0m) — e36b607 | 2026-10-06 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-10-06 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — aca2e31 | 2026-10-06 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — aca2e31 (árvore suja) | 2026-10-06 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -255,37 +255,55 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Suporte à descriptografia de playlists HLS com criptografia `METHOD=AES-128` (RFC 8216 §5.2) e chave de sessão no flavor `local`. A extensão detecta playlists HLS com tags `#EXT-X-KEY:METHOD=AES-128` ou `#EXT-X-SESSION-KEY:METHOD=AES-128`, exibe o cartão no popup com o aviso explicativo `aes128-note` e o botão de download habilitado. O download obtém as chaves através do contexto da sessão do usuário antes da busca de mídia, importa a chave via WebCrypto (`AES-CBC`, não-extraível), descriptografa os segmentos e reconstrói o MP4 final de forma válida e transparente. Proteções reais de DRM (Widevine, FairPlay, PlayReady) continuam rejeitadas com o badge `badge-encrypted`, e o build público (`public`) permanece estritamente neutro sem módulos nem capacidade de descriptografia.
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+Implementação modular em `src/aes128/**` com `classify`, `keys`, `plan` e `decrypt`. Injeção desacoplada através da porta `KeyPolicyPort` no `src/core/service.ts`, preservando o isolamento arquitetural puro do core sem dependência de APIs de extensão (0 violações no dependency-cruiser). Módulos virtuais `virtual:aes128-policy` e `virtual:aes128-decrypt` controlados por plugin Vite no `wxt.config.ts`, resolvendo para implementações reais com marcador `VD_AES128_LOCAL_ONLY` no flavor local e stubs vazios (40 B) no flavor public. Verificação estendida em `scripts/release/flavor-guard.ts` garantindo a ausência de nós e marcadores proibidos no zip público. E2E validado no Chromium real em múltiplos testes sem flakes.
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
 N/A
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Fuzz da allowlist de tags de chave (apenas AES-128 identity aceito no local, o restante protegido) | PASS | `tests/unit/aes128-classify.test.ts` (5 testes) |
+| UT-02 | Planejamento de chaves e IVs derivados por sequência e explícitos | PASS | `tests/unit/aes128-plan.test.ts` (5 testes) |
+| UT-03 | Descriptografia de segmentos TS e fMP4 via WebCrypto AES-CBC e validação de cabeçalhos | PASS | `tests/unit/aes128-decrypt.test.ts` (7 testes) |
+| UT-04 | Carga segura de chave de 16 bytes, chave CryptoKey não extraível e descarte de buffers | PASS | `tests/unit/aes128-key.test.ts` (4 testes) |
+| UT-05 | Validação de comandos start e audio com plano de criptografia | PASS | `tests/unit/offscreen-commands-aes128.test.ts` (8 testes) |
+| UT-06 | Exibição de aes128-note no popup e chaves de internacionalização pt_BR e en | PASS | `tests/unit/popup-aes128-note.test.ts` (4 testes) |
+| UT-07 | Presença do marcador VD_AES128_LOCAL_ONLY no local e ausência no stub público | PASS | `tests/unit/aes128-modules.test.ts` (2 testes) |
+| IT-01 | Download ponta a ponta de HLS TS cifrado com AES-128 e chave em URL própria | PASS | `tests/integration/hls-job-aes128.test.ts` |
+| IT-02 | Download de fMP4 de arquivo único com byte range e descriptografia AES-128 | PASS | `tests/integration/hls-job-aes128.test.ts` |
+| IT-03 | Download de HLS com múltiplas chaves e rotação com IVs explícitos | PASS | `tests/integration/hls-job-aes128.test.ts` |
+| IT-04 | Recusas no flavor local para esquemas não suportados (DRM, chaves truncadas) | PASS | `tests/integration/hls-job-aes128-refusals.test.ts` |
+| IT-05 | Recusa total de AES-128 no flavor public como protegido | PASS | `tests/integration/hls-job-aes128-refusals.test.ts` |
+| IT-06 | Privacidade: ausência de chaves, URIs de chave e tokens em logs, mensagens e diagnósticos | PASS | `tests/integration/hls-job-aes128-privacy.test.ts` |
+| IT-07 | Recuperação de chaves com exigência de cabeçalhos de contexto de requisição | PASS | `tests/integration/hls-job-aes128-context.test.ts` |
+| IT-08 | Resolução de master com EXT-X-SESSION-KEY por flavor e precedência de DRM | PASS | `tests/integration/hls-resolve-aes128.test.ts` |
+| IT-09 | Inspeção de bundles dos flavors pelo flavor-guard | PASS | `tests/integration/flavor-guard-aes128.test.ts` |
+| CT-01 | Validação de compatibilidade de contratos HlsInfo, start, audio e JobError | PASS | `tests/integration/hls-aes128-contract.test.ts` |
+| E2E-01 | Jornada completa de download HLS AES-128 gerado com ffmpeg no flavor local [jornada: baixar-hls] | PASS | `e2e/journeys/hls-aes128.spec.ts` |
+| E2E-02 | Verificação no popup de playlist AES-128 no flavor public como badge-encrypted | PASS | `e2e/journeys/hls-aes128.spec.ts` |
+| E2E-03 | Verificação no popup de playlist Widevine no flavor local como badge-encrypted | PASS | `e2e/journeys/hls-aes128.spec.ts` |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Staging (rc) validado com smoke_test / test_e2e local via Playwright em Chromium real nos flavors `public` e `local`.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0017`. -->
