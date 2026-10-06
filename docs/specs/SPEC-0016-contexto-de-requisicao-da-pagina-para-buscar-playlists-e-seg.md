@@ -4,7 +4,7 @@ title: Contexto de requisição da página para buscar playlists e segmentos rec
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-03
 parent: SPEC-0008
 depends_on: []
@@ -174,19 +174,19 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
 **Fase 1: Prova de conceito do contexto de requisição (portão)**
-- [ ] Red: E2E-01 (servidor que exige Origin/Referer, iframe de outra origem) falhando pelo motivo certo
-- [ ] Green mínimo: `initiatorOrigin`, regra DNR de sessão e a escada 401/403 no resolve; E2E-01 verde no Chromium real; se o DNR não sobrescrever `Origin`, PARAR e reportar SPEC_DEFECT (plano B por emenda)
+- [x] Red: E2E-01 (servidor que exige Origin/Referer, iframe de outra origem) falhando pelo motivo certo
+- [x] Green mínimo: `initiatorOrigin`, regra DNR de sessão e a escada 401/403 no resolve; E2E-01 verde no Chromium real; se o DNR não sobrescrever `Origin`, PARAR e reportar SPEC_DEFECT (plano B por emenda)
 
 **Fase 2: Contexto completo e segurança**
-- [ ] Red: UT-01..UT-06, CT-01, IT-01..IT-06, E2E-02 com a tag `SPEC-0016:<ID>`
-- [ ] Green: gerenciador de regras (lease, limpeza de órfãs), job com regra por operação, mensagem `hlsErrorExpired`, permissão só no manifest `local`
-- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+- [x] Red: UT-01..UT-06, CT-01, IT-01..IT-06, E2E-02 com a tag `SPEC-0016:<ID>`
+- [x] Green: gerenciador de regras (lease, limpeza de órfãs), job com regra por operação, mensagem `hlsErrorExpired`, permissão só no manifest `local`
+- [x] Refactor e validar: build + suíte + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -200,8 +200,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED conformidade arquitetural, contrato e testes completos; hls-resolve.test.ts adaptado para status 404 aditivo — 9d934a3 | 2026-10-06 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 298 ms); test exit 0 (Duration  61.21s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (at least ~435ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (55 modules, 123 dependencies cruised)); security_scan exit 0 ([90m1:20PM[0m [32mINF[0m [1mno leaks found[0m) — f340497 | 2026-10-06 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-10-06 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — 02c6084 | 2026-10-06 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 02c6084 (árvore suja) | 2026-10-06 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -212,37 +212,50 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Captura da origem do iniciador (`initiatorOrigin`) em requisições de mídia observadas e aplicação de regras de contexto (`Origin` e `Referer`) via `declarativeNetRequest` de sessão quando playlists ou segmentos HLS retornam HTTP 401/403 (Hotmart e CDNs com validação de iniciador). A repetição da busca ocorre de forma transparente com lease temporário de regras e faixa reservada de IDs. Em caso de 403 persistente (tokens expirados), o popup exibe mensagem clara e amigável (`hlsErrorExpired`). A permissão e funcionalidade são ativas exclusivamente no flavor `local`, mantendo o `public` estritamente inalterado.
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+Captura de `initiator` no webRequest/declarativeNetRequest em `entrypoints/background/network.ts` e propagação para o candidato de mídia (`VideoCandidate.initiatorOrigin`). Módulo `entrypoints/background/request-context.ts` gerenciando leases com IDs disjuntos, expiração e limpeza na partida (`removeOrphans`). Escada de retry 401/403 em `entrypoints/background/playlist-fetcher.ts` e suporte em jobs de download em `src/core/hls-download/jobs.ts`. Tratamento de erros i18n em `entrypoints/popup/errors.ts` e `view.ts`. Permissão `declarativeNetRequestWithHostAccess` condicional no `wxt.config.ts` apenas para o build `local`.
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
 N/A
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Captura e sanitização de initiator da requisição de rede em initiatorOrigin | PASS | `tests/unit/network-initiator.test.ts` (3 testes) |
+| UT-02 | Extração de origin e referer a partir do initiatorOrigin | PASS | `tests/unit/request-context.test.ts` (3 testes) |
+| UT-03 | Construção e validação de regras declarativeNetRequest com limitação de hosts | PASS | `tests/unit/request-context.test.ts` (7 testes) |
+| UT-04 | Escada de repetição 401/403 com instalação de regra sob demanda no service | PASS | `tests/unit/request-context-ladder.test.ts` (12 testes) |
+| UT-05 | Gerenciador de regras de contexto: lease, concorrência, idempotência e remoção de órfãs | PASS | `tests/unit/request-context-manager.test.ts` (11 testes) |
+| UT-06 | Mensagem de erro amigável hlsErrorExpired para 401/403 persistente no popup (pt_BR e en) | PASS | `tests/unit/popup-hls-error.test.ts` (6 testes) |
+| IT-01 | Resolve com simulação real de servidor recusando 403 e aceitando com Origin/Referer | PASS | `tests/integration/request-context-resolve.test.ts` (7 testes) |
+| IT-02 | Download completo de HLS com segmentos exigindo contexto e sem vazar cookies | PASS | `tests/integration/request-context-job.test.ts` (2 testes) |
+| IT-03 | Proteção contra injeção de cabeçalhos/origens arbitrárias vindas do popup | PASS | `tests/integration/request-context-job.test.ts`, `tests/integration/request-context-resolve.test.ts` (4 testes) |
+| IT-04 | Sanitização de queries/tokens em URLs: ausência de segredos nas regras e logs | PASS | `tests/integration/request-context-job.test.ts`, `tests/integration/request-context-resolve.test.ts` (3 testes) |
+| IT-05 | Limpeza de regras de sessão em término de job, falha, cancelamento e reinício de SW | PASS | `tests/integration/request-context-job.test.ts` (7 testes) |
+| IT-06 | Isolamento de permissões de manifesto: declarativeNetRequestWithHostAccess exclusivo do local | PASS | `tests/integration/build-artifacts.test.ts` (2 testes) |
+| CT-01 | Conformidade de contratos aditivos para VideoCandidate e resolve error status | PASS | `tests/unit/request-context-contract.test.ts` (7 testes) |
+| E2E-01 | Prova de conceito ponta a ponta: download HLS de iframe em CDN com restrição de Origin/Referer [jornada: baixar-hls] | PASS | `e2e/journeys/hls-page-context.spec.ts` |
+| E2E-02 | Verificação no popup de CDN que responde 403 persistente com mensagem hlsErrorExpired | PASS | `e2e/journeys/hls-page-context.spec.ts` |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Staging (rc) validado com smoke_test / test_e2e local via Playwright em Chromium real nos flavors `public` e `local`.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0016`. -->

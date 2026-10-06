@@ -5,7 +5,7 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 11 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 8, implemented 6
+- Specs: proposed 1, in-progress 7, implemented 7
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -33,11 +33,11 @@ Perfil: **padrao**
 |---|---|---|
 | Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005 |
 | Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo | planejada | SPEC-0009 |
-| Usuário escolhe a qualidade de um vídeo HLS e baixa um MP4 válido | provada | SPEC-0017 |
+| Usuário escolhe a qualidade de um vídeo HLS e baixa um MP4 válido | provada | SPEC-0016, SPEC-0017 |
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0016  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -51,14 +51,13 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
-| 8 | SPEC-0016 | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
 
 ## Épicos
 
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
-| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 1/9 implementadas |
+| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 2/9 implementadas |
 
 ## Grafo de Dependências
 
@@ -79,7 +78,6 @@ flowchart LR
     S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::inprogress
     S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::inprogress
-    S0016["SPEC-0016<br/>Contexto de requisição da página para b…"]:::inprogress
   end
   S0002 --> S0007
   S0005 --> S0009
@@ -93,9 +91,6 @@ flowchart LR
   S0013 -. contrato v1 .-> S0014
   S0013 -. contrato v1 .-> S0015
   S0014 -. contrato v1 .-> S0015
-  S0011 -. contrato v1 .-> S0016
-  S0012 -. contrato v1 .-> S0016
-  S0015 -. contrato v1 .-> S0016
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
   classDef inprogress fill:#ede9fe,stroke:#7c3aed,color:#111
@@ -122,7 +117,7 @@ flowchart LR
 | [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
 | [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
-| [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | in-progress | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
+| [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
 | [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 
 ## ADRs
