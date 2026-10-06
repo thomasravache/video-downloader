@@ -8,6 +8,8 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.4] - 2026-10-06
+
 ### Added
 - Contexto de requisição da página para buscar playlists e segmentos recusados com 403 (SPEC-0016, ADR-0015)
 - HLS com criptografia AES-128 por chave de sessão no flavor local (SPEC-0017, ADR-0015)
