@@ -218,9 +218,6 @@ export function parseHlsPlaylist(
   baseUrl: string,
   keyPolicy?: KeyClassifier,
 ): HlsInfo {
-  if (keyPolicy !== undefined) {
-    throw new Error('NotImplemented');
-  }
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r\n|\r|\n/)
@@ -235,7 +232,21 @@ export function parseHlsPlaylist(
     parser.push(text);
     parser.end();
     const { manifest } = parser;
-    const encrypted = hasEncryptedKey(text);
+    let encrypted = hasEncryptedKey(text);
+    let aes128: true | undefined = undefined;
+    if (keyPolicy !== undefined) {
+      const verdict = keyPolicy.classify(text, baseUrl);
+      if (verdict.kind === 'aes128') {
+        encrypted = false;
+        aes128 = true;
+      } else if (verdict.kind === 'none') {
+        encrypted = false;
+        aes128 = undefined;
+      } else {
+        encrypted = true;
+        aes128 = undefined;
+      }
+    }
     const fmp4 = lines.some((line) => line.startsWith('#EXT-X-MAP:'));
     const segments = manifest.segments ?? [];
     const variants = variantsOf(manifest, baseUrl);
@@ -248,6 +259,7 @@ export function parseHlsPlaylist(
         live: false,
         fmp4,
         ...(audio.length > 0 && { audio }),
+        ...(aes128 === true && { aes128 }),
       };
     }
     if (segments.length === 0) {
@@ -261,6 +273,7 @@ export function parseHlsPlaylist(
       encrypted,
       live: manifest.endList !== true,
       fmp4,
+      ...(aes128 === true && { aes128 }),
     };
   } catch (error) {
     throw error instanceof HlsParseError ? error : new HlsParseError();
@@ -345,6 +358,14 @@ export function validateHlsInfo(input: unknown): HlsInfoValidation {
     )
   ) {
     return { ok: false, error: 'mediaResources inválido (lista de até 32 textos)' };
+  }
+  if ('aes128' in input && input['aes128'] !== undefined) {
+    if (input['aes128'] !== true) {
+      return { ok: false, error: 'aes128 deve ser true quando presente' };
+    }
+    if (input['encrypted'] === true) {
+      return { ok: false, error: 'aes128 e encrypted não podem ser ambos true' };
+    }
   }
   return { ok: true, value: input as unknown as HlsInfo };
 }

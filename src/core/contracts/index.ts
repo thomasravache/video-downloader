@@ -263,7 +263,7 @@ export function validateResolveHlsResponse(input: unknown): ResolveHlsResponseVa
 }
 
 export type DiagnosticsResponse =
-  { ok: true; entries: LogEntry[] } | { ok: false; error: 'INVALID_MESSAGE' };
+  { ok: true; entries: LogEntry[]; text?: string } | { ok: false; error: 'INVALID_MESSAGE' };
 
 export type ManifestValidation =
   { ok: true; value: ProviderManifest } | { ok: false; error: string };

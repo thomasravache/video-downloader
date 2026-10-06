@@ -39,6 +39,7 @@ const text: ViewText = {
   accessDenied: t('accessDenied'),
   badgeEncrypted: t('badgeEncrypted'),
   badgeLive: t('badgeLive'),
+  aes128Note: t('aes128Note'),
   hlsLoading: t('hlsLoading'),
   hlsQuality: t('hlsQuality'),
   audioLabel: t('audioLabel'),

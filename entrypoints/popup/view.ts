@@ -17,6 +17,8 @@ export interface ViewText {
   accessDenied: string;
   badgeEncrypted: string;
   badgeLive: string;
+  /** Texto da nota AES-128 (SPEC-0017). */
+  aes128Note?: string;
   hlsLoading: string;
   hlsQuality: string;
   /** Rótulo do seletor de áudio (SPEC-0015). */
@@ -320,6 +322,11 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
     return;
   }
   const parts: HTMLElement[] = [];
+  if (hls.aes128 === true && text.aes128Note) {
+    const note = element('p', 'status', text.aes128Note);
+    note.dataset['testid'] = 'aes128-note';
+    parts.push(note);
+  }
   if (hls.durationSec !== undefined) {
     parts.push(element('p', 'status', text.duration(formatDuration(hls.durationSec))));
   }

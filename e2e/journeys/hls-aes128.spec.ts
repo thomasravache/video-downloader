@@ -28,12 +28,14 @@ const savedMp4 = (dir: string): string[] => {
 
 test.describe('HLS com criptografia AES-128 no popup', () => {
   test('SPEC-0017:E2E-01 [jornada: baixar-hls] página com HLS AES-128 no flavor local exibe nota, botão de baixar e salva MP4 válido', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
     downloadsDir,
   }) => {
+    test.skip(flavor !== 'local', 'AES-128 só é descriptografado no flavor local');
     const { tabId } = await openFetchingPage(
       context,
       serviceWorker,
@@ -80,11 +82,13 @@ test.describe('HLS com criptografia AES-128 no popup', () => {
   });
 
   test('SPEC-0017:E2E-02 (guarda: passa antes da mudança) página com HLS AES-128 no flavor public exibe badge de protegido sem botão de download', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
   }) => {
+    test.skip(flavor !== 'public', 'E2E-02 é a guarda de recusa no flavor public');
     const { tabId } = await openFetchingPage(
       context,
       serviceWorker,
@@ -103,11 +107,13 @@ test.describe('HLS com criptografia AES-128 no popup', () => {
   });
 
   test('SPEC-0017:E2E-03 playlist com KEYFORMAT Widevine no flavor local exibe badge de protegido sem botão de download', async ({
+    flavor,
     context,
     serviceWorker,
     extensionId,
     fixturesUrl,
   }) => {
+    test.skip(flavor !== 'local', 'E2E-03 testa recusa de DRM no flavor local');
     const { tabId } = await openFetchingPage(
       context,
       serviceWorker,

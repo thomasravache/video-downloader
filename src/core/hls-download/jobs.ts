@@ -9,7 +9,7 @@ import { JOB_ERRORS } from './errors';
 import type { JobError } from './errors';
 import { newJob, reduceJob } from './job';
 import type { JobEvent, JobState } from './job';
-import type { OffscreenAudio, OffscreenEvent, OffscreenStart } from './protocol';
+import type { EncryptionPlan, OffscreenAudio, OffscreenEvent, OffscreenStart } from './protocol';
 import type { ByteRange } from './segments';
 
 const JOBS_KEY = 'vd:jobs';
@@ -43,6 +43,8 @@ export interface JobPlan {
   initRange?: ByteRange;
   /** Faixa de áudio a juntar ao vídeo (SPEC-0014); o progresso soma as duas trilhas. */
   audio?: OffscreenAudio;
+  /** Plano de criptografia AES-128 (SPEC-0017). */
+  encryption?: EncryptionPlan;
 }
 
 export type CreateJobResult =
@@ -303,6 +305,7 @@ export function createJobManager(deps: JobManagerDeps): JobManager {
           ...(plan.initUrl !== undefined &&
             plan.initRange !== undefined && { initRange: plan.initRange }),
           ...(plan.audio !== undefined && { audio: plan.audio }),
+          ...(plan.encryption !== undefined && { encryption: plan.encryption }),
         };
         try {
           await offscreen.ensure();

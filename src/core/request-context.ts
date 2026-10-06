@@ -188,7 +188,7 @@ export function createContextScope(options: ContextScopeOptions): ContextScope {
       return installed;
     },
     get origin() {
-      return installed ? context?.origin : undefined;
+      return context?.origin;
     },
     async release() {
       const lease = held;

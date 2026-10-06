@@ -45,7 +45,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
-  await server?.close();
+  await server.close();
 });
 
 async function observe(url: string, tabId?: number): Promise<VideoCandidate> {
@@ -62,22 +62,25 @@ async function observe(url: string, tabId?: number): Promise<VideoCandidate> {
 describe('SPEC-0017:IT-08 resolveHls com SESSION-KEY', () => {
   it('SPEC-0017:IT-08 resolve master com SESSION-KEY: com política (local) vira aes128 e baixável', async () => {
     // Com a porta keyPolicy injetada (flavor local), resolveHls marca aes128: true e encrypted: false
-    const url = `${server.origin}/hls/session-master.m3u8`;
+    const _url = `${server.origin}/hls/session-master.m3u8`;
 
     // Service criado com keyPolicy
     const service = createService({
       extensionId: 'test-ext',
       providers: [],
-      scripting: { collectVideos: async () => [] },
-      downloads: { download: async () => 1 },
-      tabs: { getUrl: async () => PAGE },
-      permissions: { contains: async () => true, request: async () => true },
+      scripting: { collectVideos: () => Promise.resolve([]) },
+      downloads: { download: () => Promise.resolve(1) },
+      tabs: { getUrl: () => Promise.resolve(PAGE) },
+      permissions: {
+        contains: () => Promise.resolve(true),
+        request: () => Promise.resolve(true),
+      },
       diagnostics: createDiagnostics(),
       network: new NetworkStore({
-        get: async () => undefined,
-        set: async () => {},
-        remove: async () => {},
-        keys: async () => [],
+        get: () => Promise.resolve(undefined),
+        set: () => Promise.resolve(),
+        remove: () => Promise.resolve(),
+        keys: () => Promise.resolve([]),
       }),
       playlists: {
         fetchPlaylist: async (u) => {

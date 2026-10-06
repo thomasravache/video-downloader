@@ -107,9 +107,12 @@ export function checkFlavorGuard({ distDir, providersDir }: FlavorGuardOptions):
         re: new RegExp(`src/providers/${escapeRegExp(m.dirName)}(?![A-Za-z0-9_-])`),
       },
     ]);
-  if (patterns.length === 0) return;
+  const AES128_MARKER = 'VD_AES128_LOCAL_ONLY';
   for (const file of files) {
     const content = readFileSync(file, 'latin1');
+    if (content.includes(AES128_MARKER)) {
+      throw new Error(`FORBIDDEN_AES128_IN_PUBLIC: ${file}`);
+    }
     const leaked = patterns.find((p) => p.re.test(content));
     if (leaked !== undefined) {
       throw new Error(`FORBIDDEN_PROVIDER_IN_PUBLIC:${leaked.id} (${file})`);

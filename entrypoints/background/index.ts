@@ -1,4 +1,5 @@
 import { providers } from 'virtual:providers';
+import { keyPolicy } from 'virtual:aes128-policy';
 import { createDiagnostics } from '../../src/core/diagnostics';
 import { NetworkStore } from '../../src/core/network';
 import { createService } from '../../src/core/service';
@@ -61,6 +62,7 @@ export default defineBackground(() => {
     diagnostics,
     network,
     playlists: createPlaylistFetcher(),
+    ...(keyPolicy !== undefined && { keyPolicy }),
     scripting: {
       async collectVideos(tabId) {
         const injections = await browser.scripting.executeScript({

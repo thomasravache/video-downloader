@@ -62,11 +62,14 @@ module.exports = {
       comment:
         'Imports não resolvidos não podem escapar das regras de fronteira. Exceção documentada: ' +
         'aliases virtuais do WXT (#imports, #build, ...), que resolvem para .wxt (excluído) — no ' +
-        'core eles são proibidos por no-core-browser-api — e o módulo virtual `virtual:providers` ' +
-        '(ADR-0011), que só o background pode importar (no-virtual-providers-outside-background).',
+        'core eles são proibidos por no-core-browser-api — e os módulos virtuais `virtual:providers` ' +
+        '(ADR-0011), `virtual:aes128-policy` e `virtual:aes128-decrypt` (SPEC-0017).',
       severity: 'error',
       from: { path: '^(src|entrypoints)/' },
-      to: { couldNotResolve: true, pathNot: '^(#[a-z]|virtual:providers$)' },
+      to: {
+        couldNotResolve: true,
+        pathNot: '^(#[a-z]|virtual:providers$|virtual:aes128-policy$|virtual:aes128-decrypt$)',
+      },
     },
     {
       name: 'no-virtual-providers-outside-background',
@@ -76,6 +79,27 @@ module.exports = {
       severity: 'error',
       from: { pathNot: '^entrypoints/background(\\.ts$|/)' },
       to: { path: '^virtual:providers$' },
+    },
+    {
+      name: 'no-aes128-in-core',
+      comment: 'SPEC-0017: src/core não importa src/aes128 diretamente (inversão via porta).',
+      severity: 'error',
+      from: { path: '^src/core/' },
+      to: { path: '^src/aes128/' },
+    },
+    {
+      name: 'no-virtual-aes128-policy-outside-background',
+      comment: 'SPEC-0017: apenas o background consome virtual:aes128-policy.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/background(\\.ts$|/)' },
+      to: { path: '^virtual:aes128-policy$' },
+    },
+    {
+      name: 'no-virtual-aes128-decrypt-outside-offscreen',
+      comment: 'SPEC-0017: apenas o offscreen consome virtual:aes128-decrypt.',
+      severity: 'error',
+      from: { pathNot: '^entrypoints/offscreen(\\.ts$|/)' },
+      to: { path: '^virtual:aes128-decrypt$' },
     },
     {
       name: 'm3u8-parser-only-in-core',

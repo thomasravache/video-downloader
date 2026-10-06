@@ -90,3 +90,11 @@ pnpm exec vitest run tests/release/release-remote.test.ts
 ```
 
 Sem `SDD_REMOTE_RELEASE_TAG` os testes são pulados. Evidência: link da execução (`gh run view --web`). Não aprove o environment `webstore` no fork de teste (sem secrets o job falharia de qualquer forma).
+
+## 6. HLS AES-128 e Uso Responsável (ADR-0015, SPEC-0017)
+
+O suporte à descriptografia de playlists HLS com `METHOD=AES-128` (RFC 8216) por chave de sessão é restrito exclusivamente ao build `local`. O build `public` (Chrome Web Store) contém stubs neutros sem capacidade de descriptografia nem chaves reais (`scripts/release/flavor-guard.ts` valida a ausência de marcadores `VD_AES128_LOCAL_ONLY` e nós proibidos).
+
+- **Finalidade:** Destinado a cursos e conteúdos em que o usuário possui conta e acesso regular, para consumo pessoal e offline.
+- **Limites técnicos:** Apenas WebCrypto nativo (`AES-CBC`, IV explícito ou derivado da sequência); DRM comercial (Widevine, FairPlay, PlayReady) permanece bloqueado.
+- **Termos e responsabilidade:** Termos de serviço de plataformas podem restringir o download ou armazenamento local de mídia; a responsabilidade sobre a conformidade de uso é integralmente de quem opera a ferramenta.

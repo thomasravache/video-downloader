@@ -196,8 +196,17 @@
   "jobErrorENCRYPTED": {
     "message": "Este vídeo é criptografado e não pode ser baixado."
   },
+  "jobErrorKEY_FAILED": {
+    "message": "Não foi possível obter a chave para descriptografar este vídeo."
+  },
+  "jobErrorDECRYPT_FAILED": {
+    "message": "Não foi possível descriptografar este vídeo."
+  },
   "jobErrorLIVE": {
     "message": "Transmissões ao vivo não são suportadas."
+  },
+  "aes128Note": {
+    "message": "Criptografado (AES-128): será descriptografado com a chave da sua sessão"
   },
   "errorHlsNotResolved": {
     "message": "Não foi possível ler a playlist deste vídeo. Reabra o popup e tente de novo."

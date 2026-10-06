@@ -13,6 +13,15 @@ export class KeyFetchError extends Error {
   }
 }
 
-export function loadKey(_bytes: Uint8Array): Promise<CryptoKey> {
-  return Promise.reject(new Error('NotImplemented'));
+export async function loadKey(bytes: Uint8Array): Promise<CryptoKey> {
+  try {
+    if (bytes.length !== 16) {
+      throw new KeyFetchError('KEY_FAILED: chave deve ter exatamente 16 bytes');
+    }
+    return await crypto.subtle.importKey('raw', bytes as BufferSource, { name: 'AES-CBC' }, false, [
+      'decrypt',
+    ]);
+  } finally {
+    bytes.fill(0);
+  }
 }
