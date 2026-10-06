@@ -1,11 +1,11 @@
 # Índice de Specs
 
-> Gerado por `spec_graph.py index` em 2026-10-03 — não edite manualmente.
+> Gerado por `spec_graph.py index` em 2026-10-06 — não edite manualmente.
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 18 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 1, in-progress 8, implemented 5
+- Validação (G0): **0 erro(s), 11 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, in-progress 9, implemented 5
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -37,7 +37,7 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0016  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0016, SPEC-0017  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -52,7 +52,7 @@ Perfil: **padrao**
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
 | 8 | SPEC-0016 | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
-| 9 | SPEC-0017 | HLS com criptografia AES-128 por chave de sessão no flavor local | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015; saiu da onda 8: arquivos em comum com SPEC-0016 |
+| 9 | SPEC-0017 | HLS com criptografia AES-128 por chave de sessão no flavor local | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015; saiu da onda 8: arquivos em comum com SPEC-0016 |
 
 ## Épicos
 
@@ -81,7 +81,7 @@ flowchart LR
     S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::inprogress
     S0016["SPEC-0016<br/>Contexto de requisição da página para b…"]:::inprogress
-    S0017["SPEC-0017<br/>HLS com criptografia AES-128 por chave …"]:::approved
+    S0017["SPEC-0017<br/>HLS com criptografia AES-128 por chave …"]:::inprogress
   end
   S0002 --> S0007
   S0005 --> S0009
@@ -130,7 +130,7 @@ flowchart LR
 | [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
 | [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
 | [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | in-progress | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
-| [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | approved | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
+| [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | in-progress | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 
 ## ADRs
 
