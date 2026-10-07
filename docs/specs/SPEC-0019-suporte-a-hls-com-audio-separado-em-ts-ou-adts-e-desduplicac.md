@@ -4,7 +4,7 @@ title: Suporte a HLS com audio separado em TS ou ADTS e desduplicacao no YouTube
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-07
 parent:
 depends_on: []
@@ -251,7 +251,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 299 ms); test exit 0 (Duration  56.04s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~450ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m2:05PM[0m [32mINF[0m [1mno leaks found[0m) — 803a8b2 | 2026-10-07 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-07 |
 | G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — 6af5020 | 2026-10-07 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 1fcb06a | 2026-10-07 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
