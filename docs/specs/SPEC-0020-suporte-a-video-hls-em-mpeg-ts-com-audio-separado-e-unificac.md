@@ -4,7 +4,7 @@ title: Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-07
 parent:
 depends_on: [SPEC-0019]
@@ -160,12 +160,12 @@ Nenhuma questão impeditiva.
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
-- [ ] Fase 0: Teste de caracterização CH-01 commitado passando.
-- [ ] Fase 1: Escrever testes unitários e de integração Red (UT-01..04, IT-01..02, CT-01, E2E-01) com a tag `SPEC-0020:<ID>` e confirmar que falham pelo motivo esperado.
-- [ ] Fase 2: Implementar suporte a vídeo MPEG-TS em `service.ts` relaxando a trava de `media.fmp4` e aprimorar agrupamento em `candidates.ts`.
-- [ ] Fase 3: Ajustar `run-job.ts` e `assemble.ts` para transmuxar áudio e vídeo TS em fMP4 contínuo antes do merge.
-- [ ] Fase 4: Rodar todos os testes (unitários, integração, E2E, arquitetura, lint) e verificar tudo verde.
-- [ ] Fase 5: Validação do gate G4 (Review independente), G5 (CI) e PR de entrega.
+- [x] Fase 0: Teste de caracterização CH-01 commitado passando.
+- [x] Fase 1: Escrever testes unitários e de integração Red (UT-01..04, IT-01..02, CT-01, E2E-01) com a tag `SPEC-0020:<ID>` e confirmar que falham pelo motivo esperado.
+- [x] Fase 2: Implementar suporte a vídeo MPEG-TS em `service.ts` relaxando a trava de `media.fmp4` e aprimorar agrupamento em `candidates.ts`.
+- [x] Fase 3: Ajustar `run-job.ts` e `assemble.ts` para transmuxar áudio e vídeo TS em fMP4 contínuo antes do merge.
+- [x] Fase 4: Rodar todos os testes (unitários, integração, E2E, arquitetura, lint) e verificar tudo verde.
+- [x] Fase 5: Validação do gate G4 (Review independente), G5 (CI) e PR de entrega.
 
 ## 12. Registro de Gates
 <!-- Preenchido pelo comando `spec_graph.py gate SPEC-0020 <G>`. Não edite as linhas de tabela manualmente. -->
@@ -178,15 +178,61 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED verify G1+G4 PASS, escopo touches ok, ajuste em hls-merge-refusals justificado por suporte a video TS — c2d296f | 2026-10-07 |
 | G5 | PASS | build exit 0 (✔ Finished in 313 ms); test exit 0 (Duration  54.39s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~669ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m5:29PM[0m [32mINF[0m [1mno leaks found[0m) — 14f0bfb | 2026-10-07 |
 | H2 | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-07 |
-| G6 | PENDING | | |
-| G7 | PENDING | | |
+| G6 | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — b3a3af8 | 2026-10-07 |
+| G7 | PASS | Relatório de Entrega e Definição de Pronto: ok — e5d1977 | 2026-10-07 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
 
 ## 14. Relatório de Entrega
-<!-- Preenchido no fechamento (G7). -->
+
+### O que foi entregue
+Solução completa dos problemas de download e reprodução no YouTube identificados na release `v0.1.0-rc.6`:
+1. **Vídeo H.264 em MPEG-TS com áudio separado:** Desbloqueado download de variantes H.264 (`.ts` sem `#EXT-X-MAP`, `fmp4: false`) muxadas com áudio AAC em MP4 progressivo via Mediabunny.
+2. **Duração completa do áudio:** Segmentos TS de áudio e vídeo são agora convertidos em fluxos fMP4 contínuos usando `mux.js.mp4.Transmuxer` antes de alimentar o Mediabunny, garantindo que o áudio cubra 100% da duração do vídeo (eliminando o corte em ~5.7s).
+3. **Compatibilidade total com QuickTime Player:** Downloads padrão H.264/AAC abrem nativamente no QuickTime Player, IINA, VLC e navegadores.
+4. **Unificação de cartões no popup:** Media playlists individuais isoladas de um stream do YouTube são correlacionadas e agrupadas sob o cartão da Master Playlist pelo identificador `/id/<streamId>/`.
+
+### Como foi feito
+1. Em `src/core/service.ts`: removida a restrição `if (!media.fmp4)` no download HLS com áudio separado.
+2. Em `src/core/candidates.ts`: adicionada correlação de stream ID do YouTube (`extractYouTubeStreamId`) com sanitização estrita de domínio.
+3. Em `entrypoints/offscreen/assemble.ts`: implementado `transmuxTsToFmp4` para converter sequências de segmentos TS em fMP4 contínuo com timestamps ajustados e caixas `trun` v1 normalizadas.
+4. Em `entrypoints/offscreen/run-job.ts`: integrado `transmuxTsToFmp4` para converter vídeo TS e áudio TS em blobs fMP4 contínuos antes de passar para `assembleMerged`.
+
+### Prova de Correção
+N/A — spec do tipo feature (comportamento novo).
+
+### Verificação
+| Teste | Comportamento | Resultado | Evidência |
+|---|---|---|---|
+| CH-01 | Preservação de vídeo fMP4 + áudio ADTS da SPEC-0019 | PASS | tests/integration/hls-merge-job.test.ts |
+| UT-01 | Aceitação de vídeo MPEG-TS e áudio separado no service.downloadHls | PASS | tests/unit/service-hls-audio.test.ts |
+| UT-02 | Agrupamento de media playlist com /id/<id>/ como related da master | PASS | tests/unit/popup-view-dedup.test.ts |
+| UT-03 | Montagem e merge de vídeo sem initUrl no run-job.ts | PASS | tests/unit/run-job-merge-ts.test.ts |
+| UT-04 | Transmux de áudio TS com múltiplos segmentos em fMP4 contínuo | PASS | tests/unit/hls-assemble.test.ts |
+| IT-01 | Emissão de comando start offscreen para vídeo TS + áudio | PASS | tests/integration/hls-job-youtube.test.ts |
+| IT-02 | Pipeline offscreen com vídeo TS e áudio TS multi-segmento emite ready | PASS | tests/integration/hls-job-audio-offscreen.test.ts |
+| CT-01 | Contrato JobPlan permite initUrl opcional no vídeo e áudio | PASS | tests/unit/hls-merge-contract.test.ts |
+| E2E-01 | Jornada completa de download 1080p H.264 no YouTube | PASS | e2e/journeys/hls-youtube.spec.ts |
+
+### Definição de Pronto
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
+
+### Deploy
+Integrado na branch `main` via PR #26 (commit merge `b3a3af8`). Smoke e E2E validados no gate G6.
+
+### Pendências
+Nenhuma.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
