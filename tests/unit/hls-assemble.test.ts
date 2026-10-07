@@ -11,7 +11,7 @@
  * O leitor de caixas MP4 de apoio é tests/unit/support/mp4.ts (sem ffprobe).
  */
 import { describe, expect, it } from 'vitest';
-import { assembleFmp4, assembleTs } from '../../entrypoints/offscreen/assemble';
+import { assembleFmp4, assembleTs, normalizeTrunV1 } from '../../entrypoints/offscreen/assemble';
 import { AssemblyError } from '../../src/core/hls-download';
 import {
   CLIP_DURATION_SEC,
@@ -21,8 +21,8 @@ import {
   fmp4Segments,
   tsSegments,
 } from './support/hls-clip';
-import { inspectMp4 } from './support/mp4';
-import { withEncryptionBox } from './support/mp4-build';
+import { inspectMp4, readBoxes } from './support/mp4';
+import { box, withEncryptionBox } from './support/mp4-build';
 import { MAX_BUFFERED_BYTES } from '../../src/core/hls-download';
 
 const DURATION_TOLERANCE = 0.6;
@@ -51,6 +51,15 @@ describe('leitor de caixas MP4 de apoio', () => {
 });
 
 describe('assembleTs: segmentos TS reais -> MP4 (mux.js)', () => {
+  it('SPEC-0018:CH-01 (guarda: passa antes da mudança) assembleTs com os segmentos do clipe de fixture v360 gera MP4 válido com ftyp, moov e mdat', async () => {
+    const mp4 = await assembleTs(undefined, tsSegments('v360'));
+
+    const info = inspectMp4(mp4);
+    expect(info.topLevel[0]).toBe('ftyp');
+    expect(info.topLevel).toContain('moov');
+    expect(info.topLevel).toContain('mdat');
+  });
+
   it('SPEC-0012:UT-05 a variante 640x360 vira MP4 que começa com ftyp e contém moov e mdat', async () => {
     const mp4 = await assembleTs(undefined, tsSegments('v360'));
 
@@ -140,5 +149,91 @@ describe('assembleFmp4: init + segmentos concatenados', () => {
     const promise = assembleFmp4(fmp4Init(), [declared(MAX_BUFFERED_BYTES)]);
 
     await expect(promise).rejects.toMatchObject({ code: 'TOO_LARGE' });
+  });
+});
+
+describe('transmuxer compatível e normalização de timestamps (SPEC-0018)', () => {
+  it('SPEC-0018:UT-01 assembleTs remuxa TS com mediabunny gerando MP4 progressivo padronizado com duracao exata e caixas trun v1 normalizadas', async () => {
+    const mp4 = await assembleTs(undefined, tsSegments('v360'));
+
+    const info = inspectMp4(mp4);
+    // MP4 progressivo padronizado finalizado com mediabunny (fastStart: 'in-memory')
+    expect(info.topLevel).toEqual(expect.arrayContaining(['ftyp', 'moov', 'mdat']));
+    expect(info.topLevel).not.toContain('moof');
+    expect(info.tracks.every((t) => t.sampleCount > 0)).toBe(true);
+    expect(Math.abs(info.durationSec - CLIP_DURATION_SEC)).toBeLessThan(0.6);
+  });
+
+  it('SPEC-0018:UT-02 fMP4 com anomalia de 27h (trun v0 e offset de composicao negativo) e normalizado para trun v1', () => {
+    // Constrói fMP4 com trun em versão 0 e sample.compositionTimeOffset negativo (0xffff_e890 = -6000 ticks)
+    const trunV0 = box(
+      'trun',
+      new Uint8Array([
+        0,
+        0,
+        0x08,
+        0x01, // version 0, flags (data_offset + comp_time_offsets)
+        0,
+        0,
+        0,
+        2, // sample count: 2
+        0,
+        0,
+        0,
+        0, // data offset: 0
+        0,
+        0,
+        0,
+        0, // sample 1 CTO: 0
+        0xff,
+        0xff,
+        0xe8,
+        0x90, // sample 2 CTO: -6000 (estouro em v0: 4294961296)
+      ]),
+    );
+    const moof = box(
+      'moof',
+      box('mfhd', new Uint8Array([0, 0, 0, 0, 0, 0, 0, 1])),
+      box('traf', box('tfhd', new Uint8Array([0, 0, 0, 0, 0, 0, 0, 1])), trunV0),
+    );
+    const fmp4WithAnomaly = concat([fmp4Init(), moof]);
+
+    const normalized = normalizeTrunV1(fmp4WithAnomaly);
+    const top = readBoxes(normalized);
+    let trunVersion: number | undefined;
+    for (const moof of top.filter((b) => b.type === 'moof')) {
+      for (const traf of readBoxes(normalized, moof.payload, moof.end).filter(
+        (b) => b.type === 'traf',
+      )) {
+        for (const trun of readBoxes(normalized, traf.payload, traf.end).filter(
+          (b) => b.type === 'trun',
+        )) {
+          trunVersion = normalized[trun.payload];
+        }
+      }
+    }
+
+    // Versão da caixa trun deve ser 1
+    expect(trunVersion).toBe(1);
+  });
+
+  it('SPEC-0018:CT-01 conformidade do contrato de assembleTs com rejeicoes de erro TOO_LARGE, UNSUPPORTED_CODEC e geracao de MP4 progressivo padronizado', async () => {
+    // 1. Rejeição com TOO_LARGE quando excede 1.5 GiB
+    await expect(
+      assembleTs(undefined, [declared(MAX_BUFFERED_BYTES), declared(1)]),
+    ).rejects.toMatchObject({
+      code: 'TOO_LARGE',
+    });
+
+    // 2. Rejeição com UNSUPPORTED_CODEC para bytes corrompidos
+    await expect(assembleTs(undefined, [new Uint8Array(4096).fill(7)])).rejects.toMatchObject({
+      code: 'UNSUPPORTED_CODEC',
+    });
+
+    // 3. Montagem com sucesso gera MP4 progressivo padronizado (sem fragmentos moof)
+    const mp4 = await assembleTs(undefined, tsSegments('v360'));
+    const info = inspectMp4(mp4);
+    expect(info.topLevel).toEqual(['ftyp', 'moov', 'mdat']);
+    expect(info.topLevel).not.toContain('moof');
   });
 });

@@ -67,10 +67,15 @@ export function toFilename(input: FilenameInput): string {
   const mime = input.mimeType?.split(';')[0]?.trim().toLowerCase();
   const extension = (mime !== undefined ? EXT_BY_MIME[mime] : undefined) ?? extensionOf(segment);
 
-  let base = sanitize(input.title ?? '');
+  let base = sanitize(input.title ?? '')
+    .replace(/\.m3u8$/i, '')
+    .trim();
   if (base === '') {
+    const cleanedSegment = segment.replace(/\.(m3u8|mpd)$/i, '');
     const withoutExt =
-      extensionOf(segment) !== undefined ? segment.replace(/\.[^.]+$/, '') : segment;
+      extensionOf(cleanedSegment) !== undefined
+        ? cleanedSegment.replace(/\.[^.]+$/, '')
+        : cleanedSegment;
     base = sanitize(withoutExt);
   }
   if (base === '') {

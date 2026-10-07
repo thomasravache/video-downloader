@@ -209,3 +209,20 @@ describe('desempenho da montagem (informativo, sem limite)', () => {
     expect(out.subarray(0, 8)).toEqual(init.subarray(0, 8));
   });
 });
+
+describe('montagem TS progressiva (SPEC-0018:IT-01)', () => {
+  it('SPEC-0018:IT-01 montagem completa de segmentos TS gera MP4 progressivo padronizado com duracao exata e amostras continuas', async () => {
+    const mp4 = await download(urlOf('v360.m3u8'));
+    const info = inspectMp4(mp4);
+
+    expect(info.topLevel).toEqual(['ftyp', 'moov', 'mdat']);
+    expect(info.topLevel).not.toContain('moof');
+    expect(Math.abs(info.durationSec - CLIP_DURATION_SEC)).toBeLessThan(0.6);
+    const video = info.tracks.find((t) => t.handler === 'vide');
+    const audio = info.tracks.find((t) => t.handler === 'soun');
+    expect(video).toBeDefined();
+    expect(audio).toBeDefined();
+    expect(video?.sampleCount).toBeGreaterThan(0);
+    expect(audio?.sampleCount).toBeGreaterThan(0);
+  });
+});

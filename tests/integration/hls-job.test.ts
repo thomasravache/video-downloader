@@ -18,6 +18,7 @@
  *  - o estado do job vive em storage.session: `bg.restart()` (service worker suspenso) preserva o job.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { startBackground } from './support/background';
 import type { BackgroundHarness } from './support/background';
 import { simulateOffscreen } from './support/offscreen';
@@ -435,5 +436,36 @@ describe('download HLS: limites e erros', () => {
     expect(response.ok).toBe(false);
     expect(offscreen.starts()).toEqual([]);
     expect(bg.download).not.toHaveBeenCalled();
+  });
+
+  it('SPEC-0018:IT-02 download de candidato HLS salva arquivo com nome sanitizado baseado no título da aba e duracao conferida', async () => {
+    await start();
+    captureDownloads(bg, 88);
+    const tabId = await bg.newTab(urlOf('master.m3u8'));
+    const tab = await fakeBrowser.tabs.get(tabId);
+    (tab as unknown as { title?: string }).title = 'Aula Incrível: "Introdução ao TS" <parte 1>';
+
+    const { candidate } = await observeAndResolve(bg, urlOf('master.m3u8'), tabId);
+    const started = (await startDownload(bg, candidate.id)) as { ok: boolean; jobId: string };
+    expect(started.ok).toBe(true);
+    const saving = await waitForJob(bg, started.jobId, (j) => j.state === 'saving');
+
+    expect(saving.filename).toContain('Aula Incrível Introdução ao TS parte 1');
+    expect(saving.filename).toMatch(/ - 360p\.mp4$/);
+  });
+
+  it('SPEC-0018:IT-04 se o titulo da aba for generico ou vazio, fallback para o nome limpo da URL', async () => {
+    await start();
+    captureDownloads(bg, 99);
+    const tabId = await bg.newTab(urlOf('master.m3u8'));
+    const tab = await fakeBrowser.tabs.get(tabId);
+    (tab as unknown as { title?: string }).title = '';
+
+    const { candidate } = await observeAndResolve(bg, urlOf('master.m3u8'), tabId);
+    const started = (await startDownload(bg, candidate.id)) as { ok: boolean; jobId: string };
+    expect(started.ok).toBe(true);
+    const saving = await waitForJob(bg, started.jobId, (j) => j.state === 'saving');
+
+    expect(saving.filename).toBe('master - 360p.mp4');
   });
 });

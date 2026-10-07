@@ -31,7 +31,7 @@ function totalSize(details: RequestDetails): number | undefined {
 }
 
 /** Converte os detalhes de `webRequest.onResponseStarted` em `NetworkResponse` (só cabeçalhos, nunca corpo). */
-export function toNetworkResponse(details: RequestDetails): NetworkResponse {
+export function toNetworkResponse(details: RequestDetails, tabTitle?: string): NetworkResponse {
   const contentType = header(details, 'content-type');
   const contentLength = totalSize(details);
   return {
@@ -43,5 +43,6 @@ export function toNetworkResponse(details: RequestDetails): NetworkResponse {
     ...(details.initiator !== undefined && { initiator: details.initiator }),
     ...(contentType !== undefined && { contentType }),
     ...(contentLength !== undefined && { contentLength }),
+    ...(tabTitle !== undefined && { tabTitle }),
   };
 }

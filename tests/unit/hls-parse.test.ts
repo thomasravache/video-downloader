@@ -540,3 +540,19 @@ describe('parseHlsPlaylist: entrada inválida', () => {
     },
   );
 });
+
+describe('parseHlsPlaylist: deteccao de playlist de legendas (SPEC-0018:UT-04)', () => {
+  it('SPEC-0018:UT-04 playlist HLS de mídia cujos segmentos sao .webvtt/.vtt e identificada como type subtitles', () => {
+    const vttPlaylist = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:4
+#EXTINF:4.0,
+seg0.webvtt
+#EXTINF:4.0,
+seg1.vtt
+#EXT-X-ENDLIST
+`;
+    const info = parseHlsPlaylist(vttPlaylist, 'https://cdn.example.test/hls/subtitles.m3u8');
+    expect(info.type).toBe('subtitles');
+  });
+});

@@ -118,7 +118,20 @@ export default defineBackground(() => {
     try {
       webRequest.onResponseStarted.addListener(
         (details) => {
-          void service.onNetworkResponse(toNetworkResponse(details));
+          void (async () => {
+            let tabTitle: string | undefined;
+            if (details.tabId >= 0) {
+              try {
+                const tab = await browser.tabs.get(details.tabId);
+                if (typeof tab.title === 'string' && tab.title.trim() !== '') {
+                  tabTitle = tab.title;
+                }
+              } catch {
+                // Aba fechada ou sem permissão
+              }
+            }
+            await service.onNetworkResponse(toNetworkResponse(details, tabTitle));
+          })();
         },
         filter,
         ['responseHeaders'],

@@ -206,3 +206,33 @@ describe('classifyNetworkResponse: descartes', () => {
     expect(perCall).toBeLessThan(1);
   });
 });
+
+describe('classifyNetworkResponse: descarte de legendas (SPEC-0018:UT-03)', () => {
+  it('SPEC-0018:UT-03 resposta de rede com URL contendo textstream ou contentType text/vtt retorna null', () => {
+    expect(
+      classifyNetworkResponse(
+        response({
+          url: 'https://cdn.example.test/hls/textstream.m3u8',
+          contentType: 'application/vnd.apple.mpegurl',
+        }),
+      ),
+    ).toBeNull();
+
+    expect(
+      classifyNetworkResponse(
+        response({
+          url: 'https://cdn.example.test/hls/subtitles.m3u8',
+          contentType: 'text/vtt',
+        }),
+      ),
+    ).toBeNull();
+
+    expect(
+      classifyNetworkResponse(
+        response({
+          url: 'https://cdn.example.test/hls/subtitles/playlist.m3u8',
+        }),
+      ),
+    ).toBeNull();
+  });
+});
