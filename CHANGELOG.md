@@ -8,6 +8,9 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+### Added
+- Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes (SPEC-0020)
+
 ## [0.1.0-rc.6] - 2026-10-07
 
 ### Added
