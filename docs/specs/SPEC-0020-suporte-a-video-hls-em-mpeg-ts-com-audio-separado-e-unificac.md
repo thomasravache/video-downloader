@@ -173,7 +173,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 | PASS | validate: 0 erro(s) — d089018 | 2026-10-07 |
 | H1 | PENDING | | |
-| G1 | PENDING | | |
+| G1 | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯) — b973479 | 2026-10-07 |
 | G2 | PENDING | | |
 | G3 | PENDING | | |
 | G4 | PENDING | | |
