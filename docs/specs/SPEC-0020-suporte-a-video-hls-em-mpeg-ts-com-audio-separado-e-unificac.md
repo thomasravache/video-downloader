@@ -4,7 +4,7 @@ title: Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-07
 parent:
 depends_on: [SPEC-0019]
@@ -13,6 +13,7 @@ contract_version: 1
 touches:
   - src/core/candidates.ts
   - src/core/service.ts
+  - entrypoints/offscreen/assemble.ts
   - entrypoints/offscreen/merge.ts
   - entrypoints/offscreen/run-job.ts
   - entrypoints/popup/view.ts
