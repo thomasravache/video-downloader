@@ -8,6 +8,9 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+### Fixed
+- Corrigir transmuxer HLS TS com MP4 compativel, ignorar legendas e enriquecer titulo (SPEC-0018)
+
 ## [0.1.0-rc.4] - 2026-10-06
 
 ### Added
