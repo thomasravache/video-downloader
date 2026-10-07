@@ -248,7 +248,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 319 ms); test exit 0 (Duration  58.35s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 177 ms); coverage exit 0 (================================================================================) — 966bef6 | 2026-10-07 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)) — 05ce852 | 2026-10-07 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED — escopo estrito em touches, 12/12 testes cobrem comportamentos, ajustes justificados — fadf833 | 2026-10-07 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 299 ms); test exit 0 (Duration  56.04s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~450ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m2:05PM[0m [32mINF[0m [1mno leaks found[0m) — 803a8b2 | 2026-10-07 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
