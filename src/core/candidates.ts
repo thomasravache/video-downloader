@@ -156,7 +156,7 @@ function pathKey(url: string): string | undefined {
 function extractYouTubeStreamId(url: string): string | undefined {
   try {
     const parsed = new URL(url);
-    if (!parsed.hostname.includes('googlevideo.com')) {
+    if (parsed.hostname !== 'googlevideo.com' && !parsed.hostname.endsWith('.googlevideo.com')) {
       return undefined;
     }
     const pathMatch = /\/id\/([^/]+)/.exec(parsed.pathname);
