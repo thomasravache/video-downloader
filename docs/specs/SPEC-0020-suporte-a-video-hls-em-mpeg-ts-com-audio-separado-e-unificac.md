@@ -176,7 +176,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G1 | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯) — b973479 | 2026-10-07 |
 | G2 | PASS | build exit 0 (✔ Finished in 291 ms); test exit 0 (Duration  59.10s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 212 ms); coverage exit 0 (================================================================================) — 474a89a | 2026-10-07 |
 | G3 | PASS | arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)) — 18b8b17 | 2026-10-07 |
-| G4 | PENDING | | |
+| G4 | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED verify G1+G4 PASS, escopo touches ok, ajuste em hls-merge-refusals justificado por suporte a video TS — c2d296f | 2026-10-07 |
 | G5 | PENDING | | |
 | H2 | PENDING | | |
 | G6 | PENDING | | |
