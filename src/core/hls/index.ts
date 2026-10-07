@@ -165,7 +165,24 @@ function label(bandwidth: number, height: number | undefined): string {
     : `${String(Math.round(bandwidth / 1000))} kbps`;
 }
 
-function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
+function codecRank(codecs?: string): number {
+  if (!codecs) return 1;
+  if (/avc1|h264/i.test(codecs)) return 0;
+  if (/vp09|vp9/i.test(codecs)) return 2;
+  return 1;
+}
+
+function codecDisplay(codecs?: string): string | undefined {
+  if (!codecs) return undefined;
+  if (/avc1|h264/i.test(codecs)) return 'H.264';
+  if (/vp09|vp9/i.test(codecs)) return 'VP9';
+  if (/av01|av1/i.test(codecs)) return 'AV1';
+  if (/hev1|hvc1|h265/i.test(codecs)) return 'H.265';
+  const first = codecs.split(',')[0]?.trim().split('.')[0];
+  return first ? first.toUpperCase() : undefined;
+}
+
+export function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
   const found = (manifest.playlists ?? []).flatMap((playlist) => {
     if (typeof playlist.uri !== 'string' || playlist.uri === '') {
       return [];
@@ -193,15 +210,74 @@ function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
       },
     ];
   });
-  // `sort` é estável: variantes de mesma banda mantêm a ordem do arquivo.
+
+  const codecsByHeight = new Map<number, Set<string>>();
+  for (const variant of found) {
+    if (variant.height !== undefined && variant.height > 0) {
+      const display = codecDisplay(variant.codecs);
+      if (display) {
+        let set = codecsByHeight.get(variant.height);
+        if (!set) {
+          set = new Set();
+          codecsByHeight.set(variant.height, set);
+        }
+        set.add(display);
+      }
+    }
+  }
+
+  const effectiveBw = new Map<(typeof found)[number], number>();
+  for (const variant of found) {
+    if (variant.height !== undefined && variant.height > 0) {
+      const cluster = found.filter(
+        (other) =>
+          other.height === variant.height &&
+          Math.max(variant.bandwidth, other.bandwidth) /
+            Math.max(1, Math.min(variant.bandwidth, other.bandwidth)) <
+            1.5,
+      );
+      effectiveBw.set(variant, Math.max(...cluster.map((c) => c.bandwidth)));
+    } else {
+      effectiveBw.set(variant, variant.bandwidth);
+    }
+  }
+
   return found
-    .sort((a, b) => b.bandwidth - a.bandwidth)
+    .sort((a, b) => {
+      const aBw = effectiveBw.get(a) ?? a.bandwidth;
+      const bBw = effectiveBw.get(b) ?? b.bandwidth;
+      if (aBw !== bBw) {
+        return bBw - aBw;
+      }
+      if (
+        a.height !== undefined &&
+        b.height !== undefined &&
+        a.height === b.height &&
+        a.height > 0
+      ) {
+        const rankDiff = codecRank(a.codecs) - codecRank(b.codecs);
+        if (rankDiff !== 0) {
+          return rankDiff;
+        }
+      }
+      return b.bandwidth - a.bandwidth;
+    })
     .slice(0, MAX_VARIANTS)
-    .map((variant, index) => ({
-      index,
-      ...variant,
-      label: label(variant.bandwidth, variant.height),
-    }));
+    .map((variant, index) => {
+      const height = variant.height;
+      const display = codecDisplay(variant.codecs);
+      const hasMultipleCodecs =
+        height !== undefined && height > 0 && (codecsByHeight.get(height)?.size ?? 0) > 1;
+      let variantLabel = label(variant.bandwidth, variant.height);
+      if (hasMultipleCodecs && display) {
+        variantLabel = `${variantLabel} (${display})`;
+      }
+      return {
+        index,
+        ...variant,
+        label: variantLabel,
+      };
+    });
 }
 
 /** Interface mínima para classificação de chaves injetada em parseHlsPlaylist (evita ciclo com ports.ts). */

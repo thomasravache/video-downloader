@@ -83,6 +83,31 @@ describe('download com áudio separado: um único MP4 com as duas trilhas', () =
     expect(info.tracks.find((t) => t.handler === 'soun')?.sampleCount).toBe(sourceSamples(audio));
   });
 
+  it('SPEC-0019:CH-01 (guarda: passa antes da mudança) download com master playlist e faixas de áudio onde ambos os streams possuem EXT-X-MAP conclui com sucesso e gera MP4 válido com duas trilhas', async () => {
+    await serve(splitRoutes());
+    const saved = captureDownloads(bg, 77);
+    const { candidate } = await observeAndResolve(bg, o('/av/master.m3u8'));
+
+    const { jobId } = await startJob(bg, candidate.id);
+    const saving = await waitForJob(bg, jobId, (j) => j.state === 'saving');
+    await bg.downloadEvents.complete(77);
+    const done = await waitForJob(bg, jobId, (j) => j.state === 'done');
+
+    expect(done.error).toBeUndefined();
+    const total = video.segments.length + audio.segments.length;
+    expect(saving).toMatchObject({ segmentsDone: total, segmentsTotal: total, percent: 100 });
+    expect(saved).toHaveLength(1);
+    const info = inspectMp4(saved[0]?.bytes ?? new Uint8Array());
+    expect(info.topLevel[0]).toBe('ftyp');
+    expect(info.tracks.map((t) => t.handler).sort()).toEqual(['soun', 'vide']);
+    expect(info.tracks.find((t) => t.handler === 'vide')).toMatchObject({
+      width: 320,
+      height: 180,
+    });
+    expect(info.tracks.find((t) => t.handler === 'vide')?.sampleCount).toBe(sourceSamples(video));
+    expect(info.tracks.find((t) => t.handler === 'soun')?.sampleCount).toBe(sourceSamples(audio));
+  });
+
   it('SPEC-0014:IT-02 o start leva video e audio com ranges; TODA requisição de mídia leva o Range certo, no arquivo certo', async () => {
     await serve(splitRoutes());
     captureDownloads(bg, 5);

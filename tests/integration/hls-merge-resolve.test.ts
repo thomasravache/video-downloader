@@ -188,4 +188,57 @@ describe('resolveHls com áudio separado', () => {
     expect(response.hls?.audio).toBeUndefined();
     expect(playlistLog(server).sort()).toEqual(['/av/master.m3u8', '/av/video.m3u8']);
   });
+
+  it('SPEC-0019:IT-02 fluxo service.resolveHls sobre master playlist do YouTube com 18 variantes e 6 trilhas de áudio normaliza variantes com codec e indexa faixas de áudio', async () => {
+    const audioLines = [
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="233",NAME="English",DEFAULT=YES,LANGUAGE="en",URI="audio-233-en.m3u8"',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="233",NAME="Português",LANGUAGE="pt",URI="audio-233-pt.m3u8"',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="234",NAME="English",DEFAULT=YES,LANGUAGE="en",URI="audio-234-en.m3u8"',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="234",NAME="Português",LANGUAGE="pt",URI="audio-234-pt.m3u8"',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="234",NAME="Español",LANGUAGE="es",URI="audio-234-es.m3u8"',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="234",NAME="Français",LANGUAGE="fr",URI="audio-234-fr.m3u8"',
+    ];
+    const resolutions = [
+      { h: 2160, bwA: 15000000, bwV: 16000000, g: '234' },
+      { h: 1440, bwA: 9000000, bwV: 9500000, g: '234' },
+      { h: 1080, bwA: 4600000, bwV: 4800000, g: '234' },
+      { h: 720, bwA: 2500000, bwV: 2600000, g: '234' },
+      { h: 480, bwA: 1200000, bwV: 1300000, g: '234' },
+      { h: 360, bwA: 700000, bwV: 750000, g: '233' },
+      { h: 240, bwA: 400000, bwV: 420000, g: '233' },
+      { h: 144, bwA: 200000, bwV: 220000, g: '233' },
+      { h: 144, bwA: 100000, bwV: 110000, g: '233' }, // 9 resoluções * 2 codecs = 18 variantes
+    ];
+    const variantLines = resolutions.flatMap(({ h, bwA, bwV, g }, i) => [
+      `#EXT-X-STREAM-INF:BANDWIDTH=${String(bwV)},RESOLUTION=${String(Math.round((h * 16) / 9))}x${String(h)},CODECS="vp09.00.41.08",AUDIO="${g}"\nvideo-${String(i)}-vp9.m3u8`,
+      `#EXT-X-STREAM-INF:BANDWIDTH=${String(bwA)},RESOLUTION=${String(Math.round((h * 16) / 9))}x${String(h)},CODECS="avc1.640028",AUDIO="${g}"\nvideo-${String(i)}-avc.m3u8`,
+    ]);
+    const ytMaster = ['#EXTM3U', '#EXT-X-VERSION:3', ...audioLines, ...variantLines].join('\n');
+
+    const routes: Record<string, ReturnType<typeof body>> = {
+      '/av/master-yt.m3u8': body(ytMaster),
+      '/av/audio-234-en.m3u8': body(audio.playlist),
+    };
+    resolutions.forEach((_, i) => {
+      routes[`/av/video-${String(i)}-vp9.m3u8`] = body(video.playlist);
+      routes[`/av/video-${String(i)}-avc.m3u8`] = body(video.playlist);
+    });
+    await serve(routes);
+
+    const { response } = await resolve('/av/master-yt.m3u8');
+    expect(response).toMatchObject({ ok: true });
+    if (!response.hls) throw new Error('esperado response.hls');
+    const { hls } = response;
+    expect(hls.type).toBe('master');
+    expect(hls.variants).toHaveLength(18);
+    expect(hls.audio).toHaveLength(6);
+    expect(hls.audio?.map((a) => a.index)).toEqual([0, 1, 2, 3, 4, 5]);
+
+    // Resoluções duplicadas devem priorizar AVC1 e enriquecer rótulos com codec
+    const v1080 = hls.variants.filter((v) => v.height === 1080);
+    expect(v1080).toHaveLength(2);
+    expect(v1080[0]?.codecs).toContain('avc1');
+    expect(v1080[0]?.label).toContain('(H.264)');
+    expect(v1080[1]?.label).toContain('(VP9)');
+  });
 });
