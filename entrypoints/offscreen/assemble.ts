@@ -159,30 +159,9 @@ export async function assembleTs(
 }
 
 async function transmux(segments: readonly Uint8Array[]): Promise<Uint8Array> {
-  const transmuxer = new muxjs.mp4.Transmuxer({ keepOriginalTimestamps: false });
-  let initSegment: Uint8Array | undefined;
-  const fragments: Uint8Array[] = [];
-  transmuxer.on('data', (segment) => {
-    if (segment.data.byteLength === 0) {
-      return;
-    }
-    initSegment ??= segment.initSegment;
-    fragments.push(segment.data);
-  });
-  try {
-    for (const segment of segments) {
-      transmuxer.push(segment);
-      transmuxer.flush();
-    }
-  } catch {
-    throw new AssemblyError('UNSUPPORTED_CODEC', 'segmentos não são TS H.264/AAC');
-  }
-  if (initSegment === undefined || fragments.length === 0) {
-    throw new AssemblyError('UNSUPPORTED_CODEC', 'nenhuma trilha H.264/AAC');
-  }
+  const { initSegment, fragments } = await transmuxTsToFmp4(segments);
   const fmp4 = concat([initSegment, ...fragments]);
-  const normalized = normalizeTrunV1(fmp4);
-  return remuxWithMediabunny(normalized);
+  return remuxWithMediabunny(fmp4);
 }
 
 const CONTAINERS = ['moov', 'trak', 'mdia', 'minf', 'stbl'];
@@ -330,4 +309,142 @@ export function normalizeTrunV1(bytes: Uint8Array): Uint8Array {
     }
   }
   return out;
+}
+
+/**
+ * Transmuta uma série de segmentos TS em fMP4 contínuo preservando todos os segmentos (SPEC-0020).
+ */
+export function transmuxTsToFmp4(
+  segments: readonly Uint8Array[],
+): Promise<{ initSegment: Uint8Array; fragments: Uint8Array[] }> {
+  try {
+    const transmuxer = new muxjs.mp4.Transmuxer({ keepOriginalTimestamps: false });
+    let initSegment: Uint8Array | undefined;
+    const fragments: Uint8Array[] = [];
+    transmuxer.on('data', (segment) => {
+      if (segment.data.byteLength === 0) {
+        return;
+      }
+      initSegment ??= segment.initSegment;
+      fragments.push(segment.data);
+    });
+    for (const segment of segments) {
+      transmuxer.push(segment);
+      transmuxer.flush();
+    }
+    if (initSegment === undefined || fragments.length === 0) {
+      throw new AssemblyError('UNSUPPORTED_CODEC', 'nenhuma trilha H.264/AAC');
+    }
+    const normalizedFragments = fragments.map((f) => normalizeTrunV1(f));
+    const alignedFragments = alignFragmentTimestamps(normalizedFragments);
+    return Promise.resolve({
+      initSegment,
+      fragments: alignedFragments,
+    });
+  } catch (error) {
+    if (error instanceof AssemblyError) {
+      return Promise.reject(error);
+    }
+    return Promise.reject(new AssemblyError('UNSUPPORTED_CODEC', 'segmentos não são TS H.264/AAC'));
+  }
+}
+
+/**
+ * Alinha baseMediaDecodeTime das caixas tfdt entre fragmentos fMP4 (SPEC-0020).
+ * Garante que segmentos com timestamps repetidos ou reiniciados em 0 (típico do YouTube HLS)
+ * tenham timestamps contínuos e sequenciais sem quebras.
+ */
+function alignFragmentTimestamps(fragments: readonly Uint8Array[]): Uint8Array[] {
+  const expectedNextTime = new Map<number, bigint>();
+  const trackOffset = new Map<number, bigint>();
+
+  return fragments.map((fragment) => {
+    const out = new Uint8Array(fragment);
+    const topBoxes = parseBoxRanges(out, 0, out.byteLength);
+    for (const moof of topBoxes) {
+      if (moof.type !== 'moof') continue;
+      const trafs = parseBoxRanges(out, moof.payload, moof.end);
+      for (const traf of trafs) {
+        if (traf.type !== 'traf') continue;
+        const boxes = parseBoxRanges(out, traf.payload, traf.end);
+        const tfhd = boxes.find((b) => b.type === 'tfhd');
+        const tfdt = boxes.find((b) => b.type === 'tfdt');
+        const trun = boxes.find((b) => b.type === 'trun');
+        if (!tfhd) continue;
+
+        const tfhdView = new DataView(
+          out.buffer,
+          out.byteOffset + tfhd.payload,
+          tfhd.end - tfhd.payload,
+        );
+        const tfhdFlags =
+          (tfhdView.getUint8(1) << 16) | (tfhdView.getUint8(2) << 8) | tfhdView.getUint8(3);
+        const trackId = tfhdView.getUint32(4);
+
+        let defaultSampleDuration = 0;
+        let tfhdOffset = 8;
+        if (tfhdFlags & 0x0001) tfhdOffset += 8;
+        if (tfhdFlags & 0x0002) tfhdOffset += 4;
+        if (tfhdFlags & 0x0008) defaultSampleDuration = tfhdView.getUint32(tfhdOffset);
+
+        let trafDuration = 0n;
+        if (trun) {
+          const trunView = new DataView(
+            out.buffer,
+            out.byteOffset + trun.payload,
+            trun.end - trun.payload,
+          );
+          const trunFlags =
+            (trunView.getUint8(1) << 16) | (trunView.getUint8(2) << 8) | trunView.getUint8(3);
+          const sampleCount = trunView.getUint32(4);
+          let offset = 8;
+          if (trunFlags & 0x0001) offset += 4;
+          if (trunFlags & 0x0004) offset += 4;
+          const hasDuration = !!(trunFlags & 0x0100);
+          const hasSize = !!(trunFlags & 0x0200);
+          const hasFlags = !!(trunFlags & 0x0400);
+          const hasCompTime = !!(trunFlags & 0x0800);
+          for (let s = 0; s < sampleCount; s++) {
+            if (hasDuration) {
+              trafDuration += BigInt(trunView.getUint32(offset));
+              offset += 4;
+            } else if (defaultSampleDuration > 0) {
+              trafDuration += BigInt(defaultSampleDuration);
+            }
+            if (hasSize) offset += 4;
+            if (hasFlags) offset += 4;
+            if (hasCompTime) offset += 4;
+          }
+        }
+
+        if (tfdt) {
+          const tfdtView = new DataView(
+            out.buffer,
+            out.byteOffset + tfdt.payload,
+            tfdt.end - tfdt.payload,
+          );
+          const version = tfdtView.getUint8(0);
+          const rawBaseTime =
+            version === 1 ? tfdtView.getBigUint64(4) : BigInt(tfdtView.getUint32(4));
+
+          const expected = expectedNextTime.get(trackId);
+          let currentOffset = trackOffset.get(trackId) ?? 0n;
+          if (expected !== undefined && rawBaseTime + currentOffset < expected) {
+            currentOffset = expected - rawBaseTime;
+            trackOffset.set(trackId, currentOffset);
+          }
+
+          const adjustedBaseTime = rawBaseTime + currentOffset;
+          if (version === 1) {
+            tfdtView.setBigUint64(4, adjustedBaseTime);
+          } else {
+            tfdtView.setUint32(4, Number(adjustedBaseTime));
+          }
+
+          expectedNextTime.set(trackId, adjustedBaseTime + trafDuration);
+        }
+      }
+    }
+    return out;
+  });
 }

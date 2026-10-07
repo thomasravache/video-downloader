@@ -106,14 +106,20 @@ export function groupCandidates(candidates: VideoCandidate[]): CandidateGroup[] 
       ...(hls.audio ?? []).map((a) => pathKey(a.url)),
     ]);
     const files = new Set<string | undefined>((hls.mediaResources ?? []).map(pathKey));
+    const masterStreamId =
+      extractYouTubeStreamId(candidate.mediaUrl) ??
+      hls.variants.map((v) => extractYouTubeStreamId(v.url)).find((id) => id !== undefined);
     list.forEach((other, to) => {
       const key = keys[to];
-      if (to === at || key === undefined || claimedBy.has(to) || primaries.has(to)) {
+      if (to === at || claimedBy.has(to) || primaries.has(to)) {
         return;
       }
+      const otherStreamId = extractYouTubeStreamId(other.mediaUrl);
+      const isYtRelated =
+        other.kind === 'hls' && masterStreamId !== undefined && masterStreamId === otherStreamId;
       if (
-        (other.kind === 'hls' && playlists.has(key)) ||
-        (other.kind === 'file' && files.has(key))
+        (other.kind === 'hls' && ((key !== undefined && playlists.has(key)) || isYtRelated)) ||
+        (other.kind === 'file' && key !== undefined && files.has(key))
       ) {
         claimedBy.set(to, at);
       }
@@ -141,6 +147,27 @@ function pathKey(url: string): string | undefined {
   try {
     const { protocol, origin, pathname } = new URL(url);
     return protocol === 'http:' || protocol === 'https:' ? `${origin}${pathname}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Identificador de stream de vídeo do YouTube (/id/<streamId>/ ou ?id=<streamId>). */
+function extractYouTubeStreamId(url: string): string | undefined {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== 'googlevideo.com' && !parsed.hostname.endsWith('.googlevideo.com')) {
+      return undefined;
+    }
+    const pathMatch = /\/id\/([^/]+)/.exec(parsed.pathname);
+    if (pathMatch?.[1]) {
+      return pathMatch[1];
+    }
+    const queryId = parsed.searchParams.get('id');
+    if (queryId) {
+      return queryId;
+    }
+    return undefined;
   } catch {
     return undefined;
   }

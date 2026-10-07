@@ -505,9 +505,6 @@ export function createService(deps: ServiceDeps): Service {
       if (noInit) {
         return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
       }
-      if (!media.fmp4) {
-        return refuse('UNSUPPORTED', 'download.unsupported');
-      }
     }
 
     const plan: JobPlan = {

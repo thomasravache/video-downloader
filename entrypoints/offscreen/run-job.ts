@@ -13,7 +13,7 @@ import type {
   OffscreenStart,
 } from '../../src/core/hls-download';
 import type { EncryptionPlan } from '../../src/core/hls-download/protocol';
-import { assembleFmp4, assembleTs, initIsEncrypted } from './assemble';
+import { assembleFmp4, assembleTs, initIsEncrypted, transmuxTsToFmp4 } from './assemble';
 
 async function getAes128Handler() {
   try {
@@ -400,7 +400,13 @@ export async function runOffscreenJob(
           audioKeys,
           'ts',
         );
-        audioBlob = new Blob(audioSegments as BlobPart[]);
+        const isTs = audioSegments.length > 0 && audioSegments[0]?.[0] === 0x47;
+        if (isTs) {
+          const { initSegment, fragments } = await transmuxTsToFmp4(audioSegments);
+          audioBlob = new Blob([initSegment, ...fragments] as BlobPart[]);
+        } else {
+          audioBlob = new Blob(audioSegments as BlobPart[]);
+        }
       }
       const videoSegments = await fetchTrack(
         request,
@@ -409,10 +415,16 @@ export async function runOffscreenJob(
         videoKeys,
         request.fmp4 ? 'fmp4' : 'ts',
       );
-      const videoBlob =
-        videoInit !== undefined
-          ? new Blob([videoInit, ...videoSegments] as BlobPart[])
-          : new Blob(videoSegments as BlobPart[]);
+      let videoBlob: Blob;
+      if (request.fmp4) {
+        videoBlob =
+          videoInit !== undefined
+            ? new Blob([videoInit, ...videoSegments] as BlobPart[])
+            : new Blob(videoSegments as BlobPart[]);
+      } else {
+        const { initSegment, fragments } = await transmuxTsToFmp4(videoSegments);
+        videoBlob = new Blob([initSegment, ...fragments] as BlobPart[]);
+      }
       if (job.signal.aborted) {
         throw new DOMException('aborted', 'AbortError');
       }
