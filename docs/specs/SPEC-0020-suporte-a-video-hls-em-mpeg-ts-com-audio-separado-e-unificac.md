@@ -170,7 +170,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido pelo comando `spec_graph.py gate SPEC-0020 <G>`. Não edite as linhas de tabela manualmente. -->
 | Gate | Decisão | Data | Evidência / Detalhes |
 |---|---|---|---|
-| G0 | PENDING | | |
+| G0 | PASS | validate: 0 erro(s) — d089018 | 2026-10-07 |
 | H1 | PENDING | | |
 | G1 | PENDING | | |
 | G2 | PENDING | | |
