@@ -101,3 +101,5 @@ export function validateHlsDownloadResponse(
   }
   return { ok: false, error: 'resposta de download inválida' };
 }
+
+export type { JobPlan } from './jobs';

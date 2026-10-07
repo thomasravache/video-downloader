@@ -165,7 +165,7 @@ function label(bandwidth: number, height: number | undefined): string {
     : `${String(Math.round(bandwidth / 1000))} kbps`;
 }
 
-function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
+export function variantsOf(manifest: ParsedManifest, baseUrl: string): HlsVariant[] {
   const found = (manifest.playlists ?? []).flatMap((playlist) => {
     if (typeof playlist.uri !== 'string' || playlist.uri === '') {
       return [];
