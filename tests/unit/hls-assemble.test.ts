@@ -51,6 +51,15 @@ describe('leitor de caixas MP4 de apoio', () => {
 });
 
 describe('assembleTs: segmentos TS reais -> MP4 (mux.js)', () => {
+  it('SPEC-0018:CH-01 (guarda: passa antes da mudança) assembleTs com os segmentos do clipe de fixture v360 gera MP4 válido com ftyp, moov e mdat', async () => {
+    const mp4 = await assembleTs(undefined, tsSegments('v360'));
+
+    const info = inspectMp4(mp4);
+    expect(info.topLevel[0]).toBe('ftyp');
+    expect(info.topLevel).toContain('moov');
+    expect(info.topLevel).toContain('mdat');
+  });
+
   it('SPEC-0012:UT-05 a variante 640x360 vira MP4 que começa com ftyp e contém moov e mdat', async () => {
     const mp4 = await assembleTs(undefined, tsSegments('v360'));
 
