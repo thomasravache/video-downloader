@@ -4,7 +4,7 @@ title: Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-07
 parent:
 depends_on: [SPEC-0019]
@@ -23,8 +23,8 @@ touches:
 adrs: [ADR-0014, ADR-0013, ADR-0001]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: thomas
+approved_at: 2026-10-07
 ---
 
 # SPEC-0020 — Suporte a vídeo HLS em MPEG-TS com áudio separado e unificação de cartões

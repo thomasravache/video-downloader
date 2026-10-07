@@ -5,7 +5,7 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 2, in-progress 7, implemented 9
+- Specs: proposed 1, approved 1, in-progress 7, implemented 9
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -51,7 +51,7 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
-| 8 | SPEC-0020 | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full/M | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
+| 8 | SPEC-0020 | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
 
 ## Épicos
 
@@ -68,7 +68,7 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 flowchart LR
   S0018["SPEC-0018<br/>Corrigir transmuxer HLS TS com MP4 comp…"]:::implemented
   S0019["SPEC-0019<br/>Suporte a HLS com audio separado em TS …"]:::implemented
-  S0020["SPEC-0020<br/>Suporte a video HLS em MPEG-TS com audi…"]:::proposed
+  S0020["SPEC-0020<br/>Suporte a video HLS em MPEG-TS com audi…"]:::approved
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
     S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::implemented
@@ -135,7 +135,7 @@ flowchart LR
 | [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 | [SPEC-0018](SPEC-0018-corrigir-transmuxer-hls-ts-com-mp4-compativel-ignorar-legend.md) | Corrigir transmuxer HLS TS com MP4 compativel, ignorar legendas e enriquecer titulo | full | fix | implemented | 2026-10-06 | — | — | SPEC-0011@1, SPEC-0012@1, SPEC-0014@1, SPEC-0016@1, SPEC-0017@1 |
 | [SPEC-0019](SPEC-0019-suporte-a-hls-com-audio-separado-em-ts-ou-adts-e-desduplicac.md) | Suporte a HLS com audio separado em TS ou ADTS e desduplicacao no YouTube | full | feature | implemented | 2026-10-07 | — | — | SPEC-0014@1, SPEC-0015@1 |
-| [SPEC-0020](SPEC-0020-suporte-a-video-hls-em-mpeg-ts-com-audio-separado-e-unificac.md) | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full | feature | proposed | 2026-10-07 | — | SPEC-0019 | SPEC-0014@1, SPEC-0015@1, SPEC-0018@1, SPEC-0019@1 |
+| [SPEC-0020](SPEC-0020-suporte-a-video-hls-em-mpeg-ts-com-audio-separado-e-unificac.md) | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full | feature | approved | 2026-10-07 | — | SPEC-0019 | SPEC-0014@1, SPEC-0015@1, SPEC-0018@1, SPEC-0019@1 |
 
 ## ADRs
 
