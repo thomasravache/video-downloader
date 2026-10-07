@@ -331,3 +331,13 @@ export function normalizeTrunV1(bytes: Uint8Array): Uint8Array {
   }
   return out;
 }
+
+/**
+ * Transmuta uma série de segmentos TS em fMP4 contínuo preservando todos os segmentos (SPEC-0020).
+ * Scaffolding de contrato: implementação será feita na fase Green pelo Implementer.
+ */
+export function transmuxTsToFmp4(
+  _segments: readonly Uint8Array[],
+): Promise<{ initSegment: Uint8Array; fragments: Uint8Array[] }> {
+  return Promise.reject(new Error('NotImplemented'));
+}
