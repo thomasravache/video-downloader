@@ -236,7 +236,7 @@ describe('opções inválidas e trilhas que não são fMP4', () => {
     expect(response).toMatchObject({ ok: true });
   });
 
-  it('SPEC-0014:IT-05 vídeo em TS com áudio fMP4: UNSUPPORTED, sem requisição de mídia', async () => {
+  it('SPEC-0014:IT-05 vídeo em TS com áudio fMP4: aceito (SPEC-0020)', async () => {
     const state = await serve({
       '/av/v0.ts': body('x', 'video/mp2t'),
       '/av/v1.ts': body('x', 'video/mp2t'),
@@ -246,8 +246,7 @@ describe('opções inválidas e trilhas que não são fMP4', () => {
 
     const response = await startSplitDownload(bg, candidate.id);
 
-    expect(response).toEqual({ ok: false, error: 'UNSUPPORTED' });
-    expectNothingFetchedOrSaved();
+    expect(response).toMatchObject({ ok: true });
   });
 });
 
