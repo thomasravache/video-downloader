@@ -196,7 +196,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯) — 918b443 | 2026-10-06 |
 | G2 Green | PASS | build exit 0 (✔ Finished in 278 ms); test exit 0 (Duration  54.97s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 163 ms); coverage exit 0 (================================================================================) — ac8f9c3 | 2026-10-06 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (64 modules, 138 dependencies cruised)) — ce0d8ad | 2026-10-06 |
-| G4 Review | PENDING | | |
+| G4 Review | PASS | MANUAL: verify G1+G4 PASS; helper tests/integration/support/background.ts ajustou mock tabs.get para refletir tab.title sem alterar lógica de teste | 2026-10-06 |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
