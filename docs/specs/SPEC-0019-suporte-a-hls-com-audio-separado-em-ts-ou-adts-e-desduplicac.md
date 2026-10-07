@@ -4,7 +4,7 @@ title: Suporte a HLS com audio separado em TS ou ADTS e desduplicacao no YouTube
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-07
 parent:
 depends_on: []
@@ -214,30 +214,30 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 
 **Fase 0: Caracterização**
-- [ ] CH-01 escrito, passando no código atual, commitado antes de qualquer mudança (preserva fMP4 + fMP4 da SPEC-0014)
+- [x] CH-01 escrito, passando no código atual, commitado antes de qualquer mudança (preserva fMP4 + fMP4 da SPEC-0014)
 
 **Fase 1: Suporte a áudio separado TS/ADTS e contratos**
-- [ ] Red: escrever UT-01, UT-02, UT-03, CT-01 com a tag `SPEC-0019:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: ajustar tipagem em `contracts.ts`, aceitar áudio sem fMP4 em `service.ts` e `run-job.ts`
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, CT-01 com a tag `SPEC-0019:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: ajustar tipagem em `contracts.ts`, aceitar áudio sem fMP4 em `service.ts` e `run-job.ts`
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Muxing com Mediabunny e deduplicação no popup**
-- [ ] Red: escrever UT-04, UT-05, UT-06, IT-01, IT-02, IT-03 com a tag `SPEC-0019:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: configurar `Input` com `[MP4, ADTS, MPEG_TS]` no `merge.ts`, implementar recolhimento de variantes redundantes e ordenação por codec compatível
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-04, UT-05, UT-06, IT-01, IT-02, IT-03 com a tag `SPEC-0019:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: configurar `Input` com `[MP4, ADTS, MPEG_TS]` no `merge.ts`, implementar recolhimento de variantes redundantes e ordenação por codec compatível
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Jornada E2E**
-- [ ] Red: E2E-01 falhando pelo motivo certo
-- [ ] Green: jornada completa passando localmente
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: E2E-01 falhando pelo motivo certo
+- [x] Green: jornada completa passando localmente
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy via pipeline com smoke/E2E no ambiente (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Deploy via pipeline com smoke/E2E no ambiente (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -250,8 +250,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer: APPROVED — escopo estrito em touches, 12/12 testes cobrem comportamentos, ajustes justificados — fadf833 | 2026-10-07 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 299 ms); test exit 0 (Duration  56.04s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~450ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m2:05PM[0m [32mINF[0m [1mno leaks found[0m) — 803a8b2 | 2026-10-07 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-07 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — 6af5020 | 2026-10-07 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 1fcb06a | 2026-10-07 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
@@ -260,30 +260,52 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+Suporte completo a downloads de streams HLS em que a trilha de áudio é distribuída em formato TS ou ADTS AAC (sem `#EXT-X-MAP`), permitindo a junção nativa com vídeo fMP4 ou TS em um único arquivo MP4 progressivo via Mediabunny. Foi implementada também a desduplicação de cartões no popup (recolhendo media playlists individuais que pertençam a uma master playlist capturada na mesma página) e o enriquecimento de rótulos com identificador de codec (`(H.264)` vs `(VP9)`), priorizando H.264 para máxima compatibilidade com players nativos de sistema como QuickTime e Windows Media Player.
 
 ### Como foi feito
+1. Em `src/core/hls-download/contracts.ts`: ajustada a interface `JobPlan` tornando `audio.initUrl` e `audio.initRange` opcionais.
+2. Em `src/core/service.ts`: na função `downloadHls`, relaxada a exigência de `audioMedia.fmp4 === true`, aceitando áudio TS/ADTS sem init e repassando ao `JobPlan`.
+3. Em `entrypoints/offscreen/run-job.ts`: ajustado o download de faixas de áudio para quando `audio.initUrl` for `undefined`, buscando os segmentos no formato `'ts'` e instanciando `audioBlob = new Blob(...)`.
+4. Em `entrypoints/offscreen/merge.ts`: configurado `formats: [MP4, ADTS, MPEG_TS]` no `Input` do Mediabunny, viabilizando demuxing nativo de ADTS e TS sem recodificar.
+5. Em `src/core/hls/index.ts`: normalizada a leitura e ranking de codecs em `variantsOf`, priorizando variantes H.264 sobre VP9 na ordenação de mesma resolução e adicionando rótulos explícitos quando há codecs concorrentes.
+6. Em `entrypoints/popup/view.ts`: adicionada a desduplicação de cartões de variantes filhas que já pertencem a uma master playlist capturada na aba.
 
 ### Prova de Correção
+N/A — spec do tipo feature (comportamento novo).
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| CH-01 | Preservação de fMP4 completo (vídeo + áudio) da SPEC-0014 | PASS | tests/integration/hls-merge-job.test.ts (commit a90ea97) |
+| UT-01 | Mapeamento de grupos de áudio (233 e 234) e idiomas no YouTube | PASS | tests/unit/hls-audio-youtube.test.ts |
+| UT-02 | Aceitação de áudio TS/ADTS sem EXT-X-MAP no service.downloadHls | PASS | tests/unit/service-hls-audio.test.ts |
+| UT-03 | Recusa de playlist de áudio corrompida com HLS_NOT_RESOLVED | PASS | tests/unit/service-hls-audio.test.ts |
+| UT-04 | Rótulos de codec e priorização de H.264 sobre VP9 | PASS | tests/unit/hls-parse.test.ts |
+| UT-05 | Deduplicação no popup suprimindo media playlists filhas da master | PASS | tests/unit/popup-view-dedup.test.ts |
+| UT-06 | Junção de vídeo fMP4 com áudio ADTS sem init no Mediabunny | PASS | tests/unit/hls-merge-mediabunny.test.ts |
+| IT-01 | Criação de job e start offscreen com áudio sem initUrl | PASS | tests/integration/hls-job-youtube.test.ts |
+| IT-02 | Resolução de master real do YouTube com 18 variantes e 6 áudios | PASS | tests/integration/hls-merge-resolve.test.ts |
+| IT-03 | Execução offscreen com vídeo fMP4 e áudio TS gerando evento ready | PASS | tests/integration/hls-job-audio-offscreen.test.ts |
+| CT-01 | Contrato JobPlan e OffscreenStart aceita áudio sem initUrl | PASS | tests/unit/hls-merge-contract.test.ts |
+| E2E-01 | Jornada completa de download no YouTube [jornada: baixar-hls] | PASS | e2e/journeys/hls-youtube.spec.ts |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
+Integrado na branch `main` via PR #24 (commit merge `6af5020`). Smoke e E2E validados no gate G6.
 
 ### Pendências
+Nenhuma.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
