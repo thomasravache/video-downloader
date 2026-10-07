@@ -8,6 +8,8 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.6] - 2026-10-07
+
 ### Added
 - Suporte a HLS com audio separado em TS ou ADTS e desduplicacao no YouTube (SPEC-0019)
 
