@@ -179,7 +179,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 | PASS | build exit 0 (✔ Finished in 313 ms); test exit 0 (Duration  54.39s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~669ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m5:29PM[0m [32mINF[0m [1mno leaks found[0m) — 14f0bfb | 2026-10-07 |
 | H2 | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-07 |
 | G6 | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — b3a3af8 | 2026-10-07 |
-| G7 | PENDING | | |
+| G7 | PASS | Relatório de Entrega e Definição de Pronto: ok — e5d1977 | 2026-10-07 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
