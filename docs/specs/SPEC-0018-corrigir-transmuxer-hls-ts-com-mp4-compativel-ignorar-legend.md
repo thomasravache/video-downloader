@@ -18,6 +18,7 @@ touches:
   - tests/unit/**
   - tests/integration/**
   - e2e/journeys/**
+  - tools/sdd/**
 adrs: [ADR-0013, ADR-0014]
 external: []
 size: M
