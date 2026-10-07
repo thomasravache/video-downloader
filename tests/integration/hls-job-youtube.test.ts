@@ -44,7 +44,9 @@ describe('HLS job com áudio TS/ADTS', () => {
       '/av/video.m3u8': body(video.playlist),
       '/av/video.mp4': rangeHandler(video.file),
       '/av/audio-ts.m3u8': body(AUDIO_TS_PLAYLIST),
-      '/av/audio-0.aac': rangeHandler(new Uint8Array([0xff, 0xf1, 0x50, 0x80]), { contentType: 'audio/aac' }),
+      '/av/audio-0.aac': rangeHandler(new Uint8Array([0xff, 0xf1, 0x50, 0x80]), {
+        contentType: 'audio/aac',
+      }),
     });
     offscreen = simulateOffscreen(bg);
     captureDownloads(bg, 1);

@@ -223,7 +223,7 @@ describe('opções inválidas e trilhas que não são fMP4', () => {
     expect(accepted).toMatchObject({ ok: true });
   });
 
-  it('SPEC-0014:IT-05 áudio em TS (sem EXT-X-MAP) com vídeo fMP4: UNSUPPORTED, sem requisição de mídia', async () => {
+  it('SPEC-0014:IT-05 áudio em TS (sem EXT-X-MAP) com vídeo fMP4: aceito (SPEC-0019)', async () => {
     const state = await serve({
       '/av/a0.ts': body('x', 'video/mp2t'),
       '/av/a1.ts': body('x', 'video/mp2t'),
@@ -233,8 +233,7 @@ describe('opções inválidas e trilhas que não são fMP4', () => {
 
     const response = await startSplitDownload(bg, candidate.id);
 
-    expect(response).toEqual({ ok: false, error: 'UNSUPPORTED' });
-    expectNothingFetchedOrSaved();
+    expect(response).toMatchObject({ ok: true });
   });
 
   it('SPEC-0014:IT-05 vídeo em TS com áudio fMP4: UNSUPPORTED, sem requisição de mídia', async () => {

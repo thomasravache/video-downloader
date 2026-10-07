@@ -175,7 +175,7 @@ function optionText(variant: HlsInfo['variants'][number], text: ViewText): strin
 function qualitySelect(hls: HlsInfo, candidateKey: string, text: ViewText): HTMLElement {
   const field = element('div', 'field');
   const label = element('label', 'field-label', text.hlsQuality);
-  const select = element('select', 'select');
+  const select = element('select', 'select hls-select');
   select.id = `quality-${candidateKey}`;
   select.dataset['testid'] = 'quality-select';
   label.htmlFor = select.id;
@@ -192,7 +192,7 @@ function qualitySelect(hls: HlsInfo, candidateKey: string, text: ViewText): HTML
 function audioField(slotId: string, text: ViewText): HTMLElement {
   const field = element('div', 'field');
   const label = element('label', 'field-label', text.audioLabel);
-  const select = element('select', 'select');
+  const select = element('select', 'select audio-select');
   select.id = `audio-${slotId}`;
   select.dataset['testid'] = 'audio-select';
   label.htmlFor = select.id;
@@ -352,7 +352,15 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
         return option;
       }),
     );
-    audioBox.hidden = options.length === 0;
+    if (options.length > 0) {
+      audioBox.hidden = false;
+      if (!audioBox.parentElement && audioNote.parentElement) {
+        audioNote.before(audioBox);
+      }
+    } else {
+      audioBox.hidden = true;
+      audioBox.remove();
+    }
     const note =
       options.length > 0
         ? undefined
@@ -362,16 +370,20 @@ function fillHls(slot: HTMLElement, hls: HlsInfo, text: ViewText, context: HlsCo
   };
   refreshAudio();
   select?.addEventListener('change', refreshAudio);
-  parts.push(audioBox, audioNote);
+  if (!audioBox.hidden) {
+    parts.push(audioBox);
+  }
+  parts.push(audioNote);
   const area = element('div', 'job-area');
   const button = downloadButton(context, text);
   button.addEventListener('click', () => {
-    const audioIndex = audioBox.hidden ? undefined : Number(audioSelect.value);
+    const audioIndex =
+      audioBox.parentElement && !audioBox.hidden ? Number(audioSelect.value) : undefined;
     context.onStart(
       Number(select?.value ?? 0),
       audioIndex,
       area,
-      [select, audioBox.hidden ? undefined : audioSelect].filter(
+      [select, audioBox.parentElement && !audioBox.hidden ? audioSelect : undefined].filter(
         (item): item is HTMLSelectElement => item !== undefined,
       ),
     );

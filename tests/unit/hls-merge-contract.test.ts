@@ -219,4 +219,3 @@ describe('start do offscreen: audio opcional', () => {
     expect(planWithInit.audio?.initUrl).toBe('https://cdn.example.test/a2-init.mp4');
   });
 });
-

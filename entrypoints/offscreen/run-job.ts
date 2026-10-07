@@ -369,22 +369,50 @@ export async function runOffscreenJob(
       ? await fetchInit(request, request.encryption, videoKeys)
       : undefined;
     if (audio !== undefined) {
-      if (videoInit === undefined || audio.initUrl === undefined) {
-        throw new AssemblyError('ASSEMBLY_FAILED', 'junção exige fMP4 nas duas trilhas');
+      if (request.fmp4 && videoInit === undefined) {
+        throw new AssemblyError('ASSEMBLY_FAILED', 'faltou init de vídeo');
       }
-      const audioInit = (await fetchInit(audio, audio.encryption, audioKeys)) as Uint8Array;
-      if (initIsEncrypted(videoInit) || initIsEncrypted(audioInit)) {
+      if (videoInit !== undefined && initIsEncrypted(videoInit)) {
         throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
       }
-      // Cada trilha vira um Blob assim que baixada; os pedaços em memória são soltos (sem cópia extra).
-      const videoBlob = new Blob([
-        videoInit,
-        ...(await fetchTrack(request, 0, request.encryption, videoKeys, 'fmp4')),
-      ] as BlobPart[]);
-      const audioBlob = new Blob([
-        audioInit,
-        ...(await fetchTrack(audio, request.urls.length, audio.encryption, audioKeys, 'fmp4')),
-      ] as BlobPart[]);
+      let audioBlob: Blob;
+      if (audio.initUrl !== undefined) {
+        const audioInit = await fetchInit(audio, audio.encryption, audioKeys);
+        if (audioInit === undefined) {
+          throw new AssemblyError('ASSEMBLY_FAILED', 'faltou init de áudio');
+        }
+        if (initIsEncrypted(audioInit)) {
+          throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
+        }
+        const audioSegments = await fetchTrack(
+          audio,
+          request.urls.length,
+          audio.encryption,
+          audioKeys,
+          'fmp4',
+        );
+        audioBlob = new Blob([audioInit, ...audioSegments] as BlobPart[]);
+      } else {
+        const audioSegments = await fetchTrack(
+          audio,
+          request.urls.length,
+          audio.encryption,
+          audioKeys,
+          'ts',
+        );
+        audioBlob = new Blob(audioSegments as BlobPart[]);
+      }
+      const videoSegments = await fetchTrack(
+        request,
+        0,
+        request.encryption,
+        videoKeys,
+        request.fmp4 ? 'fmp4' : 'ts',
+      );
+      const videoBlob =
+        videoInit !== undefined
+          ? new Blob([videoInit, ...videoSegments] as BlobPart[])
+          : new Blob(videoSegments as BlobPart[]);
       if (job.signal.aborted) {
         throw new DOMException('aborted', 'AbortError');
       }

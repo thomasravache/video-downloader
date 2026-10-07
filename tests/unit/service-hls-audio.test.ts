@@ -80,7 +80,9 @@ function setupService(candidates: VideoCandidate[]) {
     remove: vi.fn().mockResolvedValue(undefined),
     keys: vi.fn().mockResolvedValue([]),
   };
-  const sendSpy = vi.fn<(command: OffscreenCommand) => Promise<void>>().mockResolvedValue(undefined);
+  const sendSpy = vi
+    .fn<(command: OffscreenCommand) => Promise<void>>()
+    .mockResolvedValue(undefined);
   const offscreen: OffscreenPort = {
     ensure: vi.fn().mockResolvedValue(undefined),
     send: sendSpy,

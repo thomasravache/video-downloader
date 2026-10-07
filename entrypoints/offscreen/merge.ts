@@ -4,6 +4,7 @@
  * Os pacotes são copiados (sem recodificar) das duas fontes para um MP4 de duas trilhas.
  */
 import {
+  ADTS,
   BlobSource,
   BufferTarget,
   EncodedAudioPacketSource,
@@ -11,6 +12,7 @@ import {
   EncodedVideoPacketSource,
   Input,
   MP4,
+  MPEG_TS,
   Mp4OutputFormat,
   Output,
 } from 'mediabunny';
@@ -38,8 +40,7 @@ export async function assembleMerged(video: MergeTrack, audio: MergeTrack): Prom
         source: new BlobSource(
           'blob' in track ? track.blob : new Blob([track.init, ...track.segments] as BlobPart[]),
         ),
-        // Só MP4 (as duas trilhas são fMP4): não carrega os demais demuxers.
-        formats: [MP4],
+        formats: [MP4, ADTS, MPEG_TS],
       });
       inputs.push(input);
       return input;

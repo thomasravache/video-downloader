@@ -581,8 +581,22 @@ v1080-avc.m3u8
     // Testa também que variantsOf pode ser invocado diretamente respeitando o mesmo contrato
     const parsedManifest: ParsedManifest = {
       playlists: [
-        { uri: 'v1080-vp9.m3u8', attributes: { BANDWIDTH: 4800000, RESOLUTION: { width: 1920, height: 1080 }, CODECS: 'vp09.00.41.08' } },
-        { uri: 'v1080-avc.m3u8', attributes: { BANDWIDTH: 4600000, RESOLUTION: { width: 1920, height: 1080 }, CODECS: 'avc1.640028' } },
+        {
+          uri: 'v1080-vp9.m3u8',
+          attributes: {
+            BANDWIDTH: 4800000,
+            RESOLUTION: { width: 1920, height: 1080 },
+            CODECS: 'vp09.00.41.08',
+          },
+        },
+        {
+          uri: 'v1080-avc.m3u8',
+          attributes: {
+            BANDWIDTH: 4600000,
+            RESOLUTION: { width: 1920, height: 1080 },
+            CODECS: 'avc1.640028',
+          },
+        },
       ],
     };
     const directVariants = variantsOf(parsedManifest, BASE);
@@ -590,4 +604,3 @@ v1080-avc.m3u8
     expect(directVariants[0]?.label).toContain('(H.264)');
   });
 });
-

@@ -242,4 +242,3 @@ describe('resolveHls com áudio separado', () => {
     expect(v1080[1]?.label).toContain('(VP9)');
   });
 });
-

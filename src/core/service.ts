@@ -505,8 +505,7 @@ export function createService(deps: ServiceDeps): Service {
       if (noInit) {
         return refuse('HLS_NOT_RESOLVED', 'download.not_resolved');
       }
-      // A junção só trabalha com fMP4 nas duas pontas (SPEC-0014).
-      if (!media.fmp4 || !audioMedia.fmp4) {
+      if (!media.fmp4) {
         return refuse('UNSUPPORTED', 'download.unsupported');
       }
     }
@@ -526,7 +525,7 @@ export function createService(deps: ServiceDeps): Service {
       ...(audioMedia !== undefined && {
         audio: {
           urls: audioMedia.urls,
-          ...(audioMedia.initUrl !== undefined && { initUrl: audioMedia.initUrl }),
+          initUrl: audioMedia.initUrl,
           ...(audioMedia.ranges !== undefined && { ranges: audioMedia.ranges }),
           ...(audioMedia.initUrl !== undefined &&
             audioMedia.initRange !== undefined && { initRange: audioMedia.initRange }),
