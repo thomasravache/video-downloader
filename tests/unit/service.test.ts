@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PageSnapshot, Provider } from '../../src/core/contracts';
 import { createDiagnostics } from '../../src/core/diagnostics';
+import { NetworkStore } from '../../src/core/network';
 import { createService } from '../../src/core/service';
 import generic from '../../src/providers/generic';
 
@@ -107,5 +108,51 @@ describe('service', () => {
       ok: false,
       error: 'CANDIDATE_NOT_FOUND',
     });
+  });
+
+  it('SPEC-0018:UT-05 candidato criado no onNetworkResponse contem o titulo da aba ativa', async () => {
+    const data = new Map<string, unknown>();
+    const network = new NetworkStore({
+      get: (key) => Promise.resolve(data.get(key)),
+      set: (key, value) => {
+        data.set(key, value);
+        return Promise.resolve();
+      },
+      remove: (key) => {
+        data.delete(key);
+        return Promise.resolve();
+      },
+      keys: () => Promise.resolve([...data.keys()]),
+    });
+    const service = createService({
+      extensionId: SELF,
+      providers: [],
+      scripting: { collectVideos: () => Promise.resolve([]) },
+      downloads: { download: () => Promise.resolve(1) },
+      tabs: {
+        getUrl: () => Promise.resolve('https://site.example.test/aula'),
+        getTitle: () => Promise.resolve('Aula Magna de Pilotagem'),
+      },
+      permissions: {
+        contains: () => Promise.resolve(false),
+        request: () => Promise.resolve(false),
+      },
+      diagnostics: createDiagnostics(),
+      network,
+    });
+
+    await service.onNetworkResponse({
+      url: 'https://cdn.example.test/hls/master.m3u8',
+      method: 'GET',
+      statusCode: 200,
+      tabId: 1,
+      frameId: 0,
+      contentType: 'application/vnd.apple.mpegurl',
+      tabTitle: 'Aula Magna de Pilotagem',
+    });
+
+    const candidates = await network.forTab(1);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]?.title).toBe('Aula Magna de Pilotagem');
   });
 });

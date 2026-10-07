@@ -281,4 +281,44 @@ test.describe('baixar HLS', () => {
     ).toEqual([]);
     expect(filesIn(downloadsDir)).toEqual([]);
   });
+
+  test('SPEC-0018:E2E-01 [jornada: baixar-hls] download HLS TS multiplexado gera MP4 progressivo integro com duracao esperada e titulo da pagina', async ({
+    context,
+    serviceWorker,
+    extensionId,
+    fixturesUrl,
+    downloadsDir,
+  }) => {
+    const { tabId } = await openFetchingPage(
+      context,
+      serviceWorker,
+      fixturesUrl,
+      'pages/hls-clip.html',
+    );
+    await waitForStoredCapture(serviceWorker, tabId, '/hls/clip/master.m3u8');
+    const popup = await openPopupForTab(context, extensionId, tabId);
+    const item = popup.getByTestId('candidate-item');
+    await expect(item).toHaveCount(1);
+    const select = item.getByTestId('quality-select');
+    await select.selectOption('0');
+    const button = item.getByTestId('download-button');
+    await button.click();
+
+    const progress = item.getByTestId('download-progress');
+    await expect(progress).toHaveAttribute('data-state', 'done', { timeout: 20_000 });
+
+    await expect.poll(() => savedMp4(downloadsDir).length, { timeout: 20_000 }).toBe(1);
+    const [name] = savedMp4(downloadsDir);
+
+    expect(name).toContain('Player HLS com clipe real de 2 qualidades');
+    expect(name).toMatch(/ - 360p\.mp4$/);
+
+    const path = join(downloadsDir, name ?? '');
+    const mp4Bytes = new Uint8Array(readFileSync(path));
+    const info = inspectMp4(mp4Bytes);
+
+    expect(info.topLevel).not.toContain('moof');
+    expect(info.topLevel).toEqual(expect.arrayContaining(['ftyp', 'moov', 'mdat']));
+    expect(Math.abs(info.durationSec - CLIP_DURATION_SEC)).toBeLessThan(0.6);
+  });
 });

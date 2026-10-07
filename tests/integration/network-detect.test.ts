@@ -333,4 +333,19 @@ describe('detecção por rede: webRequest indisponível e navegação sem aba (E
     expect(await fakeBrowser.storage.session.get(`vd:net:${String(tabId)}`)).toEqual({});
     expect(await detectTab(tabId)).toEqual([]);
   });
+
+  it('SPEC-0018:IT-03 captura de rede com master e playlist de legendas: apenas master gera candidato, legendas sao filtradas', async () => {
+    const tabId = await bg.newTab(PAGE);
+    const SUBS = 'https://cdn.example.test/hls/subtitles.m3u8';
+    await bg.network.respond({ url: HLS, tabId, headers: HLS_HEADERS });
+    await bg.network.respond({
+      url: SUBS,
+      tabId,
+      headers: { 'Content-Type': 'text/vtt' },
+    });
+
+    const candidates = await detectTab(tabId);
+    expect(candidates.map((c) => c.mediaUrl)).toEqual([HLS]);
+    expect(candidates.some((c) => c.mediaUrl === SUBS)).toBe(false);
+  });
 });
