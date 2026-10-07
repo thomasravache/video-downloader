@@ -265,8 +265,12 @@ export function parseHlsPlaylist(
     if (segments.length === 0) {
       throw new HlsParseError();
     }
+    const isSubtitles = segments.some((segment) => {
+      const uri = (segment.uri ?? '').toLowerCase().split(/[?#]/)[0] ?? '';
+      return uri.endsWith('.vtt') || uri.endsWith('.webvtt');
+    });
     return {
-      type: 'media',
+      type: isSubtitles ? 'subtitles' : 'media',
       variants: [],
       durationSec: segments.reduce((sum, segment) => sum + (segment.duration ?? 0), 0),
       segmentCount: segments.length,

@@ -263,6 +263,22 @@ export function startBackground(options: StartOptions = {}): BackgroundHarness {
   const download = vi
     .spyOn(fakeBrowser.downloads as unknown as Record<string, () => unknown>, 'download')
     .mockResolvedValue(1);
+  const originalTabsGet = fakeBrowser.tabs.get.bind(fakeBrowser.tabs);
+  const tabCache = new Map<number, unknown>();
+  vi.spyOn(
+    fakeBrowser.tabs as unknown as Record<string, (...args: unknown[]) => unknown>,
+    'get',
+  ).mockImplementation((tabId: unknown) => {
+    const id = tabId as number;
+    const cached = tabCache.get(id);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+    return originalTabsGet(id).then((t) => {
+      tabCache.set(id, t);
+      return t;
+    });
+  });
 
   const stub = installWebRequestStub();
   const downloadEvents = installDownloadsChangedStub();

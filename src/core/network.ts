@@ -36,7 +36,7 @@ export interface SessionStoragePort {
   keys?(): Promise<string[]>;
 }
 
-const SEGMENT_EXTENSIONS = new Set(['ts', 'm4s', 'aac', 'm4a', 'mp3', 'vtt']);
+const SEGMENT_EXTENSIONS = new Set(['ts', 'm4s', 'aac', 'm4a', 'mp3', 'vtt', 'webvtt']);
 const IMAGE_EXTENSIONS = new Set([
   'jpg',
   'jpeg',
@@ -93,6 +93,16 @@ export function classifyNetworkResponse(response: NetworkResponse): NetworkClass
   }
   const ext = extensionOf(pathname);
   const type = mediaTypeOf(response.contentType);
+  const lowerUrl = response.url.toLowerCase();
+  if (
+    type === 'text/vtt' ||
+    ext === 'vtt' ||
+    ext === 'webvtt' ||
+    lowerUrl.includes('textstream') ||
+    lowerUrl.includes('subtitles')
+  ) {
+    return null;
+  }
   if (SEGMENT_EXTENSIONS.has(ext) || IMAGE_EXTENSIONS.has(ext) || type.startsWith('image/')) {
     return null;
   }

@@ -651,6 +651,9 @@ export function createService(deps: ServiceDeps): Service {
     if (!first.ok) {
       return fail(first.error, 'playlist', first.reason, first.status);
     }
+    if (first.info.type === 'subtitles') {
+      return fail('HLS_PARSE_FAILED', 'playlist');
+    }
     let hls = first.info;
     const best = first.info.variants[0];
     if (first.info.type === 'master' && best) {
@@ -840,6 +843,7 @@ export function createService(deps: ServiceDeps): Service {
           tabId: response.tabId,
           pageUrl: '',
           mediaUrl: response.url,
+          ...(response.tabTitle ? { title: response.tabTitle } : {}),
           ...(mimeType !== undefined && { mimeType }),
           ...(sizeBytes !== undefined && { sizeBytes }),
           protection: 'none',
