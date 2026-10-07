@@ -471,3 +471,11 @@ export async function runOffscreenJob(
     deps.signal.removeEventListener('abort', relay);
   }
 }
+
+/**
+ * Detecta se os segmentos de áudio necessitam de transmuxing (MPEG-TS, ID3 packed AAC, ADTS) (SPEC-0021).
+ */
+export function needsAudioTransmux(_segments: readonly Uint8Array[]): boolean {
+  throw new Error('Not implemented');
+}
+

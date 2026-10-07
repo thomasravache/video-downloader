@@ -448,3 +448,14 @@ function alignFragmentTimestamps(fragments: readonly Uint8Array[]): Uint8Array[]
     return out;
   });
 }
+
+/**
+ * Normaliza track_id: 0 para track_id: 1 em tkhd, trex e tfhd (SPEC-0021).
+ */
+export function normalizeTrackId(
+  _initSegment: Uint8Array,
+  _fragments: Uint8Array[],
+): { initSegment: Uint8Array; fragments: Uint8Array[] } {
+  throw new Error('Not implemented');
+}
+
