@@ -4,7 +4,7 @@ title: Corrigir transmuxer HLS TS com MP4 compativel, ignorar legendas e enrique
 tier: full
 type: fix
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-06
 parent:
 depends_on: []
@@ -200,7 +200,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 283 ms); test exit 0 (Duration  53.08s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~540ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 138 dependencies cruised)); security_scan exit 0 ([90m12:01AM[0m [32mINF[0m [1mno leaks found[0m) — 5d02712 | 2026-10-07 |
 | H2 Integração aprovada | PASS | aprovado por thomas | 2026-10-07 |
 | G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — b629344 | 2026-10-07 |
-| G7 Pronto & Docs | PENDING | | |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 515e49b | 2026-10-07 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
