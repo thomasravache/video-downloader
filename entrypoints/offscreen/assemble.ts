@@ -143,3 +143,11 @@ export function assembleFmp4(
     return Promise.reject(error instanceof Error ? error : new AssemblyError('ASSEMBLY_FAILED'));
   }
 }
+
+/**
+ * Normaliza caixas trun em versão 1 quando contêm composition time offset negativo (SPEC-0018).
+ * Scaffolding de contrato: lança NotImplemented até ser implementado.
+ */
+export function normalizeTrunV1(_bytes: Uint8Array): Uint8Array {
+  throw new Error('NotImplemented');
+}

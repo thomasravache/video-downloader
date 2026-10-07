@@ -14,6 +14,8 @@ export interface DownloadPort {
 /** Porta para `browser.tabs`: só a URL da aba (indefinida sem a permissão `activeTab`). */
 export interface TabsPort {
   getUrl(tabId: number): Promise<string | undefined>;
+  /** SPEC-0018: Título da aba ativa quando disponível. */
+  getTitle?(tabId: number): Promise<string | undefined>;
 }
 
 /** Porta para buscar o texto de uma playlist HLS (SPEC-0011); rejeita em qualquer falha. */

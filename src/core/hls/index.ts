@@ -32,7 +32,7 @@ export interface HlsAudioTrack {
 }
 
 export interface HlsInfo {
-  type: 'master' | 'media';
+  type: 'master' | 'media' | 'subtitles';
   /** master: da maior para a menor banda; media: []. */
   variants: HlsVariant[];
   durationSec?: number;

@@ -17,6 +17,8 @@ export interface NetworkResponse {
   contentLength?: number;
   /** SPEC-0016: valor cru de `details.initiator` (origem do frame que fez a requisição). */
   initiator?: string;
+  /** SPEC-0018: título da aba ativa no momento do evento de rede. */
+  tabTitle?: string;
 }
 
 export interface NetworkClassification {
