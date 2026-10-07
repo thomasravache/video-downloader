@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import datetime as dt
 import heapq
 import json
@@ -14,7 +15,7 @@ import unicodedata
 from collections import Counter, defaultdict, deque
 from pathlib import Path
 
-SDD_TOOL_VERSION = "2026.09.6"
+SDD_TOOL_VERSION = "2026.09.11"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = SKILL_DIR / "references"
 ASSETS_DIR = SKILL_DIR / "assets"
@@ -608,6 +609,8 @@ def validate(project: Project, only=None):
         validate_change_flow(project, add)
         validate_pillars(project, add)
         validate_journeys(project, add)
+        validate_worktrees(project, add)
+        validate_test_tooling(project, add)
         seen = defaultdict(list)
         for sid, doc in sorted(project.specs.items()):
             evidence = ((gate_table(doc) or {}).get("G2") or {}).get("evidence", "")
@@ -773,6 +776,148 @@ def cmd_journeys(project: Project):
     for sid, jid in unknown:
         print(f"✖ {sid} marca jornada desconhecida '{jid}'")
     return 0
+
+
+WORKTREE_DIR_DEFAULT = "../{repo}.worktrees"
+
+
+def worktree_base(project: Project) -> Path:
+    pattern = project.cfg("worktree_dir", WORKTREE_DIR_DEFAULT).replace("{repo}", project.root.name)
+    base = Path(pattern)
+    return (base if base.is_absolute() else project.root / base).resolve()
+
+
+def spec_slug(doc: Doc) -> str:
+    stem = doc.path.stem
+    return stem[len(doc.id) + 1:] if stem.startswith(doc.id + "-") else slugify(doc.title)
+
+
+def worktree_for(project: Project, doc: Doc):
+    slug = spec_slug(doc)
+    return worktree_base(project) / f"{doc.id}-{slug}", f"sdd/{doc.id}-{slug}"
+
+
+def list_worktrees(project: Project):
+    code, out, _ = run_git(project.root, "worktree", "list", "--porcelain")
+    if code != 0:
+        return []
+    entries, cur = [], {}
+    for line in out.splitlines() + [""]:
+        if not line.strip():
+            if cur:
+                entries.append(cur)
+            cur = {}
+        elif line.startswith("worktree "):
+            cur["path"] = line[9:]
+        elif line.startswith("branch "):
+            cur["branch"] = line[7:].replace("refs/heads/", "")
+        elif line.startswith("prunable"):
+            cur["prunable"] = True
+    return entries[1:]  # the first entry is the main checkout
+
+
+def stale_worktrees(project: Project):
+    stale = []
+    for entry in list_worktrees(project):
+        m = re.search(r"\bsdd/(SPEC-\d{4,})", entry.get("branch", ""))
+        doc = project.specs.get(m.group(1)) if m else None
+        if entry.get("prunable") or not Path(entry.get("path", "")).exists():
+            stale.append((entry.get("path", "?"), "pasta não existe mais — rode `git worktree prune`"))
+        elif doc is not None and doc.status in DONE:
+            stale.append((entry["path"], f"{doc.id} está {doc.status} — `git worktree remove {entry['path']}`"))
+    return stale
+
+
+def misplaced_worktrees(project: Project):
+    """Worktrees outside worktree_dir (e.g. old sibling folders, or a folder inside the repo)."""
+    base = worktree_base(project)
+    root = project.root.resolve()
+    allow = project.cfg_list("worktree_allow", [])
+    out = []
+    for entry in list_worktrees(project):
+        path = Path(entry.get("path", "")).resolve()
+        if not path.exists() or path == base or base in path.parents:
+            continue
+        inside = root in path.parents
+        rel = path.relative_to(root).as_posix() if inside else str(path)
+        if allow and matches_any(rel, allow):
+            continue
+        branch = entry.get("branch", "")
+        m = re.search(r"\bsdd/(SPEC-\d{4,}[\w-]*)", branch)
+        target = base / (m.group(1) if m else path.name)
+        why = ""
+        if inside and run_git(project.root, "check-ignore", "-q", rel + "/")[0] != 0:
+            why = " — está DENTRO do repositório e fora do .gitignore (ferramentas podem ver o código em dobro)"
+        out.append((str(path), f"fora do worktree_dir{why}; quando ninguém estiver trabalhando nela: "
+                               f"`git worktree move {path} {target}`"))
+    return out
+
+
+def validate_worktrees(project: Project, add):
+    if run_git(project.root, "rev-parse", "--is-inside-work-tree")[0] != 0:
+        return
+    base = worktree_base(project)
+    try:
+        inside = base.relative_to(project.root.resolve())
+    except ValueError:
+        inside = None
+    if inside is not None and run_git(project.root, "check-ignore", "-q", str(inside) + "/")[0] != 0:
+        add("WARN", "worktrees", f"worktree_dir '{inside}' fica dentro do repositório e não está no .gitignore — "
+                                 "adicione-o (e exclua a pasta de builds de container, IDE e descoberta de testes) ou use "
+                                 f"o padrão {WORKTREE_DIR_DEFAULT}")
+    for path, why in stale_worktrees(project):
+        add("WARN", "worktrees", f"worktree esquecida {path}: {why}")
+    for path, why in misplaced_worktrees(project):
+        add("WARN", "worktrees", f"worktree {path} {why}")
+
+
+def cmd_worktree(project: Project, spec_id: str, create: bool, base):
+    doc = project.specs.get(spec_id)
+    if doc is None or doc.tier == "epic":
+        die(f"{spec_id} não encontrada ou é épico")
+    path, branch = worktree_for(project, doc)
+    if not create:
+        print(f"{path}\n{branch}")
+        return 0
+    if path.exists():
+        die(f"{path} já existe")
+    start = base or (f"sdd/{doc.scalar('parent')}" if doc.scalar("parent") else project.cfg("base_branch", "main"))
+    exists = run_git(project.root, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")[0] == 0
+    args = ["worktree", "add", str(path), branch] if exists else ["worktree", "add", str(path), "-b", branch, start]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    code, out, err = run_git(project.root, *args)
+    if code != 0:
+        die(f"git worktree add falhou: {err.strip()}")
+    print(f"worktree criada: {path}\nbranch: {branch}" + ("" if exists else f" (a partir de {start})"))
+    return 0
+
+
+REQUIRED_TEST_LEVELS = (("unitario", "Unitário"), ("integracao", "Integração"), ("e2e", "E2E"))
+
+
+def validate_test_tooling(project: Project, add):
+    """The `testes` pillar decides a tool (or a reasoned N/A) per test level; may be spread over several ADRs."""
+    adrs = [a for a in sorted(project.adrs.values(), key=lambda d: d.id)
+            if "testes" in a.list("pillars") and a.status in ("proposed", "accepted")]
+    if not adrs or any(PLACEHOLDER_RE.search(COMMENT_RE.sub("", a.text)) for a in adrs):
+        return
+    levels = {}
+    for adr in adrs:
+        for header, rows in parse_tables(COMMENT_RE.sub("", adr.body)):
+            if not header or norm(header[0]) not in ("nivel", "nível"):
+                continue
+            for row in rows:
+                if len(row) > 1 and row[0]:
+                    levels.setdefault(norm(row[0]), (row[1].strip(), adr.id))
+    level = "WARN" if any(a.status == "accepted" for a in adrs) else "ERROR"
+    subject = adrs[0].id
+    for key, label in REQUIRED_TEST_LEVELS:
+        tool, where = levels.get(key, ("", subject))
+        if not tool:
+            add(level, where, f"pilar testes sem decisão para o nível {label}: tabela 'Ferramenta por nível' "
+                              "(ferramenta, por quê, onde roda) ou 'N/A — motivo'")
+        elif re.match(r"^N/A", tool, re.I) and len(re.sub(r"^N/A\s*[—–:-]?\s*", "", tool, flags=re.I)) < 10:
+            add(level, where, f"pilar testes: N/A no nível {label} sem motivo")
 
 
 def validate_change_flow(project: Project, add):
@@ -1010,6 +1155,14 @@ def validate_executable(project: Project, doc: Doc, add):
             add("ERROR", sid, "user_facing deve ser true ou false (true = altera jornada do usuário em UI ou API pública)")
         elif user_facing == "true" and "E2E" not in kinds:
             add("ERROR", sid, "user_facing: true exige ao menos um teste E2E (E2E-xx) da jornada afetada")
+        elif user_facing == "false" and "E2E" not in kinds:
+            e2e = find_sub(parse_subsections(plan), "E2E") or ""
+            m = re.search(r"N/A\s*[—–:-]?\s*(.*)", e2e)
+            reason = re.sub(r"user_facing\s*:\s*false", "", m.group(1) if m else "", flags=re.I).strip(" .;—–-")
+            if len(reason) < 15:
+                add("ERROR" if status == "proposed" else "WARN", sid,
+                    "user_facing: false sem justificativa: na seção Testes E2E escreva \"N/A — <por que nenhuma jornada "
+                    "de usuário (UI ou API pública) é afetada>\"")
         if doc.type == "migration" and not doc.list("adrs"):
             add("ERROR", sid, "type migration exige o ADR da nova arquitetura/padrão em adrs")
         validate_contract_map(doc, defined, add)
@@ -1483,11 +1636,21 @@ def cmd_validate(project: Project, ids, staged: bool = False, exclude_drafts: bo
     return report_issues(validate(project, only), ", ".join(sorted(only)) if only else "projeto inteiro")
 
 
+def ci_annotate(level: str, message: str):
+    """When running in GitHub Actions, surface findings as annotations on the PR (plain text elsewhere)."""
+    if os.environ.get("GITHUB_ACTIONS") != "true" or level not in ("ERROR", "FAIL", "WARN"):
+        return
+    kind = "warning" if level == "WARN" else "error"
+    text = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::{kind} title=SDD::{text}")
+
+
 def report_issues(issues, scope: str) -> int:
     errors = [i for i in issues if i[0] == "ERROR"]
     warns = [i for i in issues if i[0] == "WARN"]
     for level, subject, msg in sorted(issues, key=lambda x: (x[1], x[0] != "ERROR")):
         print(f"{level:<5} {subject}: {msg}")
+        ci_annotate(level, f"{subject}: {msg}")
     print(f"\nG0 [{scope}]: {'PASS' if not errors else 'FAIL'} — {len(errors)} erro(s), {len(warns)} aviso(s)")
     return 1 if errors else 0
 
@@ -1824,6 +1987,7 @@ def print_results(header: str, results) -> int:
     print(header + "\n")
     for level, gate, msg in results:
         print(f"[{gate}] {level:<4}  {msg}")
+        ci_annotate(level, f"[{gate}] {msg}")
     fails = sum(1 for r in results if r[0] == "FAIL")
     warns = sum(1 for r in results if r[0] == "WARN")
     print(f"\nResultado: {'FAIL' if fails else 'PASS'} — {fails} falha(s), {warns} aviso(s)")
@@ -2236,6 +2400,10 @@ def cmd_status(project: Project, ids):
             print(progress_panel(doc, done))
             print(f"\nPróximo passo: {step}\n")
         return 0
+    for path, why in stale_worktrees(project):
+        print(f"⚠ worktree esquecida {path}: {why}")
+    for path, why in misplaced_worktrees(project):
+        print(f"⚠ worktree {path} {why}")
     gaps = [pid for pid, _, state, _ in pillar_coverage(project) if state == "sem decisão"]
     if gaps:
         print(f"⚠ Pilares sem decisão: {', '.join(gaps)} — rode `pillars`\n")
@@ -2538,7 +2706,6 @@ def cmd_pr(project: Project, ids, title_only: bool, out):
     if out:
         Path(out).write_text(body, encoding="utf-8")
         print(title)
-        print(f"corpo escrito em: {out}", file=sys.stderr)
     else:
         print(title + "\n\n" + body)
     return 0
@@ -2556,9 +2723,19 @@ def cmd_pr_check(project: Project, title, body, body_file, base):
         if re.match(r"^\s*(refs\s*:|<!--\s*sdd:)", line, re.I):
             declared |= set(SPEC_REF_RE.findall(line))
     refs = sorted(declared) if declared else sorted(set(SPEC_REF_RE.findall(body)))
-    m = CONVENTIONAL_RE.match(title)
+    title_level = "WARN" if project.cfg("pr_title_policy", "fail") == "warn" else "FAIL"
+    bare = re.sub(r"\s*\[no-spec\]\s*", " ", title, flags=re.I).replace(" :", ":").strip()
+    m = CONVENTIONAL_RE.match(bare)
     if not m or m.group(1).lower() not in COMMIT_TYPES:
-        results.append(("WARN", "PR", f"título fora do Conventional Commits (<tipo>(escopo)?: descrição; tipos: {', '.join(COMMIT_TYPES)})"))
+        results.append((title_level, "PR", f"título fora do Conventional Commits: '{title[:60]}' — use "
+                        f"<tipo>(escopo)?: descrição [SPEC-NNNN] (tipos: {', '.join(COMMIT_TYPES)}); "
+                        "gere com `pr SPEC-X --title`"))
+    try:
+        max_len = int(project.cfg("pr_title_max", "100"))
+    except ValueError:
+        max_len = 100
+    if len(title) > max_len:
+        results.append((title_level, "PR", f"título com {len(title)} caracteres (máximo {max_len})"))
     docs = []
     if not refs:
         if "[no-spec]" in title.lower():
@@ -2633,18 +2810,21 @@ CODEOWNERS_PATHS = {"github": ".github/CODEOWNERS", "gitlab": ".gitlab/CODEOWNER
 
 
 def cmd_vendor(project: Project, ci, pr_template, hooks: bool, agents: bool, changelog: bool, force: bool,
-               codeowners=None, owner=None):
+               codeowners=None, owner=None, overwrite=False):
     notes = []
 
-    def put(rel: str, content: str, executable: bool = False):
+    def put(rel: str, content: str, executable: bool = False, always: bool = False):
         dest = project.root / rel
         if dest.exists():
             current = dest.read_text(encoding="utf-8")
             if current == content:
                 print(f"inalterado: {rel}")
                 return
-            if not force:
-                print(f"mantido (já existe e difere, use --force para sobrescrever): {rel}")
+            if not (always or overwrite):
+                changed = sum(1 for l in difflib.unified_diff(current.splitlines(), content.splitlines(), lineterm="")
+                              if l[:1] in "+-" and l[:3] not in ("+++", "---"))
+                print(f"mantido (customizado no projeto, {changed} linha(s) diferem do modelo da skill): {rel} — "
+                      "revise e, se quiser o modelo, use --overwrite")
                 return
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
@@ -2658,7 +2838,7 @@ def cmd_vendor(project: Project, ci, pr_template, hooks: bool, agents: bool, cha
             die(f"asset não encontrado: {path}")
         return path.read_text(encoding="utf-8")
 
-    put(VENDORED_TOOL, Path(__file__).read_text(encoding="utf-8"), executable=True)
+    put(VENDORED_TOOL, Path(__file__).read_text(encoding="utf-8"), executable=True, always=True)
     if ci:
         src, dest = CI_TARGETS[ci]
         put(dest, asset(src), executable=dest.endswith(".sh"))
@@ -2994,7 +3174,8 @@ def main(argv=None):
     p.add_argument("--changelog", action="store_true", help="cria CHANGELOG.md (Keep a Changelog) se não existir")
     p.add_argument("--codeowners", help="github | gitlab | outra (lista caminhos para revisores obrigatórios)")
     p.add_argument("--owner", help="dono dos arquivos de controle (ex: @usuario)")
-    p.add_argument("--force", action="store_true")
+    p.add_argument("--force", action="store_true", help="(compatibilidade) a ferramenta em tools/sdd é sempre atualizada")
+    p.add_argument("--overwrite", action="store_true", help="substitui também arquivos customizados (workflow, template, hooks)")
     sub.add_parser("waves", help="plano de execução em ondas + próximo lote")
     sub.add_parser("next", help="próximo lote pronto para despachar")
     p = sub.add_parser("index", help="gera docs/specs/INDEX.md")
@@ -3043,6 +3224,10 @@ def main(argv=None):
     p.add_argument("args", nargs="+")
     p = sub.add_parser("next-id", help="próximo ID livre")
     p.add_argument("kind", choices=("spec", "adr"))
+    p = sub.add_parser("worktree", help="caminho e branch padronizados da worktree de uma spec (--create cria)")
+    p.add_argument("id")
+    p.add_argument("--create", action="store_true")
+    p.add_argument("--base", help="branch de partida (padrão: integração do épico ou base_branch)")
     sub.add_parser("journeys", help="cobertura das jornadas críticas (critical_journeys) por testes E2E")
     sub.add_parser("pillars", help="cobertura dos pilares de entrega (perfil do sdd-config) e N/A recorrente")
     p = sub.add_parser("upgrade", help="atualiza specs antigas para os templates atuais (seções, chaves, gates); simulação por padrão")
@@ -3068,7 +3253,7 @@ def main(argv=None):
         return cmd_pr_check(project, args.title, args.body, args.body_file, args.base)
     if args.command == "vendor":
         return cmd_vendor(project, args.ci, args.pr_template, args.hooks, args.agents, args.changelog, args.force,
-                          args.codeowners, args.owner)
+                          args.codeowners, args.owner, args.overwrite)
     if args.command == "waves":
         return cmd_waves(project)
     if args.command == "next":
@@ -3096,6 +3281,8 @@ def main(argv=None):
         return cmd_set(project, args.args)
     if args.command == "next-id":
         return cmd_next_id(project, args.kind)
+    if args.command == "worktree":
+        return cmd_worktree(project, args.id, args.create, args.base)
     if args.command == "journeys":
         return cmd_journeys(project)
     if args.command == "pillars":
