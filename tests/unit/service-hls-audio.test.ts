@@ -7,6 +7,7 @@ import { createService } from '../../src/core/service';
 
 const SELF = 'self';
 const VIDEO_PLAYLIST_URL = 'https://cdn.example.test/hls/video.m3u8';
+const VIDEO_TS_PLAYLIST_URL = 'https://cdn.example.test/hls/video-ts.m3u8';
 const AUDIO_PLAYLIST_URL = 'https://cdn.example.test/hls/audio.m3u8';
 const CORRUPT_AUDIO_PLAYLIST_URL = 'https://cdn.example.test/hls/audio-corrupt.m3u8';
 
@@ -19,6 +20,14 @@ video-0.m4s
 #EXT-X-ENDLIST
 `;
 
+const VIDEO_TS_PLAYLIST = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:6
+#EXTINF:6.0,
+video-0.ts
+#EXT-X-ENDLIST
+`;
+
 const AUDIO_TS_PLAYLIST = `#EXTM3U
 #EXT-X-VERSION:3
 #EXT-X-TARGETDURATION:6
@@ -27,7 +36,11 @@ audio-0.aac
 #EXT-X-ENDLIST
 `;
 
-function createHlsCandidate(id: string, audioUrl: string): VideoCandidate {
+function createHlsCandidate(
+  id: string,
+  audioUrl: string,
+  videoUrl: string = VIDEO_PLAYLIST_URL,
+): VideoCandidate {
   return {
     id,
     providerId: 'test-provider',
@@ -45,7 +58,7 @@ function createHlsCandidate(id: string, audioUrl: string): VideoCandidate {
       variants: [
         {
           index: 0,
-          url: VIDEO_PLAYLIST_URL,
+          url: videoUrl,
           bandwidth: 2_500_000,
           label: '720p',
           audioGroup: '234',
@@ -92,6 +105,9 @@ function setupService(candidates: VideoCandidate[]) {
   const fetchPlaylist = vi.fn((url: string): Promise<string> => {
     if (url === VIDEO_PLAYLIST_URL) {
       return Promise.resolve(VIDEO_FMP4_PLAYLIST);
+    }
+    if (url === VIDEO_TS_PLAYLIST_URL) {
+      return Promise.resolve(VIDEO_TS_PLAYLIST);
     }
     if (url === AUDIO_PLAYLIST_URL) {
       return Promise.resolve(AUDIO_TS_PLAYLIST);
@@ -145,6 +161,41 @@ describe('service HLS com áudio TS/ADTS', () => {
         initUrl: undefined,
       },
     });
+  });
+
+  it('SPEC-0020:UT-01 service.ts aceita downloadHls com vídeo MPEG-TS (media.fmp4 === false) e áudio separado sem recusar com UNSUPPORTED', async () => {
+    const candidate = createHlsCandidate(
+      'cand-ts-video-audio',
+      AUDIO_PLAYLIST_URL,
+      VIDEO_TS_PLAYLIST_URL,
+    );
+    const { service, sendSpy } = setupService([candidate]);
+
+    await service.handle({ type: 'detect', tabId: 1 }, { id: SELF });
+
+    const response = await service.handle(
+      { type: 'download', candidateId: candidate.id },
+      { id: SELF },
+    );
+
+    expect(response).toMatchObject({ ok: true });
+    if (!response.ok || !('jobId' in response)) throw new Error('esperado response com jobId');
+    expect(typeof response.jobId).toBe('string');
+    expect(sendSpy).toHaveBeenCalled();
+    const [firstCall] = sendSpy.mock.calls;
+    const command = firstCall?.[0];
+    expect(command).toMatchObject({
+      type: 'start',
+      fmp4: false,
+      urls: ['https://cdn.example.test/hls/video-0.ts'],
+      audio: {
+        urls: ['https://cdn.example.test/hls/audio-0.aac'],
+        initUrl: undefined,
+      },
+    });
+    if (command && command.type === 'start') {
+      expect(command.initUrl).toBeUndefined();
+    }
   });
 
   it('SPEC-0019:UT-03 playlist de áudio retornando conteúdo inválido ou não-mídia é recusada com HLS_NOT_RESOLVED', async () => {

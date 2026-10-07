@@ -65,4 +65,49 @@ describe('HLS job com áudio TS/ADTS', () => {
     expect(start?.audio?.initUrl).toBeUndefined();
     expect(start?.audio?.urls).toEqual([o('/av/audio-0.aac')]);
   });
+
+  it('SPEC-0020:IT-01 Job HLS com vídeo TS e áudio separado emite comando start ao offscreen com os parâmetros corretos', async () => {
+    const VIDEO_TS_PLAYLIST = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:6
+#EXTINF:6.0,
+video-0.ts
+#EXT-X-ENDLIST
+`;
+
+    const MASTER_TS_VIDEO_AND_AUDIO = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="234",NAME="Português",LANGUAGE="pt",DEFAULT=YES,URI="audio-ts.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x1080,CODECS="avc1.640028",AUDIO="234"
+video-ts.m3u8
+`;
+
+    server = await startPlaylistServer({
+      '/av/master-yt.m3u8': body(MASTER_TS_VIDEO_AND_AUDIO),
+      '/av/video-ts.m3u8': body(VIDEO_TS_PLAYLIST),
+      '/av/video-0.ts': rangeHandler(new Uint8Array(188).fill(0x47)),
+      '/av/audio-ts.m3u8': body(AUDIO_TS_PLAYLIST),
+      '/av/audio-0.aac': rangeHandler(new Uint8Array([0xff, 0xf1, 0x50, 0x80]), {
+        contentType: 'audio/aac',
+      }),
+    });
+    offscreen = simulateOffscreen(bg);
+    captureDownloads(bg, 1);
+
+    const { candidate } = await observeAndResolve(bg, o('/av/master-yt.m3u8'));
+    const { jobId } = await startJob(bg, candidate.id);
+
+    expect(jobId).toBeDefined();
+
+    await expect.poll(() => offscreen.starts().length).toBeGreaterThan(0);
+
+    const [start] = offscreen.starts();
+    expect(start?.jobId).toBe(jobId);
+    expect(start?.fmp4).toBe(false);
+    expect(start?.initUrl).toBeUndefined();
+    expect(start?.urls).toEqual([o('/av/video-0.ts')]);
+    expect(start?.audio).toBeDefined();
+    expect(start?.audio?.initUrl).toBeUndefined();
+    expect(start?.audio?.urls).toEqual([o('/av/audio-0.aac')]);
+  });
 });

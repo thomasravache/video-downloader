@@ -11,7 +11,12 @@
  * O leitor de caixas MP4 de apoio é tests/unit/support/mp4.ts (sem ffprobe).
  */
 import { describe, expect, it } from 'vitest';
-import { assembleFmp4, assembleTs, normalizeTrunV1 } from '../../entrypoints/offscreen/assemble';
+import {
+  assembleFmp4,
+  assembleTs,
+  normalizeTrunV1,
+  transmuxTsToFmp4,
+} from '../../entrypoints/offscreen/assemble';
 import { AssemblyError } from '../../src/core/hls-download';
 import {
   CLIP_DURATION_SEC,
@@ -235,5 +240,22 @@ describe('transmuxer compatível e normalização de timestamps (SPEC-0018)', ()
     const info = inspectMp4(mp4);
     expect(info.topLevel).toEqual(['ftyp', 'moov', 'mdat']);
     expect(info.topLevel).not.toContain('moof');
+  });
+});
+
+describe('transmuxTsToFmp4 com múltiplos segmentos TS (SPEC-0020)', () => {
+  it('SPEC-0020:UT-04 Transmux de áudio TS com múltiplos segmentos gera stream fMP4 contínuo contendo a duração total e todos os frames dos segmentos, sem parar no primeiro', async () => {
+    const segments = [tsSegments('v180')[0] as Uint8Array, tsSegments('v180')[1] as Uint8Array];
+
+    const { initSegment, fragments } = await transmuxTsToFmp4(segments);
+
+    expect(initSegment).toBeDefined();
+    expect(initSegment.byteLength).toBeGreaterThan(0);
+    expect(fragments.length).toBeGreaterThanOrEqual(2);
+
+    const fmp4 = concat([initSegment, ...fragments]);
+    const info = inspectMp4(fmp4);
+    expect(info.topLevel).toEqual(expect.arrayContaining(['moov', 'moof', 'mdat']));
+    expect(info.durationSec).toBeGreaterThan(3.0);
   });
 });

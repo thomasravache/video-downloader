@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { runOffscreenJob } from '../../entrypoints/offscreen/run-job';
 import type { OffscreenEvent, OffscreenStart } from '../../src/core/hls-download';
 import { fmp4Init, fmp4Segments, tsSegments } from '../unit/support/hls-clip';
+import { inspectMp4 } from '../unit/support/mp4';
+import { bytesOfBlobUrl } from './support/hls-job';
 
 describe('runOffscreenJob com vídeo fMP4 e áudio TS/ADTS', () => {
   it('SPEC-0019:IT-03 executor runOffscreenJob com vídeo fMP4 e áudio TS/ADTS sem initUrl conclui montagem e emite evento ready', async () => {
@@ -48,5 +50,68 @@ describe('runOffscreenJob com vídeo fMP4 e áudio TS/ADTS', () => {
     const readyEvent = events.find((e) => e.type === 'ready');
     expect(readyEvent).toBeDefined();
     expect(events.some((e) => e.type === 'failed')).toBe(false);
+  });
+
+  it('SPEC-0020:IT-02 Pipeline offscreen com vídeo TS e áudio TS multi-segmento emite evento ready contendo Blob MP4 com ambas as faixas e duração total correspondente', async () => {
+    // Segmentos independentes com timestamps iniciando de 0 (característica do YouTube HLS)
+    const v0 = tsSegments('v360')[0] as Uint8Array;
+    const v1 = tsSegments('v360')[0] as Uint8Array;
+    const a0 = tsSegments('v180')[0] as Uint8Array;
+    const a1 = tsSegments('v180')[0] as Uint8Array;
+
+    const events: OffscreenEvent[] = [];
+    const request: OffscreenStart = {
+      target: 'offscreen',
+      type: 'start',
+      jobId: 'job-ts-video-audio-multisegment',
+      urls: ['https://cdn.example.test/v0.ts', 'https://cdn.example.test/v1.ts'],
+      fmp4: false,
+      audio: {
+        urls: ['https://cdn.example.test/a0.ts', 'https://cdn.example.test/a1.ts'],
+      },
+    };
+
+    const mockFetch = ((input: string) => {
+      if (input === 'https://cdn.example.test/v0.ts') {
+        return Promise.resolve(new Response(Buffer.from(v0), { status: 200 }));
+      }
+      if (input === 'https://cdn.example.test/v1.ts') {
+        return Promise.resolve(new Response(Buffer.from(v1), { status: 200 }));
+      }
+      if (input === 'https://cdn.example.test/a0.ts') {
+        return Promise.resolve(new Response(Buffer.from(a0), { status: 200 }));
+      }
+      if (input === 'https://cdn.example.test/a1.ts') {
+        return Promise.resolve(new Response(Buffer.from(a1), { status: 200 }));
+      }
+      return Promise.reject(new Error(`URL não encontrada: ${input}`));
+    }) as unknown as typeof fetch;
+
+    await runOffscreenJob(request, {
+      fetch: mockFetch,
+      emit: (event) => events.push(event),
+      signal: new AbortController().signal,
+      sleep: () => Promise.resolve(),
+    });
+
+    const readyEvent = events.find(
+      (e): e is Extract<OffscreenEvent, { type: 'ready' }> => e.type === 'ready',
+    );
+    expect(readyEvent).toBeDefined();
+    expect(events.some((e) => e.type === 'failed')).toBe(false);
+    if (!readyEvent) {
+      throw new Error('readyEvent ausente');
+    }
+
+    const bytes = await bytesOfBlobUrl(readyEvent.blobUrl);
+    const info = inspectMp4(bytes);
+
+    expect(info.tracks.map((t) => t.handler).sort()).toEqual(['soun', 'vide']);
+    const videoTrack = info.tracks.find((t) => t.handler === 'vide');
+    const audioTrack = info.tracks.find((t) => t.handler === 'soun');
+    expect(videoTrack).toBeDefined();
+    expect(audioTrack).toBeDefined();
+    // A duração total do MP4 gerado deve cobrir a soma dos múltiplos segmentos (~4s), não parando no primeiro (~2s)
+    expect(info.durationSec).toBeGreaterThan(3.5);
   });
 });

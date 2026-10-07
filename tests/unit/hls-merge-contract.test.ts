@@ -218,4 +218,36 @@ describe('start do offscreen: audio opcional', () => {
     };
     expect(planWithInit.audio?.initUrl).toBe('https://cdn.example.test/a2-init.mp4');
   });
+
+  it('SPEC-0020:CT-01 Contrato JobPlan permite initUrl opcional no vídeo e no áudio', () => {
+    const planWithoutBothInit: JobPlan = {
+      candidateId: 'c-ts-both',
+      providerId: 'network',
+      variantIndex: 0,
+      filename: 'video-ts-both.mp4',
+      correlationId: 'corr-ts-both',
+      urls: ['https://cdn.example.test/v1.ts', 'https://cdn.example.test/v2.ts'],
+      fmp4: false,
+      audio: {
+        urls: ['https://cdn.example.test/a1.ts', 'https://cdn.example.test/a2.ts'],
+      },
+    };
+    expect(planWithoutBothInit.initUrl).toBeUndefined();
+    expect(planWithoutBothInit.fmp4).toBe(false);
+    expect(planWithoutBothInit.audio?.initUrl).toBeUndefined();
+
+    const startWithoutBothInit: OffscreenStart = {
+      target: 'offscreen',
+      type: 'start',
+      jobId: 'j-ts-both',
+      urls: ['https://cdn.example.test/v1.ts'],
+      fmp4: false,
+      audio: {
+        urls: ['https://cdn.example.test/a1.ts'],
+      },
+    };
+    expect(isCommand(startWithoutBothInit)).toBe(true);
+    expect(startWithoutBothInit.initUrl).toBeUndefined();
+    expect(startWithoutBothInit.audio?.initUrl).toBeUndefined();
+  });
 });
