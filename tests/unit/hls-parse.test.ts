@@ -11,7 +11,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { HlsParseError, parseHlsPlaylist } from '../../src/core/hls';
+import type { ParsedManifest } from 'm3u8-parser';
+import { HlsParseError, parseHlsPlaylist, variantsOf } from '../../src/core/hls';
 
 const BASE = 'https://cdn.example.test/hls/master.m3u8';
 const fixture = (name: string): string =>
@@ -556,3 +557,37 @@ seg1.vtt
     expect(info.type).toBe('subtitles');
   });
 });
+
+describe('parseHlsPlaylist: distinção de codecs e ordenação preferencial H.264 (SPEC-0019:UT-04)', () => {
+  it('SPEC-0019:UT-04 quando há variantes com mesma resolução em codecs diferentes, rótulos incluem codec legível e AVC1 tem precedência sobre VP9', () => {
+    const MASTER_CODEC_DUP = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:BANDWIDTH=4800000,RESOLUTION=1920x1080,CODECS="vp09.00.41.08"
+v1080-vp9.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=4600000,RESOLUTION=1920x1080,CODECS="avc1.640028"
+v1080-avc.m3u8
+`;
+    const info = parseHlsPlaylist(MASTER_CODEC_DUP, BASE);
+    expect(info.variants).toHaveLength(2);
+
+    // Em empate de resolução (ambas 1080p), a variante AVC1 deve ser posicionada antes da variante VP9
+    expect(info.variants[0]?.codecs).toContain('avc1');
+    expect(info.variants[1]?.codecs).toContain('vp09');
+
+    // Os rótulos devem incluir o identificador de codec legível
+    expect(info.variants[0]?.label).toContain('(H.264)');
+    expect(info.variants[1]?.label).toContain('(VP9)');
+
+    // Testa também que variantsOf pode ser invocado diretamente respeitando o mesmo contrato
+    const parsedManifest: ParsedManifest = {
+      playlists: [
+        { uri: 'v1080-vp9.m3u8', attributes: { BANDWIDTH: 4800000, RESOLUTION: { width: 1920, height: 1080 }, CODECS: 'vp09.00.41.08' } },
+        { uri: 'v1080-avc.m3u8', attributes: { BANDWIDTH: 4600000, RESOLUTION: { width: 1920, height: 1080 }, CODECS: 'avc1.640028' } },
+      ],
+    };
+    const directVariants = variantsOf(parsedManifest, BASE);
+    expect(directVariants[0]?.codecs).toContain('avc1');
+    expect(directVariants[0]?.label).toContain('(H.264)');
+  });
+});
+

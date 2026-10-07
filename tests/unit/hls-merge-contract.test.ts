@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { isCommand } from '../../entrypoints/offscreen/commands';
 import { validateDetectResponse } from '../../src/core/contracts';
+import type { JobPlan, OffscreenStart } from '../../src/core/hls-download';
 import { validateHlsInfo } from '../../src/core/hls';
 import { validateMessage } from '../../src/core/messages';
 
@@ -171,4 +172,51 @@ describe('start do offscreen: audio opcional', () => {
       }),
     ).toBe(true);
   });
+
+  it('SPEC-0019:CT-01 JobPlan e OffscreenStart aceitam audio sem initUrl e mantêm compatibilidade com formato legado da SPEC-0014', () => {
+    const startWithoutInit: OffscreenStart = {
+      target: 'offscreen',
+      type: 'start',
+      jobId: 'j-ts',
+      urls: ['https://cdn.example.test/v.mp4'],
+      fmp4: true,
+      audio: {
+        urls: ['https://cdn.example.test/a1.ts', 'https://cdn.example.test/a2.ts'],
+      },
+    };
+    expect(isCommand(startWithoutInit)).toBe(true);
+    expect(startWithoutInit.audio?.initUrl).toBeUndefined();
+
+    const planWithoutInit: JobPlan = {
+      candidateId: 'c1',
+      providerId: 'network',
+      variantIndex: 0,
+      filename: 'video.mp4',
+      correlationId: 'corr-1',
+      urls: ['https://cdn.example.test/v1.mp4'],
+      fmp4: true,
+      audio: {
+        urls: ['https://cdn.example.test/a1.ts'],
+      },
+    };
+    expect(planWithoutInit.audio?.initUrl).toBeUndefined();
+
+    // Compatibilidade com SPEC-0014 (com initUrl)
+    const planWithInit: JobPlan = {
+      candidateId: 'c2',
+      providerId: 'network',
+      variantIndex: 1,
+      filename: 'video2.mp4',
+      correlationId: 'corr-2',
+      urls: ['https://cdn.example.test/v2.mp4'],
+      initUrl: 'https://cdn.example.test/v2-init.mp4',
+      fmp4: true,
+      audio: {
+        urls: ['https://cdn.example.test/a2.mp4'],
+        initUrl: 'https://cdn.example.test/a2-init.mp4',
+      },
+    };
+    expect(planWithInit.audio?.initUrl).toBe('https://cdn.example.test/a2-init.mp4');
+  });
 });
+
