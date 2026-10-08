@@ -167,7 +167,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 46799cd (árvore suja) | 2026-10-07 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯) — d0ac475 | 2026-10-07 |
-| G2 Green | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 385 ms); test exit 0 (Duration  65.75s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 178 ms); coverage exit 0 (================================================================================) — c8403df | 2026-10-08 |
 | G3 Arquitetura | PENDING | | |
 | G4 Review | PENDING | | |
 | G5 Integração & CI | PENDING | | |
