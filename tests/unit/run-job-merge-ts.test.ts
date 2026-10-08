@@ -118,4 +118,3 @@ describe('run-job merge com vídeo MPEG-TS sem initUrl', () => {
     expect(['ftyp', 'moov', 'moof']).toContain(boxType);
   });
 });
-

@@ -7,7 +7,6 @@ import { makePackedAacSegment } from '../unit/support/packed-aac';
 import { bytesOfBlobUrl } from './support/hls-job';
 
 describe('runOffscreenJob com vídeo fMP4 e áudio TS/ADTS', () => {
-
   it('SPEC-0019:IT-03 executor runOffscreenJob com vídeo fMP4 e áudio TS/ADTS sem initUrl conclui montagem e emite evento ready', async () => {
     const videoInitBytes = fmp4Init();
     const videoSegmentBytes = fmp4Segments()[0] as Uint8Array;
@@ -236,4 +235,3 @@ describe('runOffscreenJob com vídeo fMP4 e áudio TS/ADTS', () => {
     expect(audioTrack?.sampleCount).toBeGreaterThanOrEqual(170);
   });
 });
-

@@ -18,7 +18,11 @@ export function makeId3Tag(ptsTicks: number): Uint8Array {
   const frameId = new TextEncoder().encode('PRIV');
   const frameHeader = new Uint8Array(10);
   frameHeader.set(frameId, 0);
-  const frameView = new DataView(frameHeader.buffer, frameHeader.byteOffset, frameHeader.byteLength);
+  const frameView = new DataView(
+    frameHeader.buffer,
+    frameHeader.byteOffset,
+    frameHeader.byteLength,
+  );
   frameView.setUint32(4, payload.length);
 
   const tagPayloadLength = frameHeader.length + payload.length;
@@ -65,7 +69,11 @@ export function makeAdtsFrame(payloadSize = 20): Uint8Array {
 /**
  * Constrói um segmento de áudio packed AAC composto por uma tag ID3 seguida por N quadros ADTS.
  */
-export function makePackedAacSegment(ptsTicks: number, frameCount = 43, payloadSize = 20): Uint8Array {
+export function makePackedAacSegment(
+  ptsTicks: number,
+  frameCount = 43,
+  payloadSize = 20,
+): Uint8Array {
   const parts: Uint8Array[] = [makeId3Tag(ptsTicks)];
   for (let i = 0; i < frameCount; i++) {
     parts.push(makeAdtsFrame(payloadSize));

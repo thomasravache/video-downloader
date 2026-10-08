@@ -381,17 +381,36 @@ export async function runOffscreenJob(
         if (audioInit === undefined) {
           throw new AssemblyError('ASSEMBLY_FAILED', 'faltou init de áudio');
         }
-        if (initIsEncrypted(audioInit)) {
-          throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
+        const isMediaNotInit =
+          audioInit[0] === 0x47 ||
+          (audioInit.length >= 3 &&
+            audioInit[0] === 0x49 &&
+            audioInit[1] === 0x44 &&
+            audioInit[2] === 0x33) ||
+          !isMp4Init(audioInit);
+        if (isMediaNotInit) {
+          const audioSegments = await fetchTrack(
+            audio,
+            request.urls.length,
+            audio.encryption,
+            audioKeys,
+            'ts',
+          );
+          const { initSegment, fragments } = await transmuxTsToFmp4([audioInit, ...audioSegments]);
+          audioBlob = new Blob([initSegment, ...fragments] as BlobPart[]);
+        } else {
+          if (initIsEncrypted(audioInit)) {
+            throw new AssemblyError('ENCRYPTED', 'init com caixa de criptografia');
+          }
+          const audioSegments = await fetchTrack(
+            audio,
+            request.urls.length,
+            audio.encryption,
+            audioKeys,
+            'fmp4',
+          );
+          audioBlob = new Blob([audioInit, ...audioSegments] as BlobPart[]);
         }
-        const audioSegments = await fetchTrack(
-          audio,
-          request.urls.length,
-          audio.encryption,
-          audioKeys,
-          'fmp4',
-        );
-        audioBlob = new Blob([audioInit, ...audioSegments] as BlobPart[]);
       } else {
         const audioSegments = await fetchTrack(
           audio,
@@ -400,8 +419,7 @@ export async function runOffscreenJob(
           audioKeys,
           'ts',
         );
-        const isTs = audioSegments.length > 0 && audioSegments[0]?.[0] === 0x47;
-        if (isTs) {
+        if (needsAudioTransmux(audioSegments)) {
           const { initSegment, fragments } = await transmuxTsToFmp4(audioSegments);
           audioBlob = new Blob([initSegment, ...fragments] as BlobPart[]);
         } else {
@@ -472,10 +490,70 @@ export async function runOffscreenJob(
   }
 }
 
+function isMp4Init(bytes: Uint8Array): boolean {
+  if (bytes.length < 8) {
+    return false;
+  }
+  const type = String.fromCharCode(bytes[4] ?? 0, bytes[5] ?? 0, bytes[6] ?? 0, bytes[7] ?? 0);
+  return type === 'ftyp' || type === 'moov';
+}
+
+function hasFmp4Box(bytes: Uint8Array): boolean {
+  if (bytes.length < 8) {
+    return false;
+  }
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let at = 0;
+  while (at + 8 <= bytes.byteLength) {
+    let size = dv.getUint32(at);
+    let header = 8;
+    if (size === 1) {
+      if (at + 16 > bytes.byteLength) break;
+      size = Number(dv.getBigUint64(at + 8));
+      header = 16;
+    } else if (size === 0) {
+      size = bytes.byteLength - at;
+    }
+    if (!Number.isSafeInteger(size) || size < header || at + size > bytes.byteLength) {
+      break;
+    }
+    const type = String.fromCharCode(
+      bytes[at + 4] ?? 0,
+      bytes[at + 5] ?? 0,
+      bytes[at + 6] ?? 0,
+      bytes[at + 7] ?? 0,
+    );
+    if (type === 'moof' || type === 'ftyp' || type === 'styp') {
+      return true;
+    }
+    at += size;
+  }
+  return false;
+}
+
 /**
  * Detecta se os segmentos de áudio necessitam de transmuxing (MPEG-TS, ID3 packed AAC, ADTS) (SPEC-0021).
  */
-export function needsAudioTransmux(_segments: readonly Uint8Array[]): boolean {
-  throw new Error('Not implemented');
+export function needsAudioTransmux(segments: readonly Uint8Array[]): boolean {
+  if (segments.length === 0) {
+    return false;
+  }
+  const first = segments[0];
+  if (!first || first.length === 0) {
+    return false;
+  }
+  if (first[0] === 0x47) {
+    return true;
+  }
+  if (first.length >= 3 && first[0] === 0x49 && first[1] === 0x44 && practicalId3(first)) {
+    return true;
+  }
+  if (first.length >= 2 && first[0] === 0xff && ((first[1] ?? 0) & 0xf0) === 0xf0) {
+    return true;
+  }
+  return !hasFmp4Box(first);
 }
 
+function practicalId3(first: Uint8Array): boolean {
+  return first[1] === 0x44 && first[2] === 0x33;
+}

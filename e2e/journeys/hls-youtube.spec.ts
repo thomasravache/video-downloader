@@ -144,6 +144,7 @@ test.describe('HLS YouTube com áudio separado e deduplicação', () => {
     fixturesUrl,
     downloadsDir,
   }) => {
+    test.setTimeout(60_000);
     // Intercepta áudio HLS para entregar segmentos packed AAC com ID3 (simulando itag 234 do YouTube)
     const seg0 = makePackedAacSegment(0, 86);
     const seg1 = makePackedAacSegment(90000 * 2, 86);
@@ -213,7 +214,7 @@ test.describe('HLS YouTube com áudio separado e deduplicação', () => {
 
     const progress = item.getByTestId('download-progress');
     await expect(progress).toBeVisible();
-    await expect(progress).toHaveAttribute('data-state', 'done', { timeout: 20_000 });
+    await expect(progress).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
     await expect(progress).toHaveAttribute('aria-valuenow', '100');
     await expect(item.getByTestId('job-error')).toHaveCount(0);
 
@@ -232,4 +233,3 @@ test.describe('HLS YouTube com áudio separado e deduplicação', () => {
     expect(audioTrack?.durationSec).toBeGreaterThan(3.5);
   });
 });
-

@@ -326,4 +326,3 @@ describe('transmuxTsToFmp4 e compatibilidade com assembleMerged (SPEC-0021)', ()
     expect(info.tracks.every((t) => t.trackId !== 0)).toBe(true);
   });
 });
-

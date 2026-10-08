@@ -334,4 +334,3 @@ describe('transmuxTsToFmp4 com múltiplos segmentos TS (SPEC-0020)', () => {
     expect(info.tracks[0]?.sampleCount).toBeGreaterThanOrEqual(86);
   });
 });
-
