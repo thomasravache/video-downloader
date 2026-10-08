@@ -4,8 +4,8 @@
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 7, implemented 11
+- Validação (G0): **1 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, in-progress 8, implemented 11
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -37,7 +37,7 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015  
+**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0022  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
@@ -51,6 +51,7 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
+| 8 | SPEC-0022 | Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
 
 ## Épicos
 
@@ -65,6 +66,7 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 
 ```mermaid
 flowchart LR
+  S0022["SPEC-0022<br/>Rebranding ClipDrop com nova UI dark e …"]:::inprogress
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
     S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::implemented
@@ -123,6 +125,7 @@ flowchart LR
 | [SPEC-0019](SPEC-0019-suporte-a-hls-com-audio-separado-em-ts-ou-adts-e-desduplicac.md) | Suporte a HLS com audio separado em TS ou ADTS e desduplicacao no YouTube | full | feature | implemented | 2026-10-07 | — | — | SPEC-0014@1, SPEC-0015@1 |
 | [SPEC-0020](SPEC-0020-suporte-a-video-hls-em-mpeg-ts-com-audio-separado-e-unificac.md) | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full | feature | implemented | 2026-10-07 | — | SPEC-0019 | SPEC-0014@1, SPEC-0015@1, SPEC-0018@1, SPEC-0019@1 |
 | [SPEC-0021](SPEC-0021-transmux-de-audio-hls-packed-aac-com-id3-e-normalizacao-de-t.md) | Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id | full | fix | implemented | 2026-10-07 | — | SPEC-0020 | SPEC-0014@1, SPEC-0018@1, SPEC-0019@1, SPEC-0020@1 |
+| [SPEC-0022](SPEC-0022-rebranding-clipdrop-com-nova-ui-dark-e-indicador-dinamico-na.md) | Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar | full | feature | in-progress | 2026-10-08 | — | — | — |
 
 ## ADRs
 

@@ -32,6 +32,6 @@ test.describe('harness E2E com a extensão carregada', () => {
     );
     expect(pong).toMatchObject({ type: 'pong', version: expect.any(String) });
 
-    await expect(popup.locator('#title')).toHaveText('Video Downloader');
+    await expect(popup.locator('#title')).toHaveText('ClipDrop');
   });
 });

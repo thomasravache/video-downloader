@@ -10,6 +10,8 @@ import { createOffscreenPort } from './offscreen';
 import { createPlaylistFetcher } from './playlist-fetcher';
 import { createRequestContextManager } from './request-context';
 import type { DnrPort } from './request-context';
+import { createActionIndicator } from './action-indicator';
+import type { ActionPort } from './action-indicator';
 
 function isPageSnapshot(value: unknown): value is PageSnapshot {
   if (typeof value !== 'object' || value === null) {
@@ -31,6 +33,8 @@ function isPageSnapshot(value: unknown): value is PageSnapshot {
 export default defineBackground(() => {
   // `storage.session` vive só na memória do navegador e sobrevive à suspensão do service worker.
   const diagnostics = createDiagnostics();
+  const action = (browser as { action?: ActionPort }).action;
+  const indicator = createActionIndicator(action);
   const network = new NetworkStore({
     get: async (key) => (await browser.storage.session.get(key))[key],
     set: (key, value) => browser.storage.session.set({ [key]: value }),
@@ -131,6 +135,10 @@ export default defineBackground(() => {
               }
             }
             await service.onNetworkResponse(toNetworkResponse(details, tabTitle));
+            if (details.tabId >= 0) {
+              const candidates = await network.forTab(details.tabId).catch(() => []);
+              await indicator.updateForTab(details.tabId, candidates.length);
+            }
           })();
         },
         filter,
@@ -145,6 +153,7 @@ export default defineBackground(() => {
           // Requisições sem aba (tabId < 0) não têm lista de rede a limpar.
           if (details.tabId >= 0) {
             void service.clearNetwork(details.tabId);
+            void indicator.clearForTab(details.tabId);
           }
         },
         { ...filter, types: ['main_frame'] },
@@ -157,7 +166,27 @@ export default defineBackground(() => {
   browser.tabs.onRemoved.addListener((tabId) => {
     service.onTabRemoved(tabId);
     void service.clearNetwork(tabId);
+    void indicator.clearForTab(tabId);
   });
+
+  const tabsActivated = (browser as { tabs?: { onActivated?: typeof browser.tabs.onActivated } })
+    .tabs?.onActivated;
+  if (tabsActivated !== undefined) {
+    try {
+      tabsActivated.addListener((activeInfo) => {
+        void (async () => {
+          try {
+            const candidates = await network.forTab(activeInfo.tabId).catch(() => []);
+            await indicator.updateForTab(activeInfo.tabId, candidates.length);
+          } catch {
+            // Ignora erro em aba sem candidatos ou fechada
+          }
+        })();
+      });
+    } catch {
+      // Ignora erro se onActivated não estiver implementado
+    }
+  }
 
   // Download concluído/interrompido: fecha o job em `saving` (SPEC-0012). Registro síncrono, no topo.
   // Só API ausente/não implementada (ex.: fake de browser.* do WXT) é tolerada; outra falha propaga.
@@ -208,7 +237,20 @@ export default defineBackground(() => {
       return true;
     }
     // No Chrome o listener só mantém o canal aberto com `return true` + sendResponse assíncrono.
-    void service.handle(message, sender).then(sendResponse);
+    void service.handle(message, sender).then((response) => {
+      sendResponse(response);
+      if (
+        typeof message === 'object' &&
+        message !== null &&
+        (message as { type?: unknown }).type === 'detect' &&
+        typeof (message as { tabId?: unknown }).tabId === 'number'
+      ) {
+        const tabId = (message as { tabId: number }).tabId;
+        if (response.ok && 'candidates' in response) {
+          void indicator.updateForTab(tabId, response.candidates.length);
+        }
+      }
+    });
     return true;
   });
 });
