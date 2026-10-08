@@ -1,16 +1,21 @@
 :root {
-  color-scheme: light;
-  --bg: #ffffff;
-  --fg: #1b1f24;
-  --muted: #4a5360;
-  --border: #d0d7de;
-  --accent: #0b5cad;
+  color-scheme: dark;
+  --bg: #0f1117;
+  --surface: #1a1d24;
+  --surface-hover: #222732;
+  --border: #262a34;
+  --fg: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
   --accent-fg: #ffffff;
-  --warn-bg: #fff4d6;
-  --warn-fg: #6b4100;
-  --info-bg: #e8eef6;
-  --info-fg: #24456b;
-  --error: #a4262c;
+  --success: #10b981;
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.15);
+  --warn-fg: #fbbf24;
+  --info-bg: rgba(99, 102, 241, 0.15);
+  --info-fg: #a5b4fc;
+  --error: #f87171;
 }
 
 * {
@@ -58,8 +63,14 @@ body {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.card:hover {
+  background: var(--surface-hover);
 }
 
 .card-title {
@@ -100,11 +111,16 @@ body {
   padding: 6px 14px;
   border: 0;
   border-radius: 6px;
-  background: var(--accent);
+  background: var(--accent-hover);
   color: var(--accent-fg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: #4338ca;
 }
 
 .button:disabled {
@@ -138,10 +154,15 @@ body {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: #818cf8;
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.link-button:hover {
+  color: var(--fg);
 }
 
 .status {
@@ -162,6 +183,7 @@ body {
   display: grid;
   gap: 8px;
   padding: 10px 12px;
+  border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--warn-bg);
   color: var(--warn-fg);
@@ -207,9 +229,9 @@ body {
 
 .select {
   padding: 5px 8px;
-  border: 1px solid var(--muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--fg);
   font: inherit;
 }
