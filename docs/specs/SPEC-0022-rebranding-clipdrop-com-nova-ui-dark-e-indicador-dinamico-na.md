@@ -4,7 +4,7 @@ title: Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-08
 parent:
 depends_on: []
@@ -168,12 +168,12 @@ Nenhuma.
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
-- [ ] Fase 0: Escrever teste de caracterização CH-01 confirmando passagem da suíte atual.
-- [ ] Fase 1: Escrever testes Red (UT-01..04, IT-01..02, CT-01, E2E-01) com a tag `SPEC-0022:<ID>` e confirmar falha esperada (G1 Red).
-- [ ] Fase 2: Criar ícones oficiais ClipDrop (ativo e inativo em 16, 32, 48, 128px) e implementar `entrypoints/background/action-indicator.ts`.
-- [ ] Fase 3: Integrar o `action-indicator` ao ciclo de vida de eventos do background (`entrypoints/background/index.ts`).
-- [ ] Fase 4: Atualizar os catálogos de locale com o nome "ClipDrop" e revitalizar o CSS do popup (`style.css` e `index.html`) para o tema Dark Media Lab.
-- [ ] Fase 5: Executar suíte completa até Green (G2), validar arquitetura (G3) e conduzir code review independente (G4).
+- [x] Fase 0: Escrever teste de caracterização CH-01 confirmando passagem da suíte atual.
+- [x] Fase 1: Escrever testes Red (UT-01..04, IT-01..02, CT-01, E2E-01) com a tag `SPEC-0022:<ID>` e confirmar falha esperada (G1 Red).
+- [x] Fase 2: Criar ícones oficiais ClipDrop (ativo e inativo em 16, 32, 48, 128px) e implementar `entrypoints/background/action-indicator.ts`.
+- [x] Fase 3: Integrar o `action-indicator` ao ciclo de vida de eventos do background (`entrypoints/background/index.ts`).
+- [x] Fase 4: Atualizar os catálogos de locale com o nome "ClipDrop" e revitalizar o CSS do popup (`style.css` e `index.html`) para o tema Dark Media Lab.
+- [x] Fase 5: Executar suíte completa até Green (G2), validar arquitetura (G3) e conduzir code review independente (G4).
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
@@ -185,8 +185,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Architect: APPROVED sem ressalvas — f39296a | 2026-10-08 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 285 ms); test exit 0 (Duration  54.84s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~578ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (65 modules, 141 dependencies cruised)); security_scan exit 0 ([90m2:43AM[0m [32mINF[0m [1mno leaks found[0m) — 25d022e | 2026-10-08 |
 | H2 Integração aprovada | PASS | aprovado por Thomas Ravache (autorizado no chat para pilotar sozinho até o fim) | 2026-10-08 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — e0aac3f | 2026-10-08 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — e0aac3f (árvore suja) | 2026-10-08 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
@@ -195,30 +195,49 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+1. **Rebranding ClipDrop:** Atualizado o nome da extensão de "Video Downloader" para "ClipDrop" nos catálogos `pt_BR` e `en`, mantendo os sufixos de build intactos.
+2. **Ícones oficiais ClipDrop:** Gerados ícones em 16, 32, 48 e 128px com versão ativa colorida (gradiente violeta/cobalto) e versão inativa monocromática.
+3. **Indicador dinâmico na toolbar:** Implementado mecanismo reativo onde o ícone da extensão ganha cor e exibe badge numérico em fundo `#6366F1` quando a aba possui vídeos detectados, e fica cinza sem badge em abas sem mídia.
+4. **Revitalização Dark Media Lab no popup:** Aplicada estética escura com fundo grafite `#0F1117`, cards `#1A1D24` e acentos táteis, preservando 100% dos elementos e seletores existentes.
 
 ### Como foi feito
+1. Implementado `entrypoints/background/action-indicator.ts` com a interface `createActionIndicator` conectando `setIcon`, `setBadgeText` e `setBadgeBackgroundColor`.
+2. Integrado ao background em `entrypoints/background/index.ts` atualizando o estado nas mudanças de rede e alternância de abas.
+3. Atualizados os locales em `public/_locales/**` e o CSS do popup em `entrypoints/popup/style.css` e `index.html`.
 
 ### Prova de Correção
+N/A — spec do tipo feature (rebranding visual e de identidade).
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| CH-01 | Preservação de seletores e integridade da lista de candidatos | PASS | tests/unit/popup-characterization.test.ts |
+| UT-01 | Indicador ativo com ícone colorido e badge quando videoCount > 0 | PASS | tests/unit/action-indicator.test.ts |
+| UT-02 | Indicador inativo com ícone cinza e badge limpo quando videoCount == 0 | PASS | tests/unit/action-indicator.test.ts |
+| UT-03 | Resiliência contra API action ausente ou abas fechadas | PASS | tests/unit/action-indicator.test.ts |
+| UT-04 | CSS do popup declara variáveis do tema dark da marca ClipDrop | PASS | tests/unit/popup-theme.test.ts |
+| IT-01 | Background aciona indicador da toolbar após detecção de rede | PASS | tests/integration/background-action.test.ts |
+| IT-02 | Reset do indicador para inativo ao fechar aba ou trocar de página | PASS | tests/integration/background-action.test.ts |
+| CT-01 | Contrato ActionIndicator adere à interface ActionPort | PASS | tests/unit/action-contract.test.ts |
+| E2E-01 | Jornada do popup com título ClipDrop, cards dark e download funcional | PASS | e2e/journeys/clipdrop-branding.spec.ts |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
+Integrado na branch `main` via PR #32 (commit merge `e0aac3f`). Smoke e E2E validados no gate G6.
 
 ### Pendências
+Nenhuma.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
