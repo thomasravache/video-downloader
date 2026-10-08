@@ -16,6 +16,7 @@ touches:
   - tests/unit/**
   - tests/integration/**
   - e2e/journeys/**
+  - e2e/fixtures/**
 adrs: [ADR-0014, ADR-0013, ADR-0001]
 external: []
 size: M
@@ -155,17 +156,17 @@ Nenhuma
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
-- [ ] Fase 0: Teste de caracterização CH-01 commitado passando.
-- [ ] Fase 1: Escrever testes Red (UT-01, UT-02, IT-01, CT-01, E2E-01) com a tag `SPEC-0021:<ID>` e confirmar falha esperada (G1 Red).
-- [ ] Fase 2: Implementar `normalizeTrackId` em `assemble.ts` para normalizar `track_id: 0` para `track_id: 1` nas caixas `tkhd`, `trex` e `tfhd`.
-- [ ] Fase 3: Implementar detecção de áudio packed AAC (ID3 `0x49 0x44 0x33` e ADTS `0xFFF1`) em `run-job.ts` acionando `transmuxTsToFmp4` para áudio multi-segmento.
-- [ ] Fase 4: Executar suíte completa de testes unitários, integração e E2E até Green (G2), validar arquitetura (G3) e conduzir code review independente (G4).
+- [x] Fase 0: Teste de caracterização CH-01 commitado passando.
+- [x] Fase 1: Escrever testes Red (UT-01, UT-02, IT-01, CT-01, E2E-01) com a tag `SPEC-0021:<ID>` e confirmar falha esperada (G1 Red).
+- [x] Fase 2: Implementar `normalizeTrackId` em `assemble.ts` para normalizar `track_id: 0` para `track_id: 1` nas caixas `tkhd`, `trex` e `tfhd`.
+- [x] Fase 3: Implementar detecção de áudio packed AAC (ID3 `0x49 0x44 0x33` e ADTS `0xFFF1`) em `run-job.ts` acionando `transmuxTsToFmp4` para áudio multi-segmento.
+- [x] Fase 4: Executar suíte completa de testes unitários, integração e E2E até Green (G2), validar arquitetura (G3) e conduzir code review independente (G4).
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 46799cd (árvore suja) | 2026-10-07 |
-| G1 Red | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯) — d0ac475 | 2026-10-07 |
 | G2 Green | PENDING | | |
 | G3 Arquitetura | PENDING | | |
 | G4 Review | PENDING | | |
