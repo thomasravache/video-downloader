@@ -181,7 +181,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G0 Spec | PASS | validate: 0 erro(s) — c4afddb (árvore suja) | 2026-10-08 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯) — d97a86a | 2026-10-08 |
 | G2 Green | PASS | build exit 0 (✔ Finished in 299 ms); test exit 0 (Duration  56.00s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 160 ms); coverage exit 0 (================================================================================) — 47ea3ee | 2026-10-08 |
-| G3 Arquitetura | PENDING | | |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (65 modules, 141 dependencies cruised)) — a96081c | 2026-10-08 |
 | G4 Review | PENDING | | |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
