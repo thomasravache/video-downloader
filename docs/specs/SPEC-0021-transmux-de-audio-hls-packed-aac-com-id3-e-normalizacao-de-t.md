@@ -4,7 +4,7 @@ title: Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id
 tier: full
 type: fix
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-07
 parent:
 depends_on: [SPEC-0020]
@@ -172,8 +172,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Architect: APPROVED (fixtures de áudio e formatação no commit verde justificadas) — e0e0123 (árvore suja) | 2026-10-08 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 280 ms); test exit 0 (Duration  67.64s (tests 96%, import 2%, transform 1%)); test_integration exit 0 (at least ~823ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (64 modules, 139 dependencies cruised)); security_scan exit 0 ([90m12:19AM[0m [32mINF[0m [1mno leaks found[0m) — 5ed3e48 | 2026-10-08 |
 | H2 Integração aprovada | PASS | aprovado por Thomas Ravache | 2026-10-08 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | smoke_test exit 0 (pnpm exec playwright show-report) — 9f67ca3 | 2026-10-08 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 9f67ca3 (árvore suja) | 2026-10-08 |
 
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
@@ -182,30 +182,45 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 14. Relatório de Entrega
 
 ### O que foi entregue
+Correção definitiva do corte prematuro de áudio em downloads HLS do YouTube com áudio separado (ex: itags 234 e 233):
+1. **Suporte a áudio packed AAC/Elementary Stream:** Identificação e decodificação de segmentos de áudio contendo cabeçalhos ID3 (`0x49 0x44 0x33`) e quadros de sincronia ADTS (`0xFFF1`).
+2. **Duração completa do áudio em múltiplos segmentos:** Implementação de `needsAudioTransmux` em `entrypoints/offscreen/run-job.ts` direcionando os segmentos para `transmuxTsToFmp4`, eliminando a interrupção após o primeiro segmento.
+3. **Normalização de track_id conforme ISO/IEC 14496-12:** Implementação de `normalizeTrackId` em `entrypoints/offscreen/assemble.ts` convertendo caixas com `track_id = 0` emitidas pelo mux.js em `track_id = 1` nas caixas `tkhd`, `trex` e `tfhd`, garantindo compatibilidade estrita com QuickTime Player, VLC, IINA e navegadores.
 
 ### Como foi feito
+1. Em `entrypoints/offscreen/assemble.ts`: implementada a função `normalizeTrackId` que inspeciona o segmento de inicialização (`moov.trak.tkhd`, `moov.mvex.trex`) e os fragmentos de mídia (`moof.traf.tfhd`) substituindo `track_id = 0` por `1`. Integrada ao retorno de `transmuxTsToFmp4`.
+2. Em `entrypoints/offscreen/run-job.ts`: implementada a rotina `needsAudioTransmux(segments)` identificando pacotes MPEG-TS (`0x47`), tags ID3 Apple HLS (`0x49 0x44 0x33`), ADTS syncword (`0xFF 0xF0`) ou ausência de caixas fMP4, acionando o transmuxer para unificar todos os segmentos antes do multiplexador Mediabunny.
 
 ### Prova de Correção
+Os testes de caracterização e regressão provam que fluxos packed AAC com tags ID3 (simulando a faixa de áudio itag 234 do YouTube) são agora inteiramente convertidos em fMP4 contínuo sem parada no primeiro cabeçalho ID3, mantendo 100% da duração e contagem de quadros de áudio.
 
 ### Verificação
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| CH-01 | Preservação de vídeo TS e áudio separado da SPEC-0020 | PASS | tests/integration/hls-job-audio-offscreen.test.ts |
+| UT-01 | transmuxTsToFmp4 aceita múltiplos segmentos packed AAC ID3/ADTS e normaliza track_id 0 para 1 | PASS | tests/unit/hls-assemble.test.ts |
+| UT-02 | run-job.ts reconhece áudio ID3/ADTS e aciona transmuxTsToFmp4 | PASS | tests/unit/run-job-merge-ts.test.ts |
+| IT-01 | Pipeline offscreen com vídeo TS e múltiplos segmentos packed AAC entrega MP4 completo | PASS | tests/integration/hls-job-audio-offscreen.test.ts |
+| CT-01 | Contrato de saída de transmuxTsToFmp4 compatível com assembleMerged sem track_id 0 | PASS | tests/unit/hls-merge-contract.test.ts |
+| E2E-01 | Jornada completa de download no YouTube com áudio packed AAC contínuo | PASS | e2e/journeys/hls-youtube.spec.ts |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
+Integrado na branch `main` via PR #30 (commit merge `9f67ca3`). Smoke e E2E validados no gate G6.
 
 ### Pendências
+Nenhuma.
 
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
