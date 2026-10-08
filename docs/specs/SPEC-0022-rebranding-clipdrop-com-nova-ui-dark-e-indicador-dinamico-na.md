@@ -151,7 +151,7 @@ Tokens de design em `entrypoints/popup/style.css`:
 - **CT-01 (action-contract.test.ts):** Contrato `ActionIndicator` aceita objetos com interface `ActionPort` e tolera implementações do Chrome e Firefox sem quebra. Tag: `SPEC-0022:CT-01`
 
 ### Testes E2E
-- **E2E-01 (e2e/journeys/clipdrop-branding.spec.ts):** [jornada: branding-popup] Valida que o popup renderiza o título "ClipDrop", aplica tema dark visual nos cards e executa fluxo de download de vídeo com barra de progresso preservada. Tag: `SPEC-0022:E2E-01`
+- **E2E-01 (e2e/journeys/clipdrop-branding.spec.ts):** [jornada: baixar-video-direto] Valida que o popup renderiza o título "ClipDrop", aplica tema dark visual nos cards e executa fluxo de download de vídeo com barra de progresso preservada. Tag: `SPEC-0022:E2E-01`
 
 ## 8. Plano de Rollout
 - **Estratégia:** Deploy direto no branch principal através de release minor (v0.2.0-rc.1 ou patch v0.1.0-rc.9).
@@ -183,7 +183,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 299 ms); test exit 0 (Duration  56.00s (tests 97%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 160 ms); coverage exit 0 (================================================================================) — 47ea3ee | 2026-10-08 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (65 modules, 141 dependencies cruised)) — a96081c | 2026-10-08 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Architect: APPROVED sem ressalvas — f39296a | 2026-10-08 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 285 ms); test exit 0 (Duration  54.84s (tests 97%, import 2%, transform 1%)); test_integration exit 0 (at least ~578ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (pnpm exec playwright show-report); arch_test exit 0 (✔ no dependency violations found (65 modules, 141 dependencies cruised)); security_scan exit 0 ([90m2:43AM[0m [32mINF[0m [1mno leaks found[0m) — 25d022e | 2026-10-08 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |

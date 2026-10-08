@@ -1,5 +1,5 @@
 /**
- * [jornada: branding-popup] (SPEC-0022:E2E-01).
+ * [jornada: baixar-video-direto] (SPEC-0022:E2E-01).
  * Valida o rebranding ClipDrop com nova UI dark e execução do fluxo de download no popup.
  */
 import { existsSync, statSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { openPageAndPopup } from './support';
 const SAMPLE_SIZE = statSync(resolve(import.meta.dirname, '../fixtures/sample.mp4')).size;
 
 test.describe('rebranding ClipDrop e tema dark no popup', () => {
-  test('SPEC-0022:E2E-01 [jornada: branding-popup] valida que o popup renderiza o título "ClipDrop", aplica tema dark visual nos cards e executa fluxo de download de vídeo com barra de progresso preservada', async ({
+  test('SPEC-0022:E2E-01 [jornada: baixar-video-direto] valida que o popup renderiza o título "ClipDrop", aplica tema dark visual nos cards e executa fluxo de download de vídeo com barra de progresso preservada', async ({
     context,
     serviceWorker,
     extensionId,
