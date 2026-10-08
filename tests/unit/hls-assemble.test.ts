@@ -14,10 +14,12 @@ import { describe, expect, it } from 'vitest';
 import {
   assembleFmp4,
   assembleTs,
+  normalizeTrackId,
   normalizeTrunV1,
   transmuxTsToFmp4,
 } from '../../entrypoints/offscreen/assemble';
 import { AssemblyError } from '../../src/core/hls-download';
+import { makePackedAacSegment } from './support/packed-aac';
 import {
   CLIP_DURATION_SEC,
   clipFile,
@@ -257,5 +259,78 @@ describe('transmuxTsToFmp4 com múltiplos segmentos TS (SPEC-0020)', () => {
     const info = inspectMp4(fmp4);
     expect(info.topLevel).toEqual(expect.arrayContaining(['moov', 'moof', 'mdat']));
     expect(info.durationSec).toBeGreaterThan(3.0);
+  });
+
+  it('SPEC-0021:UT-01 transmuxTsToFmp4 aceita múltiplos segmentos de áudio packed AAC com ID3 (com.apple.streaming.transportStreamTimestamp) e ADTS, gera fMP4 contínuo com todos os pacotes dos segmentos e normaliza track_id: 0 para track_id: 1 em tkhd, trex e tfhd', async () => {
+    // 2 segmentos de áudio packed AAC com ID3 (PTS 0 e PTS 90000) e ADTS
+    const seg0 = makePackedAacSegment(0, 43);
+    const seg1 = makePackedAacSegment(90000, 43);
+
+    const { initSegment, fragments } = await transmuxTsToFmp4([seg0, seg1]);
+
+    expect(initSegment).toBeDefined();
+    expect(fragments.length).toBeGreaterThanOrEqual(2);
+
+    // Valida normalização direta via normalizeTrackId do contrato
+    const directNormalized = normalizeTrackId(initSegment, fragments);
+    expect(directNormalized.initSegment).toBeDefined();
+    expect(directNormalized.fragments).toHaveLength(fragments.length);
+
+    // Inspeciona caixas tkhd e trex no initSegment: track_id deve ser 1 (e não 0)
+    const topInit = readBoxes(initSegment);
+    const moov = topInit.find((b) => b.type === 'moov');
+    expect(moov).toBeDefined();
+    if (!moov) return;
+
+    const trak = readBoxes(initSegment, moov.payload, moov.end).find((b) => b.type === 'trak');
+    expect(trak).toBeDefined();
+    if (!trak) return;
+
+    const tkhd = readBoxes(initSegment, trak.payload, trak.end).find((b) => b.type === 'tkhd');
+    expect(tkhd).toBeDefined();
+    if (!tkhd) return;
+
+    const tkhdView = new DataView(initSegment.buffer, initSegment.byteOffset);
+    const tkhdVersion = initSegment[tkhd.payload];
+    const tkhdTrackId = tkhdView.getUint32(tkhd.payload + (tkhdVersion === 1 ? 20 : 12));
+    expect(tkhdTrackId).toBe(1);
+
+    const mvex = readBoxes(initSegment, moov.payload, moov.end).find((b) => b.type === 'mvex');
+    expect(mvex).toBeDefined();
+    if (!mvex) return;
+
+    const trex = readBoxes(initSegment, mvex.payload, mvex.end).find((b) => b.type === 'trex');
+    expect(trex).toBeDefined();
+    if (!trex) return;
+
+    const trexTrackId = tkhdView.getUint32(trex.payload + 4);
+    expect(trexTrackId).toBe(1);
+
+    // Inspeciona caixas tfhd em cada fragmento: track_id deve ser 1 (e não 0)
+    for (const frag of fragments) {
+      const topFrag = readBoxes(frag);
+      const moof = topFrag.find((b) => b.type === 'moof');
+      expect(moof).toBeDefined();
+      if (!moof) continue;
+
+      const traf = readBoxes(frag, moof.payload, moof.end).find((b) => b.type === 'traf');
+      expect(traf).toBeDefined();
+      if (!traf) continue;
+
+      const tfhd = readBoxes(frag, traf.payload, traf.end).find((b) => b.type === 'tfhd');
+      expect(tfhd).toBeDefined();
+      if (!tfhd) continue;
+
+      const fragView = new DataView(frag.buffer, frag.byteOffset);
+      const tfhdTrackId = fragView.getUint32(tfhd.payload + 4);
+      expect(tfhdTrackId).toBe(1);
+    }
+
+    // Inspeciona o stream concatenado: deve conter todos os pacotes dos segmentos
+    const fmp4 = concat([initSegment, ...fragments]);
+    const info = inspectMp4(fmp4);
+    expect(info.durationSec).toBeGreaterThan(1.8);
+    expect(info.tracks[0]?.trackId).toBe(1);
+    expect(info.tracks[0]?.sampleCount).toBeGreaterThanOrEqual(86);
   });
 });

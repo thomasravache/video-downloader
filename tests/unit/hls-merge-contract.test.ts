@@ -8,11 +8,16 @@
  *   - `start` do offscreen sem `audio` (SPEC-0012/0013) segue aceito; com `audio` válido também.
  */
 import { describe, expect, it } from 'vitest';
+import { transmuxTsToFmp4 } from '../../entrypoints/offscreen/assemble';
 import { isCommand } from '../../entrypoints/offscreen/commands';
+import { assembleMerged } from '../../entrypoints/offscreen/merge';
 import { validateDetectResponse } from '../../src/core/contracts';
 import type { JobPlan, OffscreenStart } from '../../src/core/hls-download';
 import { validateHlsInfo } from '../../src/core/hls';
 import { validateMessage } from '../../src/core/messages';
+import { tsSegments } from './support/hls-clip';
+import { inspectMp4, readBoxes } from './support/mp4';
+import { makePackedAacSegment } from './support/packed-aac';
 
 const SELF = 'ext-id';
 const own = { id: SELF };
@@ -249,5 +254,75 @@ describe('start do offscreen: audio opcional', () => {
     expect(isCommand(startWithoutBothInit)).toBe(true);
     expect(startWithoutBothInit.initUrl).toBeUndefined();
     expect(startWithoutBothInit.audio?.initUrl).toBeUndefined();
+  });
+});
+
+describe('transmuxTsToFmp4 e compatibilidade com assembleMerged (SPEC-0021)', () => {
+  it('SPEC-0021:CT-01 Contrato do transmuxTsToFmp4 garante compatibilidade de saída com assembleMerged do Mediabunny para áudio e vídeo sem emitir track_id: 0', async () => {
+    const audioSeg0 = makePackedAacSegment(0, 43);
+    const audioSeg1 = makePackedAacSegment(90000, 43);
+    const { initSegment, fragments } = await transmuxTsToFmp4([audioSeg0, audioSeg1]);
+
+    // O contrato proíbe emitir track_id: 0 para contêiner MP4 válido (ISO/IEC 14496-12)
+    const topInit = readBoxes(initSegment);
+    const moov = topInit.find((b) => b.type === 'moov');
+    expect(moov).toBeDefined();
+    if (!moov) return;
+
+    const trak = readBoxes(initSegment, moov.payload, moov.end).find((b) => b.type === 'trak');
+    expect(trak).toBeDefined();
+    if (!trak) return;
+
+    const tkhd = readBoxes(initSegment, trak.payload, trak.end).find((b) => b.type === 'tkhd');
+    expect(tkhd).toBeDefined();
+    if (!tkhd) return;
+
+    const tkhdView = new DataView(initSegment.buffer, initSegment.byteOffset);
+    const tkhdVersion = initSegment[tkhd.payload];
+    const tkhdTrackId = tkhdView.getUint32(tkhd.payload + (tkhdVersion === 1 ? 20 : 12));
+    expect(tkhdTrackId).not.toBe(0);
+    expect(tkhdTrackId).toBe(1);
+
+    const mvex = readBoxes(initSegment, moov.payload, moov.end).find((b) => b.type === 'mvex');
+    expect(mvex).toBeDefined();
+    if (!mvex) return;
+
+    const trex = readBoxes(initSegment, mvex.payload, mvex.end).find((b) => b.type === 'trex');
+    expect(trex).toBeDefined();
+    if (!trex) return;
+
+    const trexTrackId = tkhdView.getUint32(trex.payload + 4);
+    expect(trexTrackId).not.toBe(0);
+    expect(trexTrackId).toBe(1);
+
+    for (const frag of fragments) {
+      const topFrag = readBoxes(frag);
+      const moof = topFrag.find((b) => b.type === 'moof');
+      expect(moof).toBeDefined();
+      if (!moof) continue;
+
+      const traf = readBoxes(frag, moof.payload, moof.end).find((b) => b.type === 'traf');
+      expect(traf).toBeDefined();
+      if (!traf) continue;
+
+      const tfhd = readBoxes(frag, traf.payload, traf.end).find((b) => b.type === 'tfhd');
+      expect(tfhd).toBeDefined();
+      if (!tfhd) continue;
+
+      const fragView = new DataView(frag.buffer, frag.byteOffset);
+      const tfhdTrackId = fragView.getUint32(tfhd.payload + 4);
+      expect(tfhdTrackId).not.toBe(0);
+      expect(tfhdTrackId).toBe(1);
+    }
+
+    // Saída gerada deve ser compatível com assembleMerged do Mediabunny
+    const videoResult = await transmuxTsToFmp4([tsSegments('v360')[0] as Uint8Array]);
+    const videoBlob = new Blob([videoResult.initSegment, ...videoResult.fragments] as BlobPart[]);
+    const audioBlob = new Blob([initSegment, ...fragments] as BlobPart[]);
+
+    const merged = await assembleMerged({ blob: videoBlob }, { blob: audioBlob });
+    const info = inspectMp4(merged);
+    expect(info.tracks.map((t) => t.handler).sort()).toEqual(['soun', 'vide']);
+    expect(info.tracks.every((t) => t.trackId !== 0)).toBe(true);
   });
 });

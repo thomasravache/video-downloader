@@ -337,10 +337,8 @@ export function transmuxTsToFmp4(
     }
     const normalizedFragments = fragments.map((f) => normalizeTrunV1(f));
     const alignedFragments = alignFragmentTimestamps(normalizedFragments);
-    return Promise.resolve({
-      initSegment,
-      fragments: alignedFragments,
-    });
+    const normalized = normalizeTrackId(initSegment, alignedFragments);
+    return Promise.resolve(normalized);
   } catch (error) {
     if (error instanceof AssemblyError) {
       return Promise.reject(error);
@@ -447,4 +445,75 @@ function alignFragmentTimestamps(fragments: readonly Uint8Array[]): Uint8Array[]
     }
     return out;
   });
+}
+
+/**
+ * Normaliza track_id: 0 para track_id: 1 em tkhd, trex e tfhd (SPEC-0021).
+ */
+export function normalizeTrackId(
+  initSegment: Uint8Array,
+  fragments: Uint8Array[],
+): { initSegment: Uint8Array; fragments: Uint8Array[] } {
+  const initView = new DataView(initSegment.buffer, initSegment.byteOffset, initSegment.byteLength);
+  const topBoxes = parseBoxRanges(initSegment, 0, initSegment.byteLength);
+  for (const moov of topBoxes) {
+    if (moov.type !== 'moov') continue;
+    const moovChildren = parseBoxRanges(initSegment, moov.payload, moov.end);
+    for (const trak of moovChildren) {
+      if (trak.type !== 'trak') continue;
+      const trakChildren = parseBoxRanges(initSegment, trak.payload, trak.end);
+      for (const tkhd of trakChildren) {
+        if (tkhd.type !== 'tkhd') continue;
+        if (tkhd.payload + 4 <= tkhd.end) {
+          const version = initSegment[tkhd.payload];
+          const trackIdOffset = tkhd.payload + (version === 1 ? 20 : 12);
+          if (trackIdOffset + 4 <= tkhd.end) {
+            const trackId = initView.getUint32(trackIdOffset, false);
+            if (trackId === 0) {
+              initView.setUint32(trackIdOffset, 1, false);
+            }
+          }
+        }
+      }
+    }
+    for (const mvex of moovChildren) {
+      if (mvex.type !== 'mvex') continue;
+      const mvexChildren = parseBoxRanges(initSegment, mvex.payload, mvex.end);
+      for (const trex of mvexChildren) {
+        if (trex.type !== 'trex') continue;
+        const trackIdOffset = trex.payload + 4;
+        if (trackIdOffset + 4 <= trex.end) {
+          const trackId = initView.getUint32(trackIdOffset, false);
+          if (trackId === 0) {
+            initView.setUint32(trackIdOffset, 1, false);
+          }
+        }
+      }
+    }
+  }
+
+  for (const fragment of fragments) {
+    const fragView = new DataView(fragment.buffer, fragment.byteOffset, fragment.byteLength);
+    const topBoxes = parseBoxRanges(fragment, 0, fragment.byteLength);
+    for (const moof of topBoxes) {
+      if (moof.type !== 'moof') continue;
+      const trafs = parseBoxRanges(fragment, moof.payload, moof.end);
+      for (const traf of trafs) {
+        if (traf.type !== 'traf') continue;
+        const trafChildren = parseBoxRanges(fragment, traf.payload, traf.end);
+        for (const tfhd of trafChildren) {
+          if (tfhd.type !== 'tfhd') continue;
+          const trackIdOffset = tfhd.payload + 4;
+          if (trackIdOffset + 4 <= tfhd.end) {
+            const trackId = fragView.getUint32(trackIdOffset, false);
+            if (trackId === 0) {
+              fragView.setUint32(trackIdOffset, 1, false);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { initSegment, fragments };
 }
