@@ -4,7 +4,7 @@ title: Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar
 tier: full
 type: feature
 user_facing: true
-status: proposed
+status: approved
 created: 2026-10-08
 parent:
 depends_on: []
@@ -26,8 +26,8 @@ adrs:
   - ADR-0010
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: Thomas Ravache
+approved_at: 2026-10-08
 ---
 
 # SPEC-0022 — Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar
