@@ -19,7 +19,7 @@ touches:
   - wxt.config.ts
   - tests/unit/**
   - tests/integration/**
-  - e2e/journeys/**
+  - e2e/**
 adrs:
   - ADR-0001
   - ADR-0002
