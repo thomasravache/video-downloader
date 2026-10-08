@@ -8,6 +8,11 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.8] - 2026-10-08
+
+### Fixed
+- Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id (SPEC-0021)
+
 ## [0.1.0-rc.7] - 2026-10-07
 
 ### Added
