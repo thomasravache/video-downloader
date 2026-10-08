@@ -4,7 +4,7 @@ title: Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar
 tier: full
 type: feature
 user_facing: true
-status: approved
+status: in-progress
 created: 2026-10-08
 parent:
 depends_on: []
