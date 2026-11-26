@@ -1,11 +1,11 @@
 # Índice de Specs
 
-> Gerado por `spec_graph.py index` em 2026-10-08 — não edite manualmente.
+> Gerado por `spec_graph.py index` em 2026-11-26 — não edite manualmente.
 
 ## Saúde
 
 - Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 7, implemented 12
+- Specs: proposed 3, in-progress 7, implemented 12
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -51,6 +51,8 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
+| 8 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
+| 9 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | proposed | ⏳ aguardando aprovação (H1) |  |
 
 ## Épicos
 
@@ -58,6 +60,7 @@ Perfil: **padrao**
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
 | SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 2/9 implementadas |
+| SPEC-0023 | Estabilizar detecção de vídeos e indicador da toolbar | proposed | 0/2 implementadas |
 
 ## Grafo de Dependências
 
@@ -79,6 +82,10 @@ flowchart LR
     S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
     S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::inprogress
   end
+  subgraph E0023["SPEC-0023 · Estabilizar detecção de vídeos e indicador da toolbar"]
+    S0024["SPEC-0024<br/>Detecção estável entre contas e páginas…"]:::proposed
+    S0025["SPEC-0025<br/>Indicador da toolbar confiável: ícones …"]:::proposed
+  end
   S0002 --> S0007
   S0005 --> S0009
   S0009 -. contrato v1 .-> S0010
@@ -91,6 +98,7 @@ flowchart LR
   S0013 -. contrato v1 .-> S0014
   S0013 -. contrato v1 .-> S0015
   S0014 -. contrato v1 .-> S0015
+  S0024 --> S0025
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
   classDef inprogress fill:#ede9fe,stroke:#7c3aed,color:#111
@@ -124,6 +132,9 @@ flowchart LR
 | [SPEC-0020](SPEC-0020-suporte-a-video-hls-em-mpeg-ts-com-audio-separado-e-unificac.md) | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full | feature | implemented | 2026-10-07 | — | SPEC-0019 | SPEC-0014@1, SPEC-0015@1, SPEC-0018@1, SPEC-0019@1 |
 | [SPEC-0021](SPEC-0021-transmux-de-audio-hls-packed-aac-com-id3-e-normalizacao-de-t.md) | Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id | full | fix | implemented | 2026-10-07 | — | SPEC-0020 | SPEC-0014@1, SPEC-0018@1, SPEC-0019@1, SPEC-0020@1 |
 | [SPEC-0022](SPEC-0022-rebranding-clipdrop-com-nova-ui-dark-e-indicador-dinamico-na.md) | Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar | full | feature | implemented | 2026-10-08 | — | — | — |
+| [SPEC-0023](SPEC-0023-estabilizar-deteccao-de-videos-e-indicador-da-toolbar.md) | Estabilizar detecção de vídeos e indicador da toolbar | epic | feature | proposed | 2026-11-26 | — | — | — |
+| [SPEC-0024](SPEC-0024-deteccao-estavel-entre-contas-e-paginas-falha-parcial-re-det.md) | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full | fix | proposed | 2026-11-26 | SPEC-0023 | — | — |
+| [SPEC-0025](SPEC-0025-indicador-da-toolbar-confiavel-icones-no-manifesto-estado-pa.md) | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full | fix | proposed | 2026-11-26 | SPEC-0023 | SPEC-0024 | — |
 
 ## ADRs
 
