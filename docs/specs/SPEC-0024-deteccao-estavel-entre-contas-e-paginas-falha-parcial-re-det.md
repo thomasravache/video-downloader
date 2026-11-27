@@ -9,7 +9,7 @@ created: 2026-11-26
 parent: SPEC-0023
 depends_on: []
 consumes_contract: []
-contract_version: 1
+contract_version: 2
 touches:
   - src/core/service.ts
   - src/core/network.ts
@@ -60,7 +60,7 @@ Com a conta do dono logada, o vídeo aparece no popup. Com outras contas, nas me
 - D2: o popup mostra um estado de erro com "Tentar de novo" e registra `popup.detect_failed` no diagnóstico.
 - D3: a coleta percorre shadow roots abertos (`element.shadowRoot`), com limite de profundidade.
 - D4: enquanto o popup está aberto, ele acompanha a revisão da lista de rede da aba e refaz a detecção quando ela muda. Enquanto a lista estiver vazia, ele também refaz a coleta no DOM a cada 3 s, por até 30 s. Há também um botão "Procurar de novo".
-- D5: quando a aba tem um manifesto HLS/DASH, um candidato `file` da mesma origem e do mesmo diretório do manifesto (ou de um subdiretório dele) é tratado como segmento e descartado. Ao passar do teto por aba, saem primeiro os `file`, e só depois os manifestos.
+- D5 (emenda v2): quando a aba tem um manifesto HLS/DASH, um candidato `file` é tratado como segmento e descartado só se estiver na mesma origem, no diretório do manifesto ou num subdiretório dele, **e** o nome do arquivo tiver forma de segmento: `^(seg|segment|chunk|frag|fragment|part|filesequence)[-_]?\d+\.(mp4|m4v)$` ou `^\d+\.(mp4|m4v)$`, sem diferenciar maiúsculas. Arquivos únicos na pasta do manifesto (como `v0.mp4`, `video-hi.mp4` e `audio-en.mp4`) continuam sendo fontes relacionadas, como na SPEC-0015. Ao passar do teto por aba, saem primeiro os `file`, e só depois os manifestos.
 - D6: com extensão de vídeo conhecida, também são aceitos `binary/octet-stream`, `video/quicktime` (para `.mov`) e resposta sem Content-Type. O tamanho mínimo continua valendo.
 - D7: a lista é apagada quando o documento principal da aba é de fato trocado. Isso é medido pelo `onResponseStarted` de `main_frame` com status 2xx diferente de 204/205 e sem `Content-Disposition: attachment`, e não mais pelo `onBeforeRequest`.
 - D8: uma resposta com `tabId = -1` e `initiator` http(s) é atribuída às abas abertas cuja URL tem a mesma origem que o `initiator`. A extensão só vê abas onde já tem acesso, então no `public` só entram sites liberados (ADR-0012). Com mais de uma aba da mesma origem, a resposta entra em todas. O diagnóstico conta `network.sw_attributed`.
@@ -120,7 +120,7 @@ export interface NetworkResponse {
 export function classifyNetworkResponse(response: NetworkResponse): NetworkClassification | null;
 /** D8: abas que recebem uma resposta sem aba (tabId = -1). Vazio quando initiator ausente/não http(s). */
 export function attributeTabs(initiator: string | undefined, tabs: readonly { id: number; url?: string }[]): number[];
-/** D5: true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash. */
+/** D5 (v2): true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash E o nome tem forma de segmento (seg-1.mp4, chunk_3.mp4, fileSequence12.mp4, 0042.mp4). */
 export function isManifestSegment(file: VideoCandidate, manifests: readonly VideoCandidate[]): boolean;
 /** D7: true quando a resposta de main_frame troca o documento (2xx exceto 204/205, sem Content-Disposition attachment). */
 export function replacesDocument(details: { statusCode: number; responseHeaders?: { name: string; value?: string }[] }): boolean;
@@ -171,6 +171,7 @@ type NetworkRevisionResponse = { ok: true; revision: number } | { ok: false; err
 | Botão "Procurar de novo" | clique | `detect` refeito na hora | E2E-01 |
 | Re-detecção durante download | job HLS em andamento e a revisão muda | job e barra de progresso intactos | UT-10 |
 | Segmento fMP4 `.mp4` | a aba tem um master `.m3u8` em `/v/abc/`; chega `/v/abc/seg-1.mp4` (200 KB) | segmento descartado; o master continua na lista | UT-04, IT-02 |
+| Arquivo único na pasta do master | master em `/v/abc/`; chega `/v/abc/video-hi.mp4` | continua candidato `file` (fonte relacionada, SPEC-0015) | UT-04 |
 | Muitas respostas `file` | mais de 50 `file` e 1 manifesto na aba | o manifesto continua; saem os `file` mais antigos | UT-05 |
 | Content-Type alternativo | `.mp4` com `binary/octet-stream`, sem Content-Type, ou `.mov` com `video/quicktime` | candidato `file` | UT-06 |
 | Content-Type alheio | `.mp4` com `text/html` | descartado (como hoje) | UT-06, CH-02 |
@@ -196,7 +197,7 @@ type NetworkRevisionResponse = { ok: true; revision: number } | { ok: false; err
 - **UT-01** — Dado um provider cuja coleta lança erro e uma rede com um candidato HLS na aba, quando `detect` roda, então devolve `ok: true` com o candidato HLS e registra `detect.provider_failed`.
 - **UT-02** — Dado um provider cuja coleta lança erro e uma rede vazia, quando `detect` roda, então devolve `RESTRICTED_PAGE`.
 - **UT-03** — Dado um documento com `<video src>` dentro de um shadow root aberto (com outro shadow root aninhado), quando `collectVideos` roda, então o snapshot inclui os dois vídeos; e um aninhamento além da profundidade 8 é ignorado sem erro.
-- **UT-04** — Dado um master em `https://cdn.x/v/abc/master.m3u8`, quando chega `https://cdn.x/v/abc/720/seg-1.mp4` com 200 KB, então `isManifestSegment` é verdadeiro e a lista não ganha um candidato `file`; e `https://cdn.x/outro/video.mp4` continua sendo candidato.
+- **UT-04** — Dado um master em `https://cdn.x/v/abc/master.m3u8`, quando chega `https://cdn.x/v/abc/720/seg-1.mp4` com 200 KB, então `isManifestSegment` é verdadeiro e a lista não ganha um candidato `file`; e `https://cdn.x/outro/video.mp4` e `https://cdn.x/v/abc/video-hi.mp4` (arquivo único na pasta do master, fonte relacionada da SPEC-0015) continuam sendo candidatos.
 - **UT-05** — Dada uma aba com 1 manifesto e 60 respostas `file` distintas, quando a lista passa do teto, então o manifesto continua e restam os 49 `file` mais recentes.
 - **UT-06** — Dados `.mp4` com `binary/octet-stream`, `.mp4` sem Content-Type, `.mov` com `video/quicktime` e `.webm` com `application/octet-stream`, todos acima do tamanho mínimo, quando classificados, então viram `file`; e `.mp4` com `text/html` ou abaixo do mínimo é descartado.
 - **UT-07** — Dados `replacesDocument` com 200 `text/html`, 204, 205, 200 com `Content-Disposition: attachment; filename=x.zip` e 200 com `Content-Disposition: inline`, então os resultados são verdadeiro, falso, falso, falso e verdadeiro.
@@ -295,6 +296,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
 | IMP-01 | 2026-11-27 | G1 | decisão | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) | waves/next após H1 | Thomas Ravache | Thomas escolheu fechar as specs antigas (2026-11-27): SPEC-0009..0015 e o épico SPEC-0008 fechados no PR #39 | 2026-11-27 |
+| IMP-02 | 2026-11-27 | G2 | spec | D5 descarta todo file no diretório do manifesto e contradiz SPEC-0015 (fontes relacionadas .mp4 de arquivo único na mesma pasta): 9 IT e o E2E-01 da SPEC-0015 falham | D5 implementada como escrita; sem o descarte, só UT-04/IT-02 da SPEC-0024 falham | Architect |  |  |
 
 ## 14. Relatório de Entrega
 
@@ -329,3 +331,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
 | 1 (escopo) | 2026-11-27 | `touches` ganha `entrypoints/popup/redetect.ts` (controlador de re-detecção do popup, sem DOM, exigido por UT-10/UT-11) e `src/core/ports.ts` (lista de abas para a atribuição D8). Testes antigos que fixam a limpeza em `onBeforeRequest` (SPEC-0010:IT-03 e a guarda de IT-06) passam a refletir a regra D7. A revisão fica numa chave própria do `storage.session` para não mudar o formato da lista. Contrato da seção 6 inalterado (`contract_version` 1) | descoberto no G1 pelo Test-writer | — | Architect, sob a autorização de piloto automático do Thomas (2026-11-27) |
+| 2 | 2026-11-27 | D5 estreitada: só é segmento o `file` na pasta do manifesto (ou abaixo) com nome de segmento (`seg-N`, `chunk_N`, `fileSequenceN`, `N.mp4` etc.); a eviction prioriza manifestos. UT-04 ganha o caso `video-hi.mp4` que continua candidato | IMP-02: a D5 original contradizia a SPEC-0015 (fontes relacionadas `.mp4` de arquivo único) | SPEC-0024 (UT-04, IT-02); nenhuma spec consome o contrato | Thomas Ravache, pela autorização de piloto automático "com o recomendado" (2026-11-27) |
