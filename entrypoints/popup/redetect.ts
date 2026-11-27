@@ -67,8 +67,11 @@ export function createRedetectController(deps: RedetectDeps): RedetectController
   let revisionTimer: ReturnType<typeof setInterval> | undefined;
   let emptyTimer: ReturnType<typeof setInterval> | undefined;
 
+  /** Sem lista ainda: vazia ou página restrita (o DOM pode ainda não ter carregado) — vale a re-tentativa. */
   const isEmpty = (response: DetectResponse | undefined): boolean =>
-    response?.ok === true && response.candidates.length === 0;
+    response?.ok === true
+      ? response.candidates.length === 0
+      : response?.error === 'RESTRICTED_PAGE';
 
   function stopEmptyRetry(): void {
     clearInterval(emptyTimer);
@@ -85,14 +88,34 @@ export function createRedetectController(deps: RedetectDeps): RedetectController
         stopEmptyRetry();
         return;
       }
-      void run();
+      if (!detecting) {
+        void run();
+      }
     }, EMPTY_RETRY_MS);
   }
 
-  async function run(): Promise<void> {
-    if (detecting) {
-      return;
+  let inFlight: Promise<void> | undefined;
+  let rerun: Promise<void> | undefined;
+
+  /**
+   * Um `detect` por vez. Pedidos feitos com um em andamento (botão, "Tentar de novo", acesso concedido) não se
+   * perdem: viram exatamente um `detect` a mais, depois do atual.
+   */
+  function run(): Promise<void> {
+    if (inFlight === undefined) {
+      inFlight = detectOnce().finally(() => {
+        inFlight = undefined;
+      });
+      return inFlight;
     }
+    rerun ??= inFlight.then(() => {
+      rerun = undefined;
+      return run();
+    });
+    return rerun;
+  }
+
+  async function detectOnce(): Promise<void> {
     detecting = true;
     let response: DetectResponse | undefined;
     try {
