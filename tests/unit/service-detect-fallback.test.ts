@@ -8,9 +8,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { DetectResponse } from '../../src/core/contracts';
-import { SELF, pageWithVideo, setupService } from './support/detect-service';
+import { HLS_TYPE, SELF, pageWithVideo, response, setupService } from './support/detect-service';
 
 const MP4 = 'https://cdn.example.test/v/aula.mp4';
+const HLS = 'https://cdn.example.test/hls/master.m3u8';
 
 async function detect(service: ReturnType<typeof setupService>['service'], tabId = 1) {
   return (await service.handle({ type: 'detect', tabId }, { id: SELF })) as DetectResponse;
@@ -39,5 +40,35 @@ describe('detect: caracterização (antes da SPEC-0024)', () => {
       source: 'dom',
       support: 'downloadable',
     });
+  });
+});
+
+describe('detect: falha parcial do DOM não esconde a rede (D1)', () => {
+  it('SPEC-0024:UT-01 coleta que lança erro com um HLS na rede da aba devolve ok com o HLS e registra detect.provider_failed', async () => {
+    const { service, collectVideos, diagnostics } = setupService();
+    collectVideos.mockRejectedValue(new Error('Frame with ID 3 is showing error page'));
+    await service.onNetworkResponse(
+      response({ url: HLS, tabId: 1, contentType: HLS_TYPE, contentLength: 700 }),
+    );
+
+    const result = await detect(service);
+
+    expect(result).toMatchObject({ ok: true, access: { blockedOrigins: [] } });
+    const candidates = result.ok ? result.candidates : [];
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ mediaUrl: HLS, kind: 'hls', source: 'network' });
+    const events = diagnostics.snapshot().map((entry) => entry.event);
+    expect(events).toContain('detect.provider_failed');
+    expect(events).not.toContain('detect.restricted');
+  });
+
+  it('SPEC-0024:UT-02 (guarda: passa antes da mudança) coleta que lança erro com a rede da aba vazia (só outra aba tem captura) devolve RESTRICTED_PAGE', async () => {
+    const { service, collectVideos } = setupService();
+    collectVideos.mockRejectedValue(new Error('Cannot access contents of the page'));
+    await service.onNetworkResponse(
+      response({ url: HLS, tabId: 2, contentType: HLS_TYPE, contentLength: 700 }),
+    );
+
+    expect(await detect(service, 1)).toEqual({ ok: false, error: 'RESTRICTED_PAGE' });
   });
 });
