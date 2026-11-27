@@ -6,13 +6,7 @@
 
 - Validação (G0): **0 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
 - Specs: proposed 1, approved 1, in-progress 1, implemented 19
-- Impedimentos: **1 aberto(s)**, 9 resolvido(s)
-
-## Impedimentos Abertos
-
-| Spec | ID | Tipo | Fase/Gate | Responsável | Aberto em | Idade | Descrição |
-|---|---|---|---|---|---|---|---|
-| SPEC-0024 | IMP-02 | spec | G2 | Architect | 2026-11-27 | 0d | D5 descarta todo file no diretório do manifesto e contradiz SPEC-0015 (fontes relacionadas .mp4 de arquivo único na mesma pasta): 9 IT e o E2E-01 da SPEC-0015 falham |
+- Impedimentos: **0 aberto(s)**, 10 resolvido(s)
 
 ## Cobertura de Pilares
 
@@ -43,13 +37,13 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
-**Paradas por impedimento:** SPEC-0024  
+**Em andamento:** SPEC-0024  
+**Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🚧 parada por impedimento: IMP-02 (spec → Architect, 0d) |  |
+| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🔄 em andamento |  |
 | 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
 | 2 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | approved | ⛔ aguarda implementação de SPEC-0024 |  |
 

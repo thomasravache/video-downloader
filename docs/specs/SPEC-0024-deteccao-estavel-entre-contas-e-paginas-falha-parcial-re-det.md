@@ -249,29 +249,29 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 
 ## 11. Checklist de Implementação
 **Fase 0: Caracterização**
-- [ ] CH-01 e CH-02 escritos com a tag `SPEC-0024:<ID>`, passando no código atual, commitados antes de qualquer mudança
+- [x] CH-01 e CH-02 escritos com a tag `SPEC-0024:<ID>`, passando no código atual, commitados antes de qualquer mudança
 
 **Fase 1: Rede (D5, D6, D8, D9, D10)**
-- [ ] Red: UT-04, UT-05, UT-06, UT-08, UT-09, UT-13, IT-02, IT-04, IT-05, IT-06 falhando pelo motivo certo
-- [ ] Green: `classifyNetworkResponse`, `attributeTabs`, `isManifestSegment`, eviction por tipo, `groupKey` e ligação no background, seguindo `src/core/network.ts`
-- [ ] Refactor mantendo tudo verde
+- [x] Red: UT-04, UT-05, UT-06, UT-08, UT-09, UT-13, IT-02, IT-04, IT-05, IT-06 falhando pelo motivo certo
+- [x] Green: `classifyNetworkResponse`, `attributeTabs`, `isManifestSegment`, eviction por tipo, `groupKey` e ligação no background, seguindo `src/core/network.ts`
+- [x] Refactor mantendo tudo verde
 
 **Fase 2: Navegação e revisão (D7, mensagem `network-revision`)**
-- [ ] Red: UT-07, UT-12, IT-03, CT-01 falhando pelo motivo certo
-- [ ] Green: `replacesDocument`, `NetworkStore.revision`, validação e resposta da mensagem; limpeza da lista movida para `onResponseStarted` de `main_frame`
+- [x] Red: UT-07, UT-12, IT-03, CT-01 falhando pelo motivo certo
+- [x] Green: `replacesDocument`, `NetworkStore.revision`, validação e resposta da mensagem; limpeza da lista movida para `onResponseStarted` de `main_frame`
 
 **Fase 3: Detect e coleta (D1, D3)**
-- [ ] Red: UT-01, UT-02, UT-03, IT-01 falhando pelo motivo certo
-- [ ] Green: `detect` sempre inclui a rede; `collectVideos` percorre shadow roots abertos (profundidade 8)
+- [x] Red: UT-01, UT-02, UT-03, IT-01 falhando pelo motivo certo
+- [x] Green: `detect` sempre inclui a rede; `collectVideos` percorre shadow roots abertos (profundidade 8)
 
 **Fase 4: Popup (D2, D4)**
-- [ ] Red: UT-10, UT-11 falhando pelo motivo certo
-- [ ] Green: controlador de re-detecção (revisão a cada 1 s, DOM a cada 3 s por até 30 s com a lista vazia), botão `redetect-button`, erro com `detect-retry`, textos em `_locales`
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: UT-10, UT-11 falhando pelo motivo certo
+- [x] Green: controlador de re-detecção (revisão a cada 1 s, DOM a cada 3 s por até 30 s com a lista vazia), botão `redetect-button`, erro com `detect-retry`, textos em `_locales`
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 5: Jornadas E2E**
-- [ ] Red: E2E-01 (player atrasado) falhando pelo motivo certo
-- [ ] Green: E2E-01 e E2E-02 passando localmente nos dois flavors
+- [x] Red: E2E-01 (player atrasado) falhando pelo motivo certo
+- [x] Green: E2E-01 e E2E-02 passando localmente nos dois flavors
 
 **Fase final: Integração, entrega e documentação**
 - [ ] Review independente (G4)
@@ -284,8 +284,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 0f94085 | 2026-11-26 |
 | G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/30]⎯) — 02f0e65 | 2026-11-27 |
-| G2 Green | PENDING | | |
-| G3 Arquitetura | PENDING | | |
+| G2 Green | PASS | build exit 0 (✔ Finished in 914 ms); test exit 0 (Duration  62.22s (tests 96%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 193 ms); coverage exit 0 (================================================================================) — b44456e | 2026-11-27 |
+| G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (66 modules, 145 dependencies cruised)) — b44456e | 2026-11-27 |
 | G4 Review | PENDING | | |
 | G5 Integração & CI | PENDING | | |
 | H2 Integração aprovada | PENDING | | |
@@ -296,7 +296,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
 | IMP-01 | 2026-11-27 | G1 | decisão | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) | waves/next após H1 | Thomas Ravache | Thomas escolheu fechar as specs antigas (2026-11-27): SPEC-0009..0015 e o épico SPEC-0008 fechados no PR #39 | 2026-11-27 |
-| IMP-02 | 2026-11-27 | G2 | spec | D5 descarta todo file no diretório do manifesto e contradiz SPEC-0015 (fontes relacionadas .mp4 de arquivo único na mesma pasta): 9 IT e o E2E-01 da SPEC-0015 falham | D5 implementada como escrita; sem o descarte, só UT-04/IT-02 da SPEC-0024 falham | Architect |  |  |
+| IMP-02 | 2026-11-27 | G2 | spec | D5 descarta todo file no diretório do manifesto e contradiz SPEC-0015 (fontes relacionadas .mp4 de arquivo único na mesma pasta): 9 IT e o E2E-01 da SPEC-0015 falham | D5 implementada como escrita; sem o descarte, só UT-04/IT-02 da SPEC-0024 falham | Architect | Emenda v2 — D5 estreitada a nomes de segmento; SPEC-0015 preservada (b44456e) | 2026-11-27 |
 
 ## 14. Relatório de Entrega
 
