@@ -292,6 +292,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| IMP-01 | 2026-11-27 | G1 | decisão | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) | waves/next após H1 | Thomas Ravache |  |  |
 
 ## 14. Relatório de Entrega
 

@@ -6,7 +6,13 @@
 
 - Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
 - Specs: proposed 1, approved 2, in-progress 7, implemented 12
-- Impedimentos: **0 aberto(s)**, 8 resolvido(s)
+- Impedimentos: **1 aberto(s)**, 8 resolvido(s)
+
+## Impedimentos Abertos
+
+| Spec | ID | Tipo | Fase/Gate | Responsável | Aberto em | Idade | Descrição |
+|---|---|---|---|---|---|---|---|
+| SPEC-0024 | IMP-01 | decisão | G1 | Thomas Ravache | 2026-11-27 | 0d | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) |
 
 ## Cobertura de Pilares
 
@@ -51,7 +57,7 @@ Perfil: **padrao**
 | 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
 | 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
 | 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
-| 8 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | approved | ✅ pronta | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
+| 8 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | approved | ⛔ impedimento IMP-01 (decisão → Thomas Ravache, 0d) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014; saiu da onda 7: arquivos em comum com SPEC-0015 |
 | 9 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | approved | ⛔ aguarda implementação de SPEC-0024 |  |
 
 ## Épicos
