@@ -1,11 +1,11 @@
 # Índice de Specs
 
-> Gerado por `spec_graph.py index` em 2026-10-08 — não edite manualmente.
+> Gerado por `spec_graph.py index` em 2026-11-27 — não edite manualmente.
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 17 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, in-progress 7, implemented 12
+- Validação (G0): **0 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
+- Specs: proposed 1, implemented 19
 - Impedimentos: **0 aberto(s)**, 8 resolvido(s)
 
 ## Cobertura de Pilares
@@ -31,33 +31,26 @@ Perfil: **padrao**
 
 | Jornada | Situação | Specs |
 |---|---|---|
-| Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005, SPEC-0022 |
-| Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo | planejada | SPEC-0009 |
-| Usuário escolhe a qualidade de um vídeo HLS e baixa um MP4 válido | provada | SPEC-0016, SPEC-0017, SPEC-0018, SPEC-0019, SPEC-0020, SPEC-0021 |
+| Usuário abre uma página com vídeo sem DRM, vê o vídeo no popup e baixa o arquivo | provada | SPEC-0005, SPEC-0010, SPEC-0022 |
+| Usuário abre uma página com o player dentro de um iframe de outro domínio e baixa o vídeo | provada | SPEC-0009 |
+| Usuário escolhe a qualidade de um vídeo HLS e baixa um MP4 válido | provada | SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015, SPEC-0016, SPEC-0017, SPEC-0018, SPEC-0019, SPEC-0020, SPEC-0021 |
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0009, SPEC-0010, SPEC-0011, SPEC-0012, SPEC-0013, SPEC-0014, SPEC-0015  
+**Em andamento:** —  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0009 | Detecção em iframes e acesso por site | full/M | in-progress | 🔄 em andamento |  |
-| 2 | SPEC-0010 | Detecção por rede (media sniffing) | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009 |
-| 3 | SPEC-0011 | Playlists HLS: parser, variantes e candidato no popup | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010 |
-| 4 | SPEC-0012 | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011 |
-| 5 | SPEC-0013 | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
-| 5 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012 |
-| 6 | SPEC-0014 | Juntar vídeo e áudio separados em um único MP4 | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013 |
-| 7 | SPEC-0015 | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full/M | in-progress | 🔄 em andamento | saiu da onda 1: arquivos em comum com SPEC-0009; saiu da onda 2: arquivos em comum com SPEC-0010; saiu da onda 3: arquivos em comum com SPEC-0011; saiu da onda 4: arquivos em comum com SPEC-0012; saiu da onda 5: arquivos em comum com SPEC-0013; saiu da onda 6: arquivos em comum com SPEC-0014 |
+| 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
 
 ## Épicos
 
 | Épico | Título | Status | Progresso |
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
-| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | approved | 2/9 implementadas |
+| SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | implemented | 9/9 implementadas |
 
 ## Grafo de Dependências
 
@@ -67,30 +60,9 @@ Seta contínua: depende da implementação. Seta tracejada: consome contrato.
 flowchart LR
   subgraph E0001["SPEC-0001 · Fundação da extensão de download de vídeos"]
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
-    S0005["SPEC-0005<br/>Walking skeleton: detectar vídeo direto…"]:::implemented
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
   end
-  subgraph E0008["SPEC-0008 · Detector completo de vídeos: iframes, rede e HLS"]
-    S0009["SPEC-0009<br/>Detecção em iframes e acesso por site"]:::inprogress
-    S0010["SPEC-0010<br/>Detecção por rede (media sniffing)"]:::inprogress
-    S0011["SPEC-0011<br/>Playlists HLS: parser, variantes e cand…"]:::inprogress
-    S0012["SPEC-0012<br/>Download HLS sem criptografia: segmento…"]:::inprogress
-    S0013["SPEC-0013<br/>HLS com faixas de bytes (fMP4 de arquiv…"]:::inprogress
-    S0014["SPEC-0014<br/>Juntar vídeo e áudio separados em um ún…"]:::inprogress
-    S0015["SPEC-0015<br/>Popup com um cartão por vídeo: fontes r…"]:::inprogress
-  end
   S0002 --> S0007
-  S0005 --> S0009
-  S0009 -. contrato v1 .-> S0010
-  S0010 -. contrato v1 .-> S0011
-  S0011 -. contrato v1 .-> S0012
-  S0011 -. contrato v1 .-> S0013
-  S0012 -. contrato v1 .-> S0013
-  S0011 -. contrato v1 .-> S0014
-  S0012 -. contrato v1 .-> S0014
-  S0013 -. contrato v1 .-> S0014
-  S0013 -. contrato v1 .-> S0015
-  S0014 -. contrato v1 .-> S0015
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
   classDef inprogress fill:#ede9fe,stroke:#7c3aed,color:#111
@@ -109,14 +81,14 @@ flowchart LR
 | [SPEC-0005](SPEC-0005-walking-skeleton-detectar-video-direto-e-baixar-pelo-popup.md) | Walking skeleton: detectar vídeo direto e baixar pelo popup | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0003, SPEC-0004 | — |
 | [SPEC-0006](SPEC-0006-pipeline-de-release-e-builds-public-local.md) | Pipeline de release e builds public/local | full | foundation | implemented | 2026-09-30 | SPEC-0001 | SPEC-0004 | SPEC-0005@1 |
 | [SPEC-0007](SPEC-0007-endurecer-selecao-de-flavor-e-tipar-flavor.md) | Endurecer seleção de flavor e tipar FLAVOR | lite | fix | proposed | 2026-09-30 | SPEC-0001 | SPEC-0002 | — |
-| [SPEC-0008](SPEC-0008-detector-completo-de-videos-iframes-rede-e-hls.md) | Detector completo de vídeos: iframes, rede e HLS | epic | feature | approved | 2026-10-02 | — | — | — |
-| [SPEC-0009](SPEC-0009-deteccao-em-iframes-e-acesso-por-site.md) | Detecção em iframes e acesso por site | full | feature | in-progress | 2026-10-02 | SPEC-0008 | SPEC-0005 | — |
-| [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0009@1 |
-| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
-| [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1 |
-| [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
-| [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
-| [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | in-progress | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
+| [SPEC-0008](SPEC-0008-detector-completo-de-videos-iframes-rede-e-hls.md) | Detector completo de vídeos: iframes, rede e HLS | epic | feature | implemented | 2026-10-02 | — | — | — |
+| [SPEC-0009](SPEC-0009-deteccao-em-iframes-e-acesso-por-site.md) | Detecção em iframes e acesso por site | full | feature | implemented | 2026-10-02 | SPEC-0008 | SPEC-0005 | — |
+| [SPEC-0010](SPEC-0010-deteccao-por-rede-media-sniffing.md) | Detecção por rede (media sniffing) | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0009@1 |
+| [SPEC-0011](SPEC-0011-playlists-hls-parser-variantes-e-candidato-no-popup.md) | Playlists HLS: parser, variantes e candidato no popup | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0010@1 |
+| [SPEC-0012](SPEC-0012-download-hls-sem-criptografia-segmentos-juncao-em-mp4-e-prog.md) | Download HLS sem criptografia: segmentos, junção em MP4 e progresso | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1 |
+| [SPEC-0013](SPEC-0013-hls-com-byte-range-e-popup-sem-ruido-de-blob-e-trilhas-separ.md) | HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blob e master vista como arquivo | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1 |
+| [SPEC-0014](SPEC-0014-juntar-video-e-audio-separados-em-um-unico-mp4.md) | Juntar vídeo e áudio separados em um único MP4 | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1 |
+| [SPEC-0015](SPEC-0015-popup-com-um-cartao-por-video-fontes-redundantes-recolhidas.md) | Popup com um cartão por vídeo: fontes redundantes recolhidas e seletor de áudio | full | feature | implemented | 2026-10-02 | SPEC-0008 | — | SPEC-0013@1, SPEC-0014@1 |
 | [SPEC-0016](SPEC-0016-contexto-de-requisicao-da-pagina-para-buscar-playlists-e-seg.md) | Contexto de requisição da página para buscar playlists e segmentos recusados com 403 | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0015@1 |
 | [SPEC-0017](SPEC-0017-hls-com-criptografia-aes-128-por-chave-de-sessao-no-flavor-l.md) | HLS com criptografia AES-128 por chave de sessão no flavor local | full | feature | implemented | 2026-10-03 | SPEC-0008 | — | SPEC-0011@1, SPEC-0012@1, SPEC-0013@1, SPEC-0014@1, SPEC-0016@1 |
 | [SPEC-0018](SPEC-0018-corrigir-transmuxer-hls-ts-com-mp4-compativel-ignorar-legend.md) | Corrigir transmuxer HLS TS com MP4 compativel, ignorar legendas e enriquecer titulo | full | fix | implemented | 2026-10-06 | — | — | SPEC-0011@1, SPEC-0012@1, SPEC-0014@1, SPEC-0016@1, SPEC-0017@1 |

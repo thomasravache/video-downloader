@@ -4,7 +4,7 @@ title: HLS com faixas de bytes (fMP4 de arquivo único), popup sem ruído de blo
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: []
@@ -189,20 +189,20 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
 **Fase 1: Faixas de bytes no núcleo e no offscreen**
-- [ ] Red: UT-01..UT-10, CT-01, IT-01..IT-06 com a tag `SPEC-0013:<ID>`, falhando pelo motivo certo (substituir os testes de recusa de byte range da SPEC-0012)
-- [ ] Green: `parseMediaSegments` com ranges, `start.ranges`, `Range` + validação 206/Content-Range, limite antecipado, `mergeCandidates` DOM→HLS, `hideRedundantCandidates`
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: UT-01..UT-10, CT-01, IT-01..IT-06 com a tag `SPEC-0013:<ID>`, falhando pelo motivo certo (substituir os testes de recusa de byte range da SPEC-0012)
+- [x] Green: `parseMediaSegments` com ranges, `start.ranges`, `Range` + validação 206/Content-Range, limite antecipado, `mergeCandidates` DOM→HLS, `hideRedundantCandidates`
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Jornada E2E**
-- [ ] Red: E2E-01 (fixture single_file + servidor com Range) e E2E-02 falhando pelo motivo certo
-- [ ] Green: jornada completa passando nos dois flavors, 3 execuções sem flake
+- [x] Red: E2E-01 (fixture single_file + servidor com Range) e E2E-02 falhando pelo motivo certo
+- [x] Green: jornada completa passando nos dois flavors, 3 execuções sem flake
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
+- [x] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -216,8 +216,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; 4 MINOR corrigidos (bf14951..6f6fc09), 1 MINOR aceito (merge DOM file->hls por origem+caminho, conforme UT-10) — 6f6fc09 | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 227 ms); test exit 0 (Duration  33.82s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.23s (tests 76%, transform 14%, import 7%, setup 3%)); test_e2e exit 0 (56 passed (52.1s)); arch_test exit 0 (✔ no dependency violations found (46 modules, 100 dependencies cruised)); security_scan exit 0 ([90m10:44PM[0m [32mINF[0m [1mno leaks found[0m) — c3c5c14 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.3, release.yml run 37101154187 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -228,37 +228,62 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Plataformas de curso servem HLS em que a playlist aponta para **trechos de um único arquivo `.mp4`** (`#EXT-X-BYTERANGE`, e `#EXT-X-MAP` com `BYTERANGE` para o cabeçalho de inicialização). Hoje o download recusa essas playlists (decisão da revisão da SPEC-0012, para não gerar arquivo corrompido) e o popup mostra "Could not read this video's playlist", embora a playlist tenha sido lida. Esta spec faz o download buscar cada trecho com um cabeçalho `Range` e montar o MP4 normalmente, e tira do popup o cartão `blob` ("Not supported yet"), que é só o `<video>` do player usando Media Source e nunca terá o que baixar.
+
+Entradas no CHANGELOG (v0.1.0-rc.3):
+- Download de HLS cujos segmentos são trechos de um único arquivo (`EXT-X-BYTERANGE`, `EXT-X-MAP` com `BYTERANGE`), com requisições `Range` validadas (só `206` com `Content-Range` coerente) e recusa antecipada acima do limite (SPEC-0013)
+- O cartão "arquivo" da página que aponta para a própria playlist HLS passa a ser o cartão HLS, com o título da página, em vez de oferecer o download do texto da playlist (SPEC-0013)
+- O cartão `blob` ("Not supported yet") deixa de aparecer quando há outra fonte baixável na aba (SPEC-0013)
+- Playlist com byte range deixa de falhar com "Could not read this video's playlist" (SPEC-0013)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+`parseMediaSegments` passa a devolver, além de `urls`/`initUrl`, as faixas de bytes alinhadas (`ranges`, `initRange`) já com offsets **resolvidos** (offset implícito = fim da faixa anterior do mesmo recurso, RFC 8216 §4.3.2.2). O `start` do offscreen ganha `ranges?` e `initRange?`; o `fetchBytes` envia `Range: bytes=o-(o+l-1)` e valida `206` + `Content-Range`. A recusa de byte range sai do núcleo; toda a validação de segurança (criptografia, live, http(s)) permanece como está.
+
+Módulos principais: `src/core/**`, `entrypoints/offscreen/**`, `entrypoints/popup/**`. Review independente (G4): verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; 4 MINOR corrigidos (bf14951..6f6fc09), 1 MINOR aceito (merge DOM file->hls por origem+caminho, conforme UT-10).
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
-N/A
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado uma playlist fMP4 com segmentos `#EXT-X-BYTERANGE:len@off`, quando `parseMediaSegments` roda, então `ranges[i]` = `{offset: off, len… | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado a playlist real do curso (`MAP BYTERANGE="893@0"`, 1º segmento `1060672@1573`, demais só `len`), quando parseada, então cada offset… | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado `#EXT-X-MAP:URI=…,BYTERANGE="893@0"`, quando parseada, então `initRange` = `{offset:0, length:893}` e `initUrl` é o URL resolvido. | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado BYTERANGE com `0`, negativo, texto, ou `offset+length` acima de `Number.MAX_SAFE_INTEGER`, quando parseada, então lança `HlsParseErr… | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-05 | Dado um segmento `len` sem `@` sem faixa anterior no mesmo URL (1º segmento, ou depois de trocar de arquivo), quando parseada, então lanç… | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-06 | Dado playlists TS e fMP4 sem BYTERANGE (as fixtures atuais), quando parseadas, então o resultado é igual ao anterior e não tem `ranges` n… | PASS | `tests/unit/hls-segments-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-07 | Dado comandos `start` com `ranges` de comprimento diferente de `urls`, item não-objeto/inválido, ou `initRange` sem `initUrl`, quando `is… | PASS | `tests/unit/offscreen-commands-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-08 | Dado `{offset:1573, length:1060672}`, quando o cabeçalho é montado, então vale `bytes=1573-1062244`. | PASS | `tests/unit/offscreen-null-ranges.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-09 | Dado listas com `blob:` + arquivo, `blob:` + HLS, `blob:` sozinho, `blob:` + só outro `unsupported-stream`, e sem `blob:`, quando `hideRe… | PASS | `tests/unit/candidates-hide-redundant.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-10 | Dado um candidato DOM `file` `https://h/x/0dc195?sig=a` com título e um candidato rede `hls` `https://h/x/0dc195?sig=b` sem título, quand… | PASS | `tests/unit/hls-segments-byterange-hardening.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Dado um servidor local com suporte a `Range` servindo um fMP4 de arquivo único e a playlist com byte range, quando o job roda no offscree… | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Dado um servidor que ignora `Range` e responde 200, quando o job roda, então termina `failed` `FETCH_FAILED` e `downloads.download` não é… | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-03 | Dado um servidor que responde 206 com `Content-Range` de outro intervalo, quando o job roda, então termina `failed` `FETCH_FAILED`. | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-04 | Dado ranges cuja soma excede 1,5 GiB (só metadados, nenhum byte real), quando o job inicia, então termina `failed` `TOO_LARGE` e o servid… | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Dado playlist com byte range **e** `#EXT-X-KEY:METHOD=AES-128` (e um candidato `drm` com byte range), quando `download` roda, então respo… | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-06 | Dado playlist e segmentos com `?token=…&expires=…`, quando o job conclui e quando falha, então nenhuma saída de diagnóstico, erro ou esta… | PASS | `tests/integration/hls-job-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Dado o contrato `start` da SPEC-0012@1 (comando sem `ranges`/`initRange`) e `HlsInfo` da SPEC-0011@1, quando validados pelo código desta… | PASS | `tests/unit/offscreen-commands-byterange.test.ts` — G5 c3c5c14; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Dado uma página que carrega um HLS de arquivo único com byte range (fixture gerada com `ffmpeg`, servida com `Range`) [jornada: baixar-hl… | PASS | `e2e/journeys/hls-byterange.spec.ts` — G5 c3c5c14 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Dado uma página com `<video>` por `blob:` e um HLS observado na rede, quando o popup abre, então não há `badge-unsupported` do `blob`, e… | PASS | `e2e/fixtures/pages/hls-as-file.html` — G5 c3c5c14 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PR #12. Staging (pré-release): GitHub prerelease `v0.1.0-rc.3` pelo `release.yml` (run 37101154187: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono. Verificação manual em site real (§7.6/G6): confirmada por Thomas Ravache no chat em 2026-11-27 ("Já testei, pode registrar"), com base no uso em sites reais desde a rc publicada; os sites e resultados de cada teste não foram registrados na época.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0013`. -->
