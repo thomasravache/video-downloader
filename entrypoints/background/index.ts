@@ -174,7 +174,7 @@ export default defineBackground(() => {
 
   browser.tabs.onRemoved.addListener((tabId) => {
     service.onTabRemoved(tabId);
-    void service.clearNetwork(tabId);
+    void service.forgetNetwork(tabId);
     void indicator.clearForTab(tabId);
   });
 

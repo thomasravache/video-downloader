@@ -89,8 +89,10 @@ export interface Service {
     response: NetworkResponse,
     openTabs?: readonly { id: number; url?: string }[],
   ): Promise<number[]>;
-  /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
+  /** Navegação do frame principal: descarta a lista de rede da aba (a revisão cresce). */
   clearNetwork(tabId: number): Promise<void>;
+  /** Aba fechada: descarta a lista de rede e a revisão da aba (SPEC-0024). */
+  forgetNetwork(tabId: number): Promise<void>;
   /** Mensagem `{target:'background'}` do offscreen (SPEC-0012); `false` quando ignorada. */
   onOffscreenMessage(message: unknown, sender: { id?: string; url?: string }): Promise<boolean>;
   /** `downloads.onChanged` (SPEC-0012): conclui ou falha o job em `saving`. */
@@ -914,6 +916,16 @@ export function createService(deps: ServiceDeps): Service {
     async clearNetwork(tabId) {
       try {
         await deps.network?.clear(tabId);
+      } catch (error) {
+        diagnostics.log('warn', 'network.clear_failed', diagnostics.newCorrelationId(), {
+          tabId,
+          reason: reasonOf(error),
+        });
+      }
+    },
+    async forgetNetwork(tabId) {
+      try {
+        await deps.network?.forget(tabId);
       } catch (error) {
         diagnostics.log('warn', 'network.clear_failed', diagnostics.newCorrelationId(), {
           tabId,

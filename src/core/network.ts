@@ -353,6 +353,14 @@ export class NetworkStore {
     });
   }
 
+  /** Aba fechada: some a lista e a revisão (`revision` volta a 0); ao contrário de `clear`, não incrementa. */
+  forget(tabId: number): Promise<void> {
+    return this.serial(async () => {
+      await this.port.remove(keyOf(tabId));
+      await this.port.remove(revisionKeyOf(tabId));
+    });
+  }
+
   /** Inteiro ≥ 0, incrementado a cada add efetivo e a cada clear da aba; 0 para aba sem histórico. */
   revision(tabId: number): Promise<number> {
     return this.serial(() => this.readRevision(tabId));
