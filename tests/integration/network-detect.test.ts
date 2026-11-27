@@ -349,3 +349,144 @@ describe('detecção por rede: webRequest indisponível e navegação sem aba (E
     expect(candidates.some((c) => c.mediaUrl === SUBS)).toBe(false);
   });
 });
+
+/**
+ * Contrato usado (SPEC-0024:IT-01..IT-06), background real + fakeBrowser:
+ *  - D1: `scripting.executeScript` rejeitando não esconde a lista de rede da aba no `detect`;
+ *  - D5: com um master na aba, `.mp4` da mesma pasta (ou subpasta) é segmento e não entra na lista;
+ *  - D7: a lista é apagada no `onResponseStarted` de `main_frame` que troca o documento (2xx exceto 204/205, sem
+ *    `Content-Disposition: attachment`), e não mais no `onBeforeRequest`; a mensagem
+ *    `{ type: 'network-revision', tabId }` devolve `{ ok: true, revision }`, que cresce a cada add/clear;
+ *  - D8: resposta com `tabId = -1` e `initiator` igual à origem de uma aba aberta (`tabs.query`) entra na lista dela;
+ *  - D10: resposta descartada não chama `tabs.get`, `storage.session.get` nem `action.setBadgeText`;
+ *  - D9: dois masters no mesmo caminho com `id` diferente não são agrupados (`groupCandidates`) como redundantes.
+ */
+describe('detecção estável entre contas e páginas (SPEC-0024)', () => {
+  const MP4_SEGMENT_HEADERS = { 'Content-Type': 'video/mp4', 'Content-Length': String(200 * 1024) };
+
+  async function revisionOf(tabId: number): Promise<number> {
+    const response = (await bg.send({ type: 'network-revision', tabId })) as {
+      ok: boolean;
+      revision?: unknown;
+    };
+    expect(response, JSON.stringify(response)).toMatchObject({ ok: true });
+    expect(response.revision).toEqual(expect.any(Number));
+    return response.revision as number;
+  }
+
+  it('SPEC-0024:IT-01 executeScript rejeita e a NetworkStore real tem um .m3u8 da aba: o detect pela mensagem devolve o HLS', async () => {
+    const tabId = await bg.newTab(PAGE);
+    await bg.network.respond({ url: HLS, tabId, headers: HLS_HEADERS });
+    expect(JSON.stringify(await fakeBrowser.storage.session.get(null))).toContain(HLS);
+    bg.executeScript.mockRejectedValue(new Error('Frame with ID 0 was removed.'));
+
+    const response = (await bg.send({ type: 'detect', tabId })) as DetectResponse;
+
+    expect(response).toMatchObject({ ok: true });
+    const candidates = response.ok ? response.candidates : [];
+    expect(candidates.map((c) => [c.kind, c.mediaUrl])).toEqual([['hls', HLS]]);
+  });
+
+  it('SPEC-0024:IT-02 um master e 70 segmentos .mp4 da mesma pasta: a lista da aba tem só o master', async () => {
+    const tabId = await bg.newTab(PAGE);
+    const master = 'https://cdn.example.test/v/abc/master.m3u8';
+    await bg.network.respond({ url: master, tabId, headers: HLS_HEADERS });
+    for (let n = 0; n < 70; n++) {
+      await bg.network.respond({
+        url: `https://cdn.example.test/v/abc/720/seg-${String(n)}.mp4`,
+        tabId,
+        headers: MP4_SEGMENT_HEADERS,
+      });
+    }
+
+    expect((await detectTab(tabId)).map((c) => c.mediaUrl)).toEqual([master]);
+  });
+
+  it('SPEC-0024:IT-03 main_frame 204 e onBeforeRequest sem resposta mantêm a lista', async () => {
+    const tabId = await bg.newTab(PAGE);
+    await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
+
+    await bg.network.mainFrameResponse(tabId, 'https://site.example.test/baixar', {
+      statusCode: 204,
+      headers: {},
+    });
+    await bg.network.navigate(tabId, 'https://site.example.test/link-cancelado');
+    await bg.network.mainFrameResponse(tabId, 'https://site.example.test/material.zip', {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename=material.zip',
+      },
+    });
+
+    expect((await detectTab(tabId)).map((c) => c.mediaUrl)).toEqual([MP4]);
+  });
+
+  it('SPEC-0024:IT-03 main_frame 200 text/html apaga a lista da aba e incrementa a revisão', async () => {
+    const tabId = await bg.newTab(PAGE);
+    const other = await bg.newTab('https://other.example.test/');
+    await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
+    await bg.network.respond({ url: `${MP4}?b`, tabId: other, headers: MP4_HEADERS });
+    const before = await revisionOf(tabId);
+
+    await bg.network.mainFrameResponse(tabId, 'https://site.example.test/outra-aula');
+
+    expect(await detectTab(tabId)).toEqual([]);
+    expect(await revisionOf(tabId)).toBeGreaterThan(before);
+    expect((await detectTab(other)).map((c) => c.mediaUrl)).toEqual([`${MP4}?b`]);
+  });
+
+  it('SPEC-0024:IT-04 tabId -1 com initiator igual à origem de uma aba aberta põe o candidato na lista dessa aba', async () => {
+    const tabId = await bg.newTab(PAGE);
+    const other = await bg.newTab('https://other.example.test/');
+    vi.spyOn(
+      fakeBrowser.tabs as unknown as Record<string, (...args: unknown[]) => unknown>,
+      'query',
+    ).mockResolvedValue([
+      { id: tabId, url: PAGE, index: 0, windowId: 1, active: true },
+      { id: other, url: 'https://other.example.test/', index: 1, windowId: 1, active: false },
+    ]);
+
+    await bg.network.respond({
+      url: HLS,
+      tabId: -1,
+      frameId: -1,
+      initiator: 'https://site.example.test',
+      headers: HLS_HEADERS,
+    });
+
+    expect((await detectTab(tabId)).map((c) => [c.kind, c.mediaUrl])).toEqual([['hls', HLS]]);
+    expect(await detectTab(other)).toEqual([]);
+    const all = await fakeBrowser.storage.session.get(null);
+    expect(Object.keys(all)).not.toContain('vd:net:-1');
+  });
+
+  it('SPEC-0024:IT-05 200 respostas descartadas (imagem/JS) não chamam tabs.get, storage.session.get nem action.setBadgeText', async () => {
+    const tabId = await bg.newTab(PAGE);
+    const tabsGet = vi.mocked(fakeBrowser.tabs.get);
+    const sessionGet = vi.spyOn(fakeBrowser.storage.session, 'get');
+    const setBadgeText = vi
+      .spyOn(fakeBrowser.action as unknown as Record<string, () => unknown>, 'setBadgeText')
+      .mockResolvedValue(undefined);
+    tabsGet.mockClear();
+
+    await Promise.all(
+      Array.from({ length: 200 }, (_, n) => {
+        const isImage = n % 2 === 0;
+        return bg.network.respond({
+          url: `https://cdn.example.test/assets/${String(n)}.${isImage ? 'png' : 'js'}`,
+          tabId,
+          type: isImage ? 'image' : 'script',
+          headers: { 'Content-Type': isImage ? 'image/png' : 'text/javascript' },
+        });
+      }),
+    );
+
+    expect(tabsGet).not.toHaveBeenCalled();
+    expect(sessionGet).not.toHaveBeenCalled();
+    expect(setBadgeText).not.toHaveBeenCalled();
+
+    // O listener estava ativo: uma resposta de vídeo depois disso entra na lista.
+    await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
+    expect((await detectTab(tabId)).map((c) => c.mediaUrl)).toEqual([MP4]);
+  });
+});
