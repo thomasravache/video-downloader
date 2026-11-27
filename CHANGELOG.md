@@ -8,6 +8,21 @@ Cada entrada cita a spec de origem (`SPEC-NNNN`); gere-as com `spec_graph.py rep
 
 ## [Unreleased]
 
+## [0.1.0-rc.10] - 2026-11-27
+
+### Fixed
+- O popup acompanha os vídeos que aparecem depois de aberto (revisão da lista de rede a cada 1 s, nova coleta na página a cada 3 s por até 30 s com a lista vazia ou a página restrita) e ganha os botões "Procurar de novo" e "Tentar de novo" (SPEC-0024)
+- A falha da coleta em um frame deixa de esconder o vídeo que a rede capturou (SPEC-0024)
+- Vídeos dentro de shadow DOM aberto passam a ser encontrados (SPEC-0024)
+- Requisições de mídia feitas pelo service worker do site são atribuídas às abas abertas da mesma origem (SPEC-0024)
+- Arquivos com `binary/octet-stream`, sem Content-Type ou `.mov` (`video/quicktime`) passam a ser aceitos; segmentos fMP4 `.mp4` deixam de virar cartões e de expulsar o manifesto da lista (SPEC-0024)
+- A lista só é apagada quando o documento principal da aba é de fato trocado (não em 204 nem em link de download) (SPEC-0024)
+- Aulas diferentes no mesmo caminho com `?id=` diferente viram cartões separados; parâmetros de assinatura continuam agrupados (SPEC-0024)
+- Respostas de rede descartadas deixam de gerar trabalho no background (SPEC-0024)
+
+### Security
+- `vite` transitivo fixado em 8.3.8 (GHSA-587h-7wmj-h5pm)
+
 ## [0.1.0-rc.9] - 2026-10-08
 
 ### Added
