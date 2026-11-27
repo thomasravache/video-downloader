@@ -4,7 +4,7 @@ title: Detecção em iframes e acesso por site
 tier: full
 type: feature
 user_facing: true
-status: in-progress
+status: implemented
 created: 2026-10-02
 parent: SPEC-0008
 depends_on: [SPEC-0005]
@@ -191,7 +191,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 **Fase final: Integração, entrega e documentação**
 - [x] Review independente (G4)
 - [x] Integração + CI verde (G5) e aprovação (H2)
-- [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
+- [x] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
 - [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
@@ -259,7 +259,7 @@ N/A — spec do tipo feature.
 - [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
+Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono. Verificação manual em site real (§7.6/G6): confirmada por Thomas Ravache no chat em 2026-11-27 ("Já testei, pode registrar"), com base no uso em sites reais desde a rc publicada; os sites e resultados de cada teste não foram registrados na época.
 
 ### Pendências
 Nenhuma.

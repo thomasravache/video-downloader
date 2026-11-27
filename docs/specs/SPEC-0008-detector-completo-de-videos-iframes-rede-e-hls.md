@@ -3,7 +3,7 @@ id: SPEC-0008
 title: "Detector completo de vídeos: iframes, rede e HLS"
 tier: epic
 type: feature
-status: approved
+status: implemented
 created: 2026-10-02
 depends_on: []
 adrs: [ADR-0012, ADR-0013]
@@ -83,13 +83,13 @@ Executam em sequência (arquivos em comum: background, popup, manifesto e harnes
 - **Conteúdo protegido/pago** — AES-128 por chave de sessão é permitido (ADR-0015) e DRM está fora de escopo; a política da loja e o uso responsável permanecem como no épico da fundação.
 
 ## 7. Critérios de Aceite do Épico
-- [ ] Numa página com iframe de outro domínio, o build `local` lista e baixa o vídeo do iframe — SPEC-0009:E2E-01
-- [ ] No build `public`, o iframe sem acesso mostra "acesso necessário" e, concedido o acesso, o vídeo aparece — SPEC-0009:E2E-02
-- [ ] Mídia carregada por JavaScript/MSE é detectada pela rede e baixa quando é arquivo direto — SPEC-0010:E2E-01
-- [ ] Uma playlist HLS mostra as qualidades disponíveis — SPEC-0011:E2E-01
-- [ ] HLS criptografado aparece como protegido, sem download — SPEC-0011:E2E-02
-- [ ] Um HLS sem criptografia baixa um MP4 válido na qualidade escolhida, com progresso — SPEC-0012:E2E-01
-- [ ] O download HLS pode ser cancelado sem deixar arquivo — SPEC-0012:E2E-02
+- [x] Numa página com iframe de outro domínio, o build `local` lista e baixa o vídeo do iframe — SPEC-0009:E2E-01
+- [x] No build `public`, o iframe sem acesso mostra "acesso necessário" e, concedido o acesso, o vídeo aparece — SPEC-0009:E2E-02
+- [x] Mídia carregada por JavaScript/MSE é detectada pela rede e baixa quando é arquivo direto — SPEC-0010:E2E-01
+- [x] Uma playlist HLS mostra as qualidades disponíveis — SPEC-0011:E2E-01
+- [x] HLS criptografado aparece como protegido, sem download — SPEC-0011:E2E-02
+- [x] Um HLS sem criptografia baixa um MP4 válido na qualidade escolhida, com progresso — SPEC-0012:E2E-01
+- [x] O download HLS pode ser cancelado sem deixar arquivo — SPEC-0012:E2E-02
 
 ## 8. Questões em Aberto
 - [x] HLS com criptografia AES-128 entra no escopo? — não: só HLS sem criptografia; criptografados aparecem como protegidos (Thomas, 2026-10-02)
@@ -105,7 +105,15 @@ Uma aprovação humana cobre o épico e as specs filhas apresentadas junto com e
 |---|---|---|---|---|---|---|---|---|
 
 ## 11. Relatório de Entrega
-<!-- Preenchido ao fechar o épico: o que foi entregue, como (ondas e deploys com versão/data), resultado dos critérios de aceite com os testes que os provam, métricas pós-release, pendências como novas specs. `spec_graph.py report SPEC-0008` ajuda a montar. -->
+**O que foi entregue:** detecção de vídeos em iframes de outro domínio, com acesso pedido por site no build `public` (SPEC-0009); detecção pela rede (SPEC-0010); playlists HLS com escolha de qualidade e selo de protegido (SPEC-0011); download HLS sem criptografia com junção em MP4, progresso e cancelamento (SPEC-0012); HLS com byte range (SPEC-0013); junção de vídeo e áudio separados (SPEC-0014); um cartão por vídeo com seletor de áudio (SPEC-0015); contexto de requisição da página para playlists recusadas com 403 (SPEC-0016); HLS AES-128 por chave de sessão no flavor `local` (SPEC-0017, ADR-0015).
+
+**Como (ondas e deploys):** as filhas entraram na `main` por PR, cada uma com G0–G5 e H2 pela política auto-on-green. Pré-releases no GitHub pelo `release.yml`: `v0.1.0-rc.2` (SPEC-0009 a 0012, run 37081174307), `v0.1.0-rc.3` (SPEC-0013 a 0015, run 37101154187) e `v0.1.0-rc.4` (SPEC-0016 e 0017). Em todas, o smoke E2E rodou nos dois flavors; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono.
+
+**Critérios de aceite:** os 7 estão marcados, cada um provado pelo E2E citado, e foram reexecutados verdes em `main` 0f94085 em 2026-11-27 (unit 602, integração 338, E2E 76).
+
+**Métricas pós-release:** uso pelo dono em sites reais desde a rc.2, confirmado no chat em 2026-11-27. Esse uso gerou as SPEC-0013 a 0022 a partir dos problemas encontrados.
+
+**Pendências:** a instabilidade com outras contas e os bugs do indicador da toolbar seguem no épico SPEC-0023. A versão estável `v0.1.0` e a publicação na Web Store dependem da decisão do dono.
 
 ## 12. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda, aprovada pelo humano. -->
