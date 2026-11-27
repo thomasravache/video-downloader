@@ -40,7 +40,117 @@ export interface RedetectController {
   stop(): void;
 }
 
-/** Controlador de re-detecção do popup (SPEC-0024 D2, D4). */
-export function createRedetectController(_deps: RedetectDeps): RedetectController {
-  throw new Error('NotImplemented');
+/** `promise` ou rejeição depois de `ms` (o `sendMessage` pode nunca responder). */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error('timeout'));
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
+/**
+ * Controlador de re-detecção do popup (SPEC-0024 D2, D4). Mesmo padrão do polling de job do popup, sem
+ * tocar no DOM: o popup liga `detect`/`revision` ao `sendMessage` e `view` ao DOM.
+ */
+export function createRedetectController(deps: RedetectDeps): RedetectController {
+  const openedAt = Date.now();
+  /** Ids dos cartões desenhados pela última resposta. */
+  let rendered = new Set<string>();
+  let lastRevision: number | undefined;
+  let detecting = false;
+  let polling = false;
+  let revisionTimer: ReturnType<typeof setInterval> | undefined;
+  let emptyTimer: ReturnType<typeof setInterval> | undefined;
+
+  const isEmpty = (response: DetectResponse | undefined): boolean =>
+    response?.ok === true && response.candidates.length === 0;
+
+  function stopEmptyRetry(): void {
+    clearInterval(emptyTimer);
+    emptyTimer = undefined;
+  }
+
+  /** Lista vazia: `detect` a cada 3 s, por até 30 s desde a abertura do popup. */
+  function startEmptyRetry(): void {
+    if (emptyTimer !== undefined || Date.now() - openedAt >= EMPTY_RETRY_WINDOW_MS) {
+      return;
+    }
+    emptyTimer = setInterval(() => {
+      if (Date.now() - openedAt > EMPTY_RETRY_WINDOW_MS) {
+        stopEmptyRetry();
+        return;
+      }
+      void run();
+    }, EMPTY_RETRY_MS);
+  }
+
+  async function run(): Promise<void> {
+    if (detecting) {
+      return;
+    }
+    detecting = true;
+    let response: DetectResponse | undefined;
+    try {
+      response = await withTimeout(deps.detect(), DETECT_TIMEOUT_MS);
+    } catch (error) {
+      deps.log('popup.detect_failed', {
+        reason: error instanceof Error && error.message === 'timeout' ? 'timeout' : 'rejected',
+      });
+      deps.view.showFailed(() => {
+        void run();
+      });
+      return;
+    } finally {
+      detecting = false;
+    }
+    const ids = new Set(response?.ok === true ? response.candidates.map((c) => c.id) : []);
+    const preserve = new Set([...rendered].filter((id) => ids.has(id)));
+    for (const id of deps.busy()) {
+      preserve.add(id);
+    }
+    deps.view.render(response, preserve);
+    rendered = ids;
+    if (isEmpty(response)) {
+      startEmptyRetry();
+    } else {
+      stopEmptyRetry();
+    }
+  }
+
+  async function pollRevision(): Promise<void> {
+    if (polling || detecting) {
+      return;
+    }
+    polling = true;
+    try {
+      const revision = await deps.revision().catch(() => undefined);
+      if (revision !== undefined && revision !== lastRevision) {
+        lastRevision = revision;
+        await run();
+      }
+    } finally {
+      polling = false;
+    }
+  }
+
+  return {
+    async start() {
+      lastRevision = await deps.revision().catch(() => undefined);
+      revisionTimer ??= setInterval(() => {
+        void pollRevision();
+      }, REVISION_POLL_MS);
+      await run();
+    },
+    redetect: run,
+    stop() {
+      clearInterval(revisionTimer);
+      revisionTimer = undefined;
+      stopEmptyRetry();
+    },
+  };
 }

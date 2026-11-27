@@ -21,6 +21,14 @@
     "message": "Não foi possível procurar vídeos nesta aba. Tente novamente.",
     "description": "Erro inesperado na detecção"
   },
+  "buttonRedetect": {
+    "message": "Procurar de novo",
+    "description": "Refaz a detecção de vídeos na aba com o popup aberto"
+  },
+  "buttonDetectRetry": {
+    "message": "Tentar de novo",
+    "description": "Repete a detecção depois de uma falha"
+  },
   "listLabel": {
     "message": "Vídeos detectados",
     "description": "Nome acessível da lista de vídeos"
