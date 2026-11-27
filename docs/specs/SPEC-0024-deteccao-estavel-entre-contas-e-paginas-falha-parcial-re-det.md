@@ -294,7 +294,6 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
-| 1 (escopo) | 2026-11-27 | `touches` ganha `entrypoints/popup/redetect.ts` (controlador de re-detecção do popup, sem DOM, exigido por UT-10/UT-11) e `src/core/ports.ts` (lista de abas para a atribuição D8). Testes antigos que fixam a limpeza em `onBeforeRequest` (SPEC-0010:IT-03 e a guarda de IT-06) passam a refletir a regra D7. A revisão fica numa chave própria do `storage.session` para não mudar o formato da lista. Contrato da seção 6 inalterado (`contract_version` 1) | descoberto no G1 pelo Test-writer | — | Architect, sob a autorização de piloto automático do Thomas (2026-11-27) |
 | IMP-01 | 2026-11-27 | G1 | decisão | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) | waves/next após H1 | Thomas Ravache | Thomas escolheu fechar as specs antigas (2026-11-27): SPEC-0009..0015 e o épico SPEC-0008 fechados no PR #39 | 2026-11-27 |
 
 ## 14. Relatório de Entrega
