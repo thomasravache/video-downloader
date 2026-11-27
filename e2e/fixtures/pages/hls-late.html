@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Player HLS que inicia depois</title>
+  </head>
+  <body>
+    <h1>Player HLS que inicia depois</h1>
+    <!-- Sem autoplay e sem src: o "player" só pede o manifesto 5 s depois do carregamento (SPEC-0024:E2E-01). -->
+    <video controls preload="none"></video>
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          fetch('/hls/clip/master.m3u8')
+            .then((response) => response.text())
+            .then(() => {
+              document.body.dataset.fetched = 'done';
+            })
+            .catch(() => {
+              document.body.dataset.fetched = 'error';
+            });
+        }, 5000);
+      });
+    </script>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+import { groupKey } from './candidates';
 import type { MediaKind, VideoCandidate } from './contracts';
 
 /** Abaixo disso, um `file` de tamanho conhecido é descartado (pixel, preview, fragmento). */
@@ -53,8 +54,11 @@ const FILE_EXTENSIONS: Record<string, string> = {
   m4v: 'video/mp4',
   webm: 'video/webm',
   ogv: 'video/ogg',
+  mov: 'video/quicktime',
 };
 const FILE_TYPES = new Set(['video/mp4', 'video/webm', 'video/ogg']);
+/** D6: tipos genéricos aceitos para um arquivo com extensão de vídeo conhecida (`''` = sem Content-Type). */
+const GENERIC_FILE_TYPES = new Set(['application/octet-stream', 'binary/octet-stream', '']);
 const HLS_TYPES = new Set([
   'application/vnd.apple.mpegurl',
   'application/x-mpegurl',
@@ -74,11 +78,15 @@ function extensionOf(pathname: string): string {
 
 /** Transforma uma resposta em candidato `file`/`hls`/`dash` ou descarta (`null`). Pura e barata. */
 export function classifyNetworkResponse(response: NetworkResponse): NetworkClassification | null {
-  if (
-    response.method !== 'GET' ||
-    (response.statusCode !== 200 && response.statusCode !== 206) ||
-    response.tabId < 0
-  ) {
+  return response.tabId < 0 ? null : classifyMedia(response);
+}
+
+/**
+ * Mesma regra de `classifyNetworkResponse` sem exigir aba: usada para a resposta do service worker do site
+ * (`tabId = -1`), que só entra numa lista depois de `attributeTabs` (D8).
+ */
+export function classifyMedia(response: NetworkResponse): NetworkClassification | null {
+  if (response.method !== 'GET' || (response.statusCode !== 200 && response.statusCode !== 206)) {
     return null;
   }
   let pathname: string;
@@ -115,7 +123,7 @@ export function classifyNetworkResponse(response: NetworkResponse): NetworkClass
 
   const byType = FILE_TYPES.has(type);
   const byExtension =
-    ext in FILE_EXTENSIONS && (type.startsWith('video/') || type === 'application/octet-stream');
+    ext in FILE_EXTENSIONS && (type.startsWith('video/') || GENERIC_FILE_TYPES.has(type));
   if (!byType && !byExtension) {
     return null;
   }
@@ -131,6 +139,97 @@ export function classifyNetworkResponse(response: NetworkResponse): NetworkClass
   };
 }
 
+/** Origem http(s) de uma URL; `undefined` para o resto. */
+function httpOriginOf(url: string | undefined): string | undefined {
+  if (typeof url !== 'string') {
+    return undefined;
+  }
+  try {
+    const { protocol, origin } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:' ? origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** D8: abas que recebem uma resposta sem aba (tabId = -1). Vazio quando initiator ausente/não http(s). */
+export function attributeTabs(
+  initiator: string | undefined,
+  tabs: readonly { id: number; url?: string }[],
+): number[] {
+  const origin = httpOriginOf(initiator);
+  if (origin === undefined) {
+    return [];
+  }
+  return tabs.filter((tab) => tab.id >= 0 && httpOriginOf(tab.url) === origin).map((tab) => tab.id);
+}
+
+/** Diretório (origem + caminho até a última `/`) de uma URL http(s). */
+function directoryOf(url: string): string | undefined {
+  try {
+    const { protocol, origin, pathname } = new URL(url);
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      return undefined;
+    }
+    return `${origin}${pathname.slice(0, pathname.lastIndexOf('/') + 1)}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** D5 (v2): nomes com forma de segmento (`seg-1.mp4`, `chunk_3.mp4`, `fileSequence12.mp4`, `0042.mp4`). */
+const SEGMENT_NAMES = [
+  /^(seg|segment|chunk|frag|fragment|part|filesequence)[-_]?\d+\.(mp4|m4v)$/i,
+  /^\d+\.(mp4|m4v)$/,
+];
+
+function hasSegmentName(url: string): boolean {
+  try {
+    const { pathname } = new URL(url);
+    const name = pathname.slice(pathname.lastIndexOf('/') + 1);
+    return SEGMENT_NAMES.some((pattern) => pattern.test(name));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * D5 (v2): true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash
+ * E o nome tem forma de segmento. Um arquivo único na pasta do master (`video-hi.mp4`) continua candidato:
+ * é fonte relacionada da SPEC-0015.
+ */
+export function isManifestSegment(
+  file: VideoCandidate,
+  manifests: readonly VideoCandidate[],
+): boolean {
+  const fileDir = directoryOf(file.mediaUrl);
+  if (file.kind !== 'file' || fileDir === undefined || !hasSegmentName(file.mediaUrl)) {
+    return false;
+  }
+  return manifests.some((manifest) => {
+    if (manifest.kind !== 'hls' && manifest.kind !== 'dash') {
+      return false;
+    }
+    const dir = directoryOf(manifest.mediaUrl);
+    return dir !== undefined && fileDir.startsWith(dir);
+  });
+}
+
+/** D7: true quando a resposta de main_frame troca o documento (2xx exceto 204/205, sem Content-Disposition attachment). */
+export function replacesDocument(details: {
+  statusCode: number;
+  responseHeaders?: { name: string; value?: string }[];
+}): boolean {
+  const { statusCode } = details;
+  if (statusCode < 200 || statusCode > 299 || statusCode === 204 || statusCode === 205) {
+    return false;
+  }
+  const disposition = details.responseHeaders?.find(
+    (h) => h.name.toLowerCase() === 'content-disposition',
+  )?.value;
+  return !/^\s*attachment\b/i.test(disposition ?? '');
+}
+
 function withoutFragment(url: string): string {
   const hash = url.indexOf('#');
   return hash < 0 ? url : url.slice(0, hash);
@@ -143,8 +242,23 @@ interface StoredEntry {
 
 const KEY_PREFIX = 'vd:net:';
 const keyOf = (tabId: number): string => `${KEY_PREFIX}${String(tabId)}`;
+/** SPEC-0024: revisão da lista numa chave própria, para não mudar o formato de `vd:net:<tabId>`. */
+const revisionKeyOf = (tabId: number): string => `vd:netrev:${String(tabId)}`;
 
-/** Repositório por aba sobre `storage.session` (chave `vd:net:<tabId>`, máx. 50 itens). */
+/** D5: acima do teto saem primeiro os `file` mais antigos; manifestos só quando não sobra `file`. */
+function evict(entries: StoredEntry[]): StoredEntry[] {
+  const kept = [...entries];
+  while (kept.length > MAX_PER_TAB) {
+    const oldestFile = kept.findLastIndex((entry) => entry.candidate.kind === 'file');
+    kept.splice(oldestFile < 0 ? kept.length - 1 : oldestFile, 1);
+  }
+  return kept;
+}
+
+/**
+ * Repositório por aba sobre `storage.session` (chave `vd:net:<tabId>`, máx. 50 itens) e a revisão da
+ * lista (`vd:netrev:<tabId>`, SPEC-0024).
+ */
 export class NetworkStore {
   /** Serializa leitura-modificação-escrita: eventos de rede chegam em rajadas. */
   private queue: Promise<unknown> = Promise.resolve();
@@ -175,9 +289,22 @@ export class NetworkStore {
       const { hls, protection, support } = previous?.candidate ?? {};
       const stored: VideoCandidate =
         hls && protection && support ? { ...candidate, hls, protection, support } : candidate;
-      const next = [{ at: this.now(), candidate: stored }, ...kept].slice(0, MAX_PER_TAB);
+      const next = evict([{ at: this.now(), candidate: stored }, ...kept]);
       await this.port.set(keyOf(tabId), next);
+      // Reobservar a mesma URL (p.ex. as respostas 206 de um MP4 tocando) não muda a lista.
+      if (!previous) {
+        await this.bump(tabId);
+      }
     });
+  }
+
+  private async readRevision(tabId: number): Promise<number> {
+    const raw = await this.port.get(revisionKeyOf(tabId));
+    return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 ? raw : 0;
+  }
+
+  private async bump(tabId: number): Promise<void> {
+    await this.port.set(revisionKeyOf(tabId), (await this.readRevision(tabId)) + 1);
   }
 
   /** Atualiza o candidato guardado (mesmo id) sem mudar a ordem; ausente é ignorado. */
@@ -220,24 +347,31 @@ export class NetworkStore {
   }
 
   clear(tabId: number): Promise<void> {
-    return this.serial(() => this.port.remove(keyOf(tabId)));
+    return this.serial(async () => {
+      await this.port.remove(keyOf(tabId));
+      await this.bump(tabId);
+    });
   }
-}
 
-/** Origem + caminho (sem query nem fragmento); `undefined` se não for uma URL válida. */
-function originAndPath(url: string): string | undefined {
-  try {
-    const { origin, pathname } = new URL(url);
-    return `${origin}${pathname}`;
-  } catch {
-    return undefined;
+  /** Aba fechada: some a lista e a revisão (`revision` volta a 0); ao contrário de `clear`, não incrementa. */
+  forget(tabId: number): Promise<void> {
+    return this.serial(async () => {
+      await this.port.remove(keyOf(tabId));
+      await this.port.remove(revisionKeyOf(tabId));
+    });
+  }
+
+  /** Inteiro ≥ 0, incrementado a cada add efetivo e a cada clear da aba; 0 para aba sem histórico. */
+  revision(tabId: number): Promise<number> {
+    return this.serial(() => this.readRevision(tabId));
   }
 }
 
 /**
  * DOM ∪ rede, sem repetir a mesma URL (sem fragmento); o candidato do DOM prevalece, exceto um `file`
  * do DOM contra um `hls` da rede (a rede viu a playlist de verdade): vale para a mesma URL e, também,
- * para a mesma origem+caminho com query diferente (SPEC-0013). O `hls` herda o título do DOM.
+ * para a mesma `groupKey` (origem + caminho + query sem assinatura, SPEC-0013/SPEC-0024 D9). O `hls` herda
+ * o título do DOM.
  */
 export function mergeCandidates(
   dom: VideoCandidate[],
@@ -261,13 +395,9 @@ export function mergeCandidates(
     const at = seen.get(key);
     if (at === undefined) {
       if (isNetworkHls(candidate)) {
-        const path = originAndPath(candidate.mediaUrl);
+        const group = groupKey(candidate.mediaUrl);
         const file = merged.findIndex(
-          (c) =>
-            c.kind === 'file' &&
-            c.source === 'dom' &&
-            path !== undefined &&
-            originAndPath(c.mediaUrl) === path,
+          (c) => c.kind === 'file' && c.source === 'dom' && groupKey(c.mediaUrl) === group,
         );
         if (file >= 0) {
           replace(file, candidate);

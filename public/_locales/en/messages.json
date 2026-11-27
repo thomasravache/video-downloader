@@ -17,6 +17,12 @@
   "popupDetectFailed": {
     "message": "Could not look for videos in this tab. Try again."
   },
+  "buttonRedetect": {
+    "message": "Search again"
+  },
+  "buttonDetectRetry": {
+    "message": "Try again"
+  },
   "listLabel": {
     "message": "Detected videos"
   },

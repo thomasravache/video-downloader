@@ -5,8 +5,8 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, implemented 19
-- Impedimentos: **0 aberto(s)**, 8 resolvido(s)
+- Specs: proposed 1, approved 1, in-progress 1, implemented 19
+- Impedimentos: **0 aberto(s)**, 10 resolvido(s)
 
 ## Cobertura de Pilares
 
@@ -37,13 +37,15 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
+**Em andamento:** SPEC-0024  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
+| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🔄 em andamento |  |
 | 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
+| 2 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | approved | ⛔ aguarda implementação de SPEC-0024 |  |
 
 ## Épicos
 
@@ -51,6 +53,7 @@ Perfil: **padrao**
 |---|---|---|---|
 | SPEC-0001 | Fundação da extensão de download de vídeos | approved | 5/6 implementadas |
 | SPEC-0008 | Detector completo de vídeos: iframes, rede e HLS | implemented | 9/9 implementadas |
+| SPEC-0023 | Estabilizar detecção de vídeos e indicador da toolbar | approved | 0/2 implementadas |
 
 ## Grafo de Dependências
 
@@ -62,7 +65,12 @@ flowchart LR
     S0002["SPEC-0002<br/>Repositório e tooling (WXT + TypeScript)"]:::implemented
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
   end
+  subgraph E0023["SPEC-0023 · Estabilizar detecção de vídeos e indicador da toolbar"]
+    S0024["SPEC-0024<br/>Detecção estável entre contas e páginas…"]:::inprogress
+    S0025["SPEC-0025<br/>Indicador da toolbar confiável: ícones …"]:::approved
+  end
   S0002 --> S0007
+  S0024 --> S0025
   classDef proposed fill:#fef3c7,stroke:#d97706,color:#111
   classDef approved fill:#dbeafe,stroke:#2563eb,color:#111
   classDef inprogress fill:#ede9fe,stroke:#7c3aed,color:#111
@@ -96,6 +104,9 @@ flowchart LR
 | [SPEC-0020](SPEC-0020-suporte-a-video-hls-em-mpeg-ts-com-audio-separado-e-unificac.md) | Suporte a video HLS em MPEG-TS com audio separado e unificacao de cartoes | full | feature | implemented | 2026-10-07 | — | SPEC-0019 | SPEC-0014@1, SPEC-0015@1, SPEC-0018@1, SPEC-0019@1 |
 | [SPEC-0021](SPEC-0021-transmux-de-audio-hls-packed-aac-com-id3-e-normalizacao-de-t.md) | Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id | full | fix | implemented | 2026-10-07 | — | SPEC-0020 | SPEC-0014@1, SPEC-0018@1, SPEC-0019@1, SPEC-0020@1 |
 | [SPEC-0022](SPEC-0022-rebranding-clipdrop-com-nova-ui-dark-e-indicador-dinamico-na.md) | Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar | full | feature | implemented | 2026-10-08 | — | — | — |
+| [SPEC-0023](SPEC-0023-estabilizar-deteccao-de-videos-e-indicador-da-toolbar.md) | Estabilizar detecção de vídeos e indicador da toolbar | epic | feature | approved | 2026-11-26 | — | — | — |
+| [SPEC-0024](SPEC-0024-deteccao-estavel-entre-contas-e-paginas-falha-parcial-re-det.md) | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full | fix | in-progress | 2026-11-26 | SPEC-0023 | — | — |
+| [SPEC-0025](SPEC-0025-indicador-da-toolbar-confiavel-icones-no-manifesto-estado-pa.md) | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full | fix | approved | 2026-11-26 | SPEC-0023 | SPEC-0024 | — |
 
 ## ADRs
 
