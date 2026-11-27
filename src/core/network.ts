@@ -131,6 +131,30 @@ export function classifyNetworkResponse(response: NetworkResponse): NetworkClass
   };
 }
 
+/** D8: abas que recebem uma resposta sem aba (tabId = -1). Vazio quando initiator ausente/não http(s). */
+export function attributeTabs(
+  _initiator: string | undefined,
+  _tabs: readonly { id: number; url?: string }[],
+): number[] {
+  throw new Error('NotImplemented');
+}
+
+/** D5: true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash. */
+export function isManifestSegment(
+  _file: VideoCandidate,
+  _manifests: readonly VideoCandidate[],
+): boolean {
+  throw new Error('NotImplemented');
+}
+
+/** D7: true quando a resposta de main_frame troca o documento (2xx exceto 204/205, sem Content-Disposition attachment). */
+export function replacesDocument(_details: {
+  statusCode: number;
+  responseHeaders?: { name: string; value?: string }[];
+}): boolean {
+  throw new Error('NotImplemented');
+}
+
 function withoutFragment(url: string): string {
   const hash = url.indexOf('#');
   return hash < 0 ? url : url.slice(0, hash);
@@ -221,6 +245,11 @@ export class NetworkStore {
 
   clear(tabId: number): Promise<void> {
     return this.serial(() => this.port.remove(keyOf(tabId)));
+  }
+
+  /** Inteiro ≥ 0, incrementado a cada add efetivo e a cada clear da aba; 0 para aba sem histórico. */
+  revision(_tabId: number): Promise<number> {
+    return Promise.reject(new Error('NotImplemented'));
   }
 }
 

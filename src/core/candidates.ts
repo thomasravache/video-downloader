@@ -63,6 +63,11 @@ export function createCandidateStore(): CandidateStore {
   };
 }
 
+/** D9: chave de agrupamento = origem + caminho + query sem parâmetros de assinatura (ordenada). */
+export function groupKey(_url: string): string {
+  throw new Error('NotImplemented');
+}
+
 const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value);
 
 /**

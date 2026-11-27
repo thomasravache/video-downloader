@@ -77,8 +77,15 @@ export interface Service {
   handle(message: unknown, sender: { id?: string }): Promise<ServiceResponse>;
   /** `tabs.onRemoved`: descarta o estado da aba. */
   onTabRemoved(tabId: number): void;
-  /** `webRequest.onResponseStarted`: classifica e, se aceita, grava na lista da aba (SPEC-0010). */
-  onNetworkResponse(response: NetworkResponse): Promise<void>;
+  /**
+   * `webRequest.onResponseStarted`: classifica e, se aceita, grava na lista da aba (SPEC-0010).
+   * SPEC-0024 (D8): `openTabs` é a lista de abas de `tabs.query` que o background repassa para atribuir
+   * uma resposta sem aba (`tabId = -1`) pelo `initiator` (`attributeTabs`).
+   */
+  onNetworkResponse(
+    response: NetworkResponse,
+    openTabs?: readonly { id: number; url?: string }[],
+  ): Promise<void>;
   /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
   clearNetwork(tabId: number): Promise<void>;
   /** Mensagem `{target:'background'}` do offscreen (SPEC-0012); `false` quando ignorada. */
