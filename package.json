@@ -37,5 +37,10 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "8.3.8"
+    }
   }
 }
