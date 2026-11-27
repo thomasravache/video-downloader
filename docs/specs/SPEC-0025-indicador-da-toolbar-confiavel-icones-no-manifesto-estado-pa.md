@@ -4,7 +4,7 @@ title: "Indicador da toolbar confiável: ícones no manifesto, estado padrão e 
 tier: full
 type: fix
 user_facing: true
-status: proposed
+status: approved
 created: 2026-11-26
 parent: SPEC-0023
 depends_on: [SPEC-0024]
@@ -22,8 +22,8 @@ touches:
 adrs: [ADR-0001, ADR-0002, ADR-0009, ADR-0010]
 external: []
 size: S
-approved_by:
-approved_at:
+approved_by: Thomas Ravache
+approved_at: 2026-11-27
 ---
 
 # SPEC-0025 — Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única
@@ -205,6 +205,31 @@ cardCount(tabId: number): Promise<number>;
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
+**Fase 0: Caracterização**
+- [ ] CH-01 escrito com a tag `SPEC-0025:CH-01`, passando no código atual, commitado antes de qualquer mudança
+
+**Fase 1: Manifesto e estado padrão (I1, I2, I5)**
+- [ ] Red: UT-01, UT-02, UT-08, IT-01, IT-02 falhando pelo motivo certo
+- [ ] Green: `icons`, `action.default_icon` e `default_title` em `buildManifest`; `setDefault()` na carga do worker, em `onStartup` e em `onInstalled`; reaplicação em `tabs.onUpdated` com `status: 'complete'`
+
+**Fase 2: Contagem e geração (I3, I4)**
+- [ ] Red: UT-03, UT-04, UT-05, IT-03, IT-04, CT-01 falhando pelo motivo certo
+- [ ] Green: `service.cardCount`, geração por aba e serialização no indicador; todos os pontos de atualização usam `cardCount`
+
+**Fase 3: Diagnóstico e contraste (I6, I7)**
+- [ ] Red: UT-06, UT-07 falhando pelo motivo certo
+- [ ] Green: log `action.update_failed`; `BADGE_COLOR = #4F46E5`
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 4: Jornada E2E**
+- [ ] Red: E2E-01 (badge igual ao popup) falhando pelo motivo certo
+- [ ] Green: E2E-01 passando localmente nos dois flavors
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Deploy via pipeline com smoke/E2E no ambiente (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |

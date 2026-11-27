@@ -4,7 +4,7 @@ title: "Detecção estável entre contas e páginas: falha parcial, re-detecçã
 tier: full
 type: fix
 user_facing: true
-status: proposed
+status: approved
 created: 2026-11-26
 parent: SPEC-0023
 depends_on: []
@@ -28,8 +28,8 @@ touches:
 adrs: [ADR-0001, ADR-0002, ADR-0007, ADR-0009, ADR-0012]
 external: []
 size: M
-approved_by:
-approved_at:
+approved_by: Thomas Ravache
+approved_at: 2026-11-27
 ---
 
 # SPEC-0024 — Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker
@@ -245,6 +245,36 @@ type NetworkRevisionResponse = { ok: true; revision: number } | { ok: false; err
 Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o humano responder "Aprovado". O arquiteto nunca aprova a própria spec.
 
 ## 11. Checklist de Implementação
+**Fase 0: Caracterização**
+- [ ] CH-01 e CH-02 escritos com a tag `SPEC-0024:<ID>`, passando no código atual, commitados antes de qualquer mudança
+
+**Fase 1: Rede (D5, D6, D8, D9, D10)**
+- [ ] Red: UT-04, UT-05, UT-06, UT-08, UT-09, UT-13, IT-02, IT-04, IT-05, IT-06 falhando pelo motivo certo
+- [ ] Green: `classifyNetworkResponse`, `attributeTabs`, `isManifestSegment`, eviction por tipo, `groupKey` e ligação no background, seguindo `src/core/network.ts`
+- [ ] Refactor mantendo tudo verde
+
+**Fase 2: Navegação e revisão (D7, mensagem `network-revision`)**
+- [ ] Red: UT-07, UT-12, IT-03, CT-01 falhando pelo motivo certo
+- [ ] Green: `replacesDocument`, `NetworkStore.revision`, validação e resposta da mensagem; limpeza da lista movida para `onResponseStarted` de `main_frame`
+
+**Fase 3: Detect e coleta (D1, D3)**
+- [ ] Red: UT-01, UT-02, UT-03, IT-01 falhando pelo motivo certo
+- [ ] Green: `detect` sempre inclui a rede; `collectVideos` percorre shadow roots abertos (profundidade 8)
+
+**Fase 4: Popup (D2, D4)**
+- [ ] Red: UT-10, UT-11 falhando pelo motivo certo
+- [ ] Green: controlador de re-detecção (revisão a cada 1 s, DOM a cada 3 s por até 30 s com a lista vazia), botão `redetect-button`, erro com `detect-retry`, textos em `_locales`
+- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+
+**Fase 5: Jornadas E2E**
+- [ ] Red: E2E-01 (player atrasado) falhando pelo motivo certo
+- [ ] Green: E2E-01 e E2E-02 passando localmente nos dois flavors
+
+**Fase final: Integração, entrega e documentação**
+- [ ] Review independente (G4)
+- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [ ] Deploy via pipeline com smoke/E2E no ambiente (G6)
+- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 | Gate | Status | Evidência | Data |

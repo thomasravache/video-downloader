@@ -3,13 +3,13 @@ id: SPEC-0023
 title: Estabilizar detecção de vídeos e indicador da toolbar
 tier: epic
 type: feature
-status: proposed
+status: approved
 created: 2026-11-26
 depends_on: []
 adrs: [ADR-0001, ADR-0002, ADR-0007, ADR-0009, ADR-0012]
 external: []
-approved_by:
-approved_at:
+approved_by: Thomas Ravache
+approved_at: 2026-11-27
 ---
 
 # SPEC-0023 — Estabilizar detecção de vídeos e indicador da toolbar (Épico)
