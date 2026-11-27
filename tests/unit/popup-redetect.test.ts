@@ -169,6 +169,72 @@ describe('popup: re-detecção enquanto aberto (D4)', () => {
   });
 });
 
+describe('popup: pedidos durante uma detecção e página restrita (D4, revisão G4)', () => {
+  const RESTRICTED: DetectResponse = { ok: false, error: 'RESTRICTED_PAGE' };
+
+  it('SPEC-0024:UT-10 redetect() pedido com um detect em andamento roda exatamente mais um detect depois dele (vários pedidos viram um)', async () => {
+    const h = harness(listOf('a'));
+    let finishFirst: (value: DetectResponse) => void = () => undefined;
+    h.respond(
+      () =>
+        new Promise<DetectResponse | undefined>((resolve) => {
+          finishFirst = resolve;
+        }),
+    );
+    void h.controller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.detect).toHaveBeenCalledTimes(1);
+
+    h.respond(listOf('a', 'b'));
+    void h.controller.redetect();
+    void h.controller.redetect();
+    void h.controller.redetect();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(h.detect).toHaveBeenCalledTimes(1);
+
+    finishFirst(listOf('a'));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(h.detect).toHaveBeenCalledTimes(2);
+    expect(h.render.mock.lastCall?.[0]).toEqual(listOf('a', 'b'));
+    await vi.advanceTimersByTimeAsync(5 * REVISION_POLL_MS);
+    expect(h.detect).toHaveBeenCalledTimes(2);
+    h.controller.stop();
+  });
+
+  it('SPEC-0024:UT-10 RESTRICTED_PAGE na abertura é refeito a cada 3 s e para quando a lista aparece', async () => {
+    const h = harness(RESTRICTED);
+    await h.controller.start();
+    expect(h.detect).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(EMPTY_RETRY_MS + 100);
+    expect(h.detect).toHaveBeenCalledTimes(2);
+
+    h.respond(listOf('a'));
+    await vi.advanceTimersByTimeAsync(EMPTY_RETRY_MS);
+    expect(h.detect).toHaveBeenCalledTimes(3);
+    expect(h.render.mock.lastCall?.[0]).toEqual(listOf('a'));
+
+    await vi.advanceTimersByTimeAsync(4 * EMPTY_RETRY_MS);
+    expect(h.detect).toHaveBeenCalledTimes(3);
+    h.controller.stop();
+  });
+
+  it('SPEC-0024:UT-10 RESTRICTED_PAGE que persiste é refeito por até 30 s e depois para', async () => {
+    const h = harness(RESTRICTED);
+    await h.controller.start();
+
+    await vi.advanceTimersByTimeAsync(EMPTY_RETRY_WINDOW_MS + 1_000);
+    const afterWindow = h.detect.mock.calls.length;
+    expect(afterWindow).toBeGreaterThanOrEqual(10);
+    expect(afterWindow).toBeLessThanOrEqual(11);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(h.detect).toHaveBeenCalledTimes(afterWindow);
+    h.controller.stop();
+  });
+});
+
 describe('popup: detect que falha (D2)', () => {
   it('SPEC-0024:UT-11 detect que rejeita mostra o erro com "Tentar de novo", registra popup.detect_failed e o clique refaz o detect', async () => {
     const h = harness(listOf('a'));

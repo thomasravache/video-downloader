@@ -126,4 +126,26 @@ describe('contrato da mensagem network-revision', () => {
     }
     expect(await store.revision(8)).toBe(0);
   });
+
+  it('SPEC-0024:CT-01 aba fechada (tabs.onRemoved): vd:net:<id> e vd:netrev:<id> somem do storage.session e a revisão volta a 0', async () => {
+    const tabId = await bg.newTab(PAGE);
+    await bg.network.respond({
+      url: 'https://cdn.example.test/v/aula.mp4',
+      tabId,
+      headers: MP4_HEADERS,
+    });
+    const before = Object.keys(await fakeBrowser.storage.session.get(null));
+    expect(before).toContain(`vd:net:${String(tabId)}`);
+    expect(before).toContain(`vd:netrev:${String(tabId)}`);
+
+    await (
+      fakeBrowser.tabs.onRemoved as unknown as { trigger(...args: unknown[]): Promise<unknown> }
+    ).trigger(tabId, { windowId: 0, isWindowClosing: false });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const after = Object.keys(await fakeBrowser.storage.session.get(null));
+    expect(after).not.toContain(`vd:net:${String(tabId)}`);
+    expect(after).not.toContain(`vd:netrev:${String(tabId)}`);
+    expect(await sessionStore().revision(tabId)).toBe(0);
+  });
 });
