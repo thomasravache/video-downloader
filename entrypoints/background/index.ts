@@ -1,7 +1,7 @@
 import { providers } from 'virtual:providers';
 import { keyPolicy } from 'virtual:aes128-policy';
 import { createDiagnostics } from '../../src/core/diagnostics';
-import { NetworkStore } from '../../src/core/network';
+import { NetworkStore, replacesDocument } from '../../src/core/network';
 import { createService } from '../../src/core/service';
 import type { FrameSnapshot, PageSnapshot } from '../../src/core/contracts';
 import { collectVideos } from './collect-videos';
@@ -104,6 +104,19 @@ export default defineBackground(() => {
       async getUrl(tabId) {
         return (await browser.tabs.get(tabId)).url;
       },
+      async getTitle(tabId) {
+        const { title } = await browser.tabs.get(tabId);
+        return typeof title === 'string' && title.trim() !== '' ? title : undefined;
+      },
+      // D8: só abas onde a extensão já tem acesso ao host entram no filtro de URL (ADR-0012).
+      async openTabs(origin) {
+        const tabs = await browser.tabs.query({ url: `${origin}/*` });
+        return tabs.flatMap((tab) =>
+          tab.id === undefined
+            ? []
+            : [{ id: tab.id, ...(tab.url !== undefined && { url: tab.url }) }],
+        );
+      },
     },
   });
 
@@ -122,22 +135,18 @@ export default defineBackground(() => {
     try {
       webRequest.onResponseStarted.addListener(
         (details) => {
+          // D7: a lista é apagada quando o documento principal é de fato trocado (não em 204, download ou
+          // navegação cancelada). Síncrono, antes de qualquer gravação desta resposta.
+          if (details.type === 'main_frame' && details.tabId >= 0 && replacesDocument(details)) {
+            void service.clearNetwork(details.tabId);
+            void indicator.clearForTab(details.tabId);
+          }
           void (async () => {
-            let tabTitle: string | undefined;
-            if (details.tabId >= 0) {
-              try {
-                const tab = await browser.tabs.get(details.tabId);
-                if (typeof tab.title === 'string' && tab.title.trim() !== '') {
-                  tabTitle = tab.title;
-                }
-              } catch {
-                // Aba fechada ou sem permissão
-              }
-            }
-            await service.onNetworkResponse(toNetworkResponse(details, tabTitle));
-            if (details.tabId >= 0) {
-              const candidates = await network.forTab(details.tabId).catch(() => []);
-              await indicator.updateForTab(details.tabId, candidates.length);
+            // D10: aba, lista e badge só para a resposta que virou candidato.
+            const tabs = await service.onNetworkResponse(toNetworkResponse(details));
+            for (const tabId of tabs) {
+              const candidates = await network.forTab(tabId).catch(() => []);
+              await indicator.updateForTab(tabId, candidates.length);
             }
           })();
         },
@@ -150,9 +159,9 @@ export default defineBackground(() => {
     try {
       webRequest.onBeforeRequest.addListener(
         (details) => {
-          // Requisições sem aba (tabId < 0) não têm lista de rede a limpar.
+          // Só o indicador (SPEC-0022; o badge é da SPEC-0025): a lista de rede da aba fica até o
+          // `onResponseStarted` que troca o documento (SPEC-0024 D7). Sem aba (tabId < 0), nada a fazer.
           if (details.tabId >= 0) {
-            void service.clearNetwork(details.tabId);
             void indicator.clearForTab(details.tabId);
           }
         },

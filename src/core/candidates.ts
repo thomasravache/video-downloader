@@ -63,9 +63,41 @@ export function createCandidateStore(): CandidateStore {
   };
 }
 
+/** Parâmetros de assinatura/expiração de CDN: mudam a cada pedido sem mudar o vídeo (D9). */
+const SIGNATURE_PARAMS = new Set([
+  'token',
+  'sig',
+  'signature',
+  'expires',
+  'exp',
+  'policy',
+  'key-pair-id',
+  'hdnts',
+  'hdnea',
+  'hmac',
+  'auth',
+  'acl',
+]);
+const SIGNATURE_PREFIXES = ['x-amz-', 'x-goog-'];
+
+function isSignatureParam(name: string): boolean {
+  const lower = name.toLowerCase();
+  return SIGNATURE_PARAMS.has(lower) || SIGNATURE_PREFIXES.some((p) => lower.startsWith(p));
+}
+
 /** D9: chave de agrupamento = origem + caminho + query sem parâmetros de assinatura (ordenada). */
-export function groupKey(_url: string): string {
-  throw new Error('NotImplemented');
+export function groupKey(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  const params = [...parsed.searchParams]
+    .filter(([name]) => !isSignatureParam(name))
+    .sort(([a, x], [b, y]) => (a === b ? (x < y ? -1 : x > y ? 1 : 0) : a < b ? -1 : 1));
+  const query = new URLSearchParams(params).toString();
+  return `${parsed.origin}${parsed.pathname}${query === '' ? '' : `?${query}`}`;
 }
 
 const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value);
@@ -147,14 +179,9 @@ export function groupCandidates(candidates: VideoCandidate[]): CandidateGroup[] 
   return groups.sort((a, b) => a.position - b.position).map((entry) => entry.group);
 }
 
-/** Origem+caminho (sem consulta/fragmento) de uma URL http(s); `undefined` para o resto. */
+/** `groupKey` de uma URL http(s) (D9); `undefined` para o resto. */
 function pathKey(url: string): string | undefined {
-  try {
-    const { protocol, origin, pathname } = new URL(url);
-    return protocol === 'http:' || protocol === 'https:' ? `${origin}${pathname}` : undefined;
-  } catch {
-    return undefined;
-  }
+  return isHttpUrl(url) ? groupKey(url) : undefined;
 }
 
 /** Identificador de stream de vídeo do YouTube (/id/<streamId>/ ou ?id=<streamId>). */

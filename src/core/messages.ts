@@ -30,6 +30,10 @@ export function validateMessage(
       return typeof tabId === 'number' && Number.isInteger(tabId)
         ? { ok: true, message: { type, tabId } }
         : INVALID;
+    case 'network-revision':
+      return typeof tabId === 'number' && Number.isInteger(tabId) && tabId >= 0
+        ? { ok: true, message: { type, tabId } }
+        : INVALID;
     case 'download': {
       if (typeof candidateId !== 'string' || candidateId === '') {
         return INVALID;

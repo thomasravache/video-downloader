@@ -16,6 +16,11 @@ export interface TabsPort {
   getUrl(tabId: number): Promise<string | undefined>;
   /** SPEC-0018: Título da aba ativa quando disponível. */
   getTitle?(tabId: number): Promise<string | undefined>;
+  /**
+   * SPEC-0024 (D8): abas abertas com a URL nesta origem (`tabs.query`). Só aparecem abas onde a extensão já
+   * tem acesso ao host (ADR-0012); a URL fica indefinida sem esse acesso.
+   */
+  openTabs?(origin: string): Promise<{ id: number; url?: string }[]>;
 }
 
 /** Porta para buscar o texto de uma playlist HLS (SPEC-0011); rejeita em qualquer falha. */
