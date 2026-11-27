@@ -177,13 +177,33 @@ function directoryOf(url: string): string | undefined {
   }
 }
 
-/** D5: true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash. */
+/** D5 (v2): nomes com forma de segmento (`seg-1.mp4`, `chunk_3.mp4`, `fileSequence12.mp4`, `0042.mp4`). */
+const SEGMENT_NAMES = [
+  /^(seg|segment|chunk|frag|fragment|part|filesequence)[-_]?\d+\.(mp4|m4v)$/i,
+  /^\d+\.(mp4|m4v)$/,
+];
+
+function hasSegmentName(url: string): boolean {
+  try {
+    const { pathname } = new URL(url);
+    const name = pathname.slice(pathname.lastIndexOf('/') + 1);
+    return SEGMENT_NAMES.some((pattern) => pattern.test(name));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * D5 (v2): true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash
+ * E o nome tem forma de segmento. Um arquivo único na pasta do master (`video-hi.mp4`) continua candidato:
+ * é fonte relacionada da SPEC-0015.
+ */
 export function isManifestSegment(
   file: VideoCandidate,
   manifests: readonly VideoCandidate[],
 ): boolean {
   const fileDir = directoryOf(file.mediaUrl);
-  if (file.kind !== 'file' || fileDir === undefined) {
+  if (file.kind !== 'file' || fileDir === undefined || !hasSegmentName(file.mediaUrl)) {
     return false;
   }
   return manifests.some((manifest) => {
