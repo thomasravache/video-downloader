@@ -4,9 +4,15 @@
 
 ## Saúde
 
-- Validação (G0): **0 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
+- Validação (G0): **3 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
 - Specs: proposed 1, approved 1, in-progress 1, implemented 19
-- Impedimentos: **0 aberto(s)**, 9 resolvido(s)
+- Impedimentos: **1 aberto(s)**, 9 resolvido(s)
+
+## Impedimentos Abertos
+
+| Spec | ID | Tipo | Fase/Gate | Responsável | Aberto em | Idade | Descrição |
+|---|---|---|---|---|---|---|---|
+| SPEC-0024 | 1 (escopo) | descoberto no G1 pelo Test-writer | `touches` ganha `entrypoints/popup/redetect.ts` (controlador de re-detecção do popup, sem DOM, exigido por UT-10/UT-11) e `src/core/ports.ts` (lista de abas para a atribuição D8). Testes antigos que fixam a limpeza em `onBeforeRequest` (SPEC-0010:IT-03 e a guarda de IT-06) passam a refletir a regra D7. A revisão fica numa chave própria do `storage.session` para não mudar o formato da lista. Contrato da seção 6 inalterado (`contract_version` 1) |  | 2026-11-27 | 0d | — |
 
 ## Cobertura de Pilares
 
@@ -37,13 +43,13 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** SPEC-0024  
-**Paradas por impedimento:** —  
+**Em andamento:** —  
+**Paradas por impedimento:** SPEC-0024  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🔄 em andamento |  |
+| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🚧 parada por impedimento: 1 (escopo) (descoberto no G1 pelo Test-writer → ?, 0d) |  |
 | 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
 | 2 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | approved | ⛔ aguarda implementação de SPEC-0024 |  |
 

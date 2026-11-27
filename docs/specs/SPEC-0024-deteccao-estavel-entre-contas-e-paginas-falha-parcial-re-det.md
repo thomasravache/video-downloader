@@ -19,6 +19,8 @@ touches:
   - entrypoints/background/index.ts
   - entrypoints/background/collect-videos.ts
   - entrypoints/popup/main.ts
+  - entrypoints/popup/redetect.ts
+  - src/core/ports.ts
   - entrypoints/popup/view.ts
   - entrypoints/popup/index.html
   - public/_locales/**
@@ -280,7 +282,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | Gate | Status | Evidência | Data |
 |---|---|---|---|
 | G0 Spec | PASS | validate: 0 erro(s) — 0f94085 | 2026-11-26 |
-| G1 Red | PENDING | | |
+| G1 Red | PASS | verify G1: PASS; `pnpm test` exit 1 (red: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/30]⎯) — 02f0e65 | 2026-11-27 |
 | G2 Green | PENDING | | |
 | G3 Arquitetura | PENDING | | |
 | G4 Review | PENDING | | |
@@ -292,6 +294,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 13. Registro de Impedimentos
 | ID | Aberto em | Fase/Gate | Tipo | Descrição | Tentativas | Responsável | Resolução | Fechado em |
 |---|---|---|---|---|---|---|---|---|
+| 1 (escopo) | 2026-11-27 | `touches` ganha `entrypoints/popup/redetect.ts` (controlador de re-detecção do popup, sem DOM, exigido por UT-10/UT-11) e `src/core/ports.ts` (lista de abas para a atribuição D8). Testes antigos que fixam a limpeza em `onBeforeRequest` (SPEC-0010:IT-03 e a guarda de IT-06) passam a refletir a regra D7. A revisão fica numa chave própria do `storage.session` para não mudar o formato da lista. Contrato da seção 6 inalterado (`contract_version` 1) | descoberto no G1 pelo Test-writer | — | Architect, sob a autorização de piloto automático do Thomas (2026-11-27) |
 | IMP-01 | 2026-11-27 | G1 | decisão | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) | waves/next após H1 | Thomas Ravache | Thomas escolheu fechar as specs antigas (2026-11-27): SPEC-0009..0015 e o épico SPEC-0008 fechados no PR #39 | 2026-11-27 |
 
 ## 14. Relatório de Entrega
@@ -326,3 +329,4 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 15. Emendas
 | Versão do contrato | Data | Mudança | Motivo | Specs impactadas | Aprovado por |
 |---|---|---|---|---|---|
+| 1 (escopo) | 2026-11-27 | `touches` ganha `entrypoints/popup/redetect.ts` (controlador de re-detecção do popup, sem DOM, exigido por UT-10/UT-11) e `src/core/ports.ts` (lista de abas para a atribuição D8). Testes antigos que fixam a limpeza em `onBeforeRequest` (SPEC-0010:IT-03 e a guarda de IT-06) passam a refletir a regra D7. A revisão fica numa chave própria do `storage.session` para não mudar o formato da lista. Contrato da seção 6 inalterado (`contract_version` 1) | descoberto no G1 pelo Test-writer | — | Architect, sob a autorização de piloto automático do Thomas (2026-11-27) |
