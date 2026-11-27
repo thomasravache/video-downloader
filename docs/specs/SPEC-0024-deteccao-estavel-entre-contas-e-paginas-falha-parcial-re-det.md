@@ -232,7 +232,7 @@ type NetworkRevisionResponse = { ok: true; revision: number } | { ok: false; err
 
 ## 8. Plano de Rollout
 - **Estratégia:** deploy direto em uma nova release candidate (`0.1.0-rc.10`) pelo pipeline de release; sem feature flag (correção de comportamento).
-- **Dados/schema:** a revisão da lista fica junto da lista no `storage.session`. Uma lista antiga sem revisão é lida como revisão 0. Nada é persistido em disco.
+- **Dados/schema:** a revisão da lista fica numa chave própria do `storage.session` (`vd:netrev:<aba>`, emenda de escopo), sem mudar o formato da lista. Aba sem revisão gravada é lida como revisão 0, e a aba fechada apaga as duas chaves. Nada é persistido em disco.
 - **Compatibilidade:** popup e background são da mesma build, então a mensagem nova não tem cliente antigo.
 - **Observabilidade:** logs novos `popup.detect_failed` e `network.sw_attributed` (contagem), além dos que já existem (`detect.provider_failed`, `detect.restricted`), todos no "Copiar diagnóstico".
 - **Rollback:** reverter o merge na `main` e publicar a rc anterior (`0.1.0-rc.9`); o dono decide, em minutos.
