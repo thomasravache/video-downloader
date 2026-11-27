@@ -1,7 +1,9 @@
 /**
  * Contrato usado (SPEC-0024:UT-04, UT-05), src/core/network.ts:
  *   isManifestSegment(file: VideoCandidate, manifests: readonly VideoCandidate[]): boolean
- *     true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash.
+ *     true quando `file` está na mesma origem e no diretório (ou subdiretório) de um manifesto hls/dash E (contrato v2)
+ *     o nome do arquivo é de segmento: /^(seg|segment|chunk|frag|fragment|part|filesequence)[-_]?\d+\.(mp4|m4v)$/i
+ *     ou /^\d+\.(mp4|m4v)$/.
  *   Service.onNetworkResponse: com um manifesto hls/dash na aba, um `file` que é segmento dele não entra na lista.
  *   NetworkStore.add: acima de MAX_PER_TAB saem primeiro os candidatos `file` mais antigos; manifestos só por último.
  */
@@ -31,6 +33,31 @@ describe('isManifestSegment (D5)', () => {
     expect(isManifestSegment(file('https://cdn.x/v/seg-1.mp4'), [hls(MASTER)])).toBe(false);
     expect(isManifestSegment(file('https://cdn.x/v/abcdef/seg-1.mp4'), [hls(MASTER)])).toBe(false);
     expect(isManifestSegment(file(SEGMENT), [])).toBe(false);
+  });
+
+  it('SPEC-0024:UT-04 (contrato v2) na pasta do master só é segmento o nome de segmento: chunk_3, fileSequence12 e 0042 são; video-hi.mp4 não é', () => {
+    expect(isManifestSegment(file('https://cdn.x/v/abc/chunk_3.mp4'), [hls(MASTER)])).toBe(true);
+    expect(isManifestSegment(file('https://cdn.x/v/abc/fileSequence12.mp4'), [hls(MASTER)])).toBe(
+      true,
+    );
+    expect(isManifestSegment(file('https://cdn.x/v/abc/0042.mp4'), [hls(MASTER)])).toBe(true);
+    expect(isManifestSegment(file('https://cdn.x/v/abc/video-hi.mp4'), [hls(MASTER)])).toBe(false);
+  });
+
+  it('SPEC-0024:UT-04 (contrato v2) arquivo único video-hi.mp4 na pasta do master continua candidato file', async () => {
+    const { service, network } = setupService();
+    const single = 'https://cdn.x/v/abc/video-hi.mp4';
+    await service.onNetworkResponse(
+      response({ url: MASTER, contentType: HLS_TYPE, contentLength: 900 }),
+    );
+
+    await service.onNetworkResponse(
+      response({ url: single, contentType: 'video/mp4', contentLength: 200 * KB }),
+    );
+
+    const byUrl = new Map((await network.forTab(1)).map((c) => [c.mediaUrl, c.kind]));
+    expect(byUrl.get(MASTER)).toBe('hls');
+    expect(byUrl.get(single)).toBe('file');
   });
 
   it('SPEC-0024:UT-04 manifesto DASH também reivindica os segmentos da pasta', () => {
