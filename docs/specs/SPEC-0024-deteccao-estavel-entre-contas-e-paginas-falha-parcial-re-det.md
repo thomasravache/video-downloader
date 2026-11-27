@@ -287,7 +287,7 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G2 Green | PASS | build exit 0 (✔ Finished in 319 ms); test exit 0 (Duration  65.02s (tests 96%, import 2%, transform 1%)); lint exit 0 (✔ Finished in 239 ms); coverage exit 0 (================================================================================) — 5d4e22d | 2026-11-27 |
 | G3 Arquitetura | PASS | arch_test exit 0 (✔ no dependency violations found (66 modules, 145 dependencies cruised)) — 5d4e22d | 2026-11-27 |
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente (2 rodadas): APPROVED @ 5d4e22d, 0 blocker/0 major; minors 1-3 da 1ª rodada corrigidos (ab86362, a7032a8, 5d4e22d); minors restantes viram pendências — 5d4e22d | 2026-11-27 |
-| G5 Integração & CI | PENDING | | |
+| G5 Integração & CI | PASS | build exit 0 (✔ Finished in 297 ms); test exit 0 (Duration  61.13s (tests 96%, import 2%, transform 1%)); test_integration exit 0 (at least ~596ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (82 passed (2.0m)); arch_test exit 0 (✔ no dependency violations found (66 modules, 145 dependencies cruised)); security_scan exit 0 ([90m10:15AM[0m [32mINF[0m [1mno leaks found[0m) — fa50d5e | 2026-11-27 |
 | H2 Integração aprovada | PENDING | | |
 | G6 Deploy | PENDING | | |
 | G7 Pronto & Docs | PENDING | | |
