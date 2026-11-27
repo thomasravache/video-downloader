@@ -10,13 +10,15 @@
  *    gravar `download.default_directory`/`savefile.default_directory` = downloadsDir no
  *    `Default/Preferences` do perfil e enviar, por uma sessão CDP, `Browser.setDownloadBehavior`
  *    com `behavior: 'default'` (verificado em probe: o Chromium respeita o `filename` pedido).
+ *  - SPEC-0024:E2E-02: com a re-detecção ativa (popup aberto consultando `network-revision`; botão
+ *    `redetect-button` refaz o `detect`), a jornada continua igual: um cartão, título, badge e download.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import { expect, test } from '../support/extension';
-import { openPageAndPopup } from './support';
+import { detectStarts, openPageAndPopup } from './support';
 
 const SAMPLE_SIZE = statSync(resolve(import.meta.dirname, '../fixtures/sample.mp4')).size;
 
@@ -166,5 +168,37 @@ test.describe('baixar vídeo direto', () => {
     expect(
       popupRequests.filter((url) => !url.startsWith(`chrome-extension://${extensionId}/`)),
     ).toEqual([]);
+  });
+
+  test('SPEC-0024:E2E-02 [jornada: baixar-video-direto] com a re-detecção ativa o cartão continua único e o clique em Baixar salva o arquivo com o nome esperado', async ({
+    context,
+    serviceWorker,
+    extensionId,
+    fixturesUrl,
+    downloadsDir,
+  }) => {
+    const { popup } = await openPageAndPopup(
+      context,
+      serviceWorker,
+      extensionId,
+      `${fixturesUrl}pages/video.html`,
+    );
+    const item = popup.getByTestId('candidate-item');
+    await expect(item).toHaveCount(1);
+
+    // Re-detecção com o popup aberto (botão "Procurar de novo"): a lista é redesenhada sem duplicar o cartão.
+    const before = await detectStarts(popup);
+    await popup.getByTestId('redetect-button').click();
+    await expect.poll(() => detectStarts(popup), { timeout: 2_000 }).toBeGreaterThan(before);
+    await expect(item).toHaveCount(1);
+    await expect(item).toContainText('Aula de teste');
+    await expect(item).toContainText('MP4');
+
+    await item.getByTestId('download-button').click();
+
+    const expected = join(downloadsDir, 'Aula de teste.mp4');
+    await expect
+      .poll(() => (existsSync(expected) ? statSync(expected).size : -1), { timeout: 20_000 })
+      .toBe(SAMPLE_SIZE);
   });
 });
