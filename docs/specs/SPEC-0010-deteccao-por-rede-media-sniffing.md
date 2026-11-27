@@ -173,28 +173,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Classificação e repositório**
-- [ ] Red: escrever UT-01, UT-02, UT-03, CT-01 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (`classifyNetworkResponse`, `NetworkStore`, `mergeCandidates`, contrato v3)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, CT-01 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (`classifyNetworkResponse`, `NetworkStore`, `mergeCandidates`, contrato v3)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Background com webRequest**
-- [ ] Red: escrever IT-01, IT-02, IT-03, IT-04, IT-05 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (listeners no topo, storage.session, permissão webRequest)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-01, IT-02, IT-03, IT-04, IT-05 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (listeners no topo, storage.session, permissão webRequest)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Jornada E2E**
-- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (popup com itens de rede)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0010:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (popup com itens de rede)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
@@ -207,8 +207,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01; delta 20c2a99 (IT-06) = correção exata recomendada pelo reviewer, conferida pelo Architect (diff de 1 arquivo, testes verdes) — 20c2a99 | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 181 ms); test exit 0 (Duration  23.23s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.43s (tests 74%, transform 17%, setup 4%, import 3%, worker 1%)); test_e2e exit 0 (34 passed (26.0s)); arch_test exit 0 (✔ no dependency violations found (25 modules, 48 dependencies cruised)); security_scan exit 0 ([90m4:43PM[0m [32mINF[0m [1mno leaks found[0m) — 77dabb0 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.2, release.yml run 37081174307 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -219,36 +219,53 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Além de ler o DOM, a extensão passa a **observar as respostas de rede** da aba (`webRequest`, só leitura) e registra URLs de mídia: arquivos de vídeo (`.mp4`/`.webm`/`video/*`), playlists HLS (`.m3u8`) e manifestos DASH (`.mpd`). Isso encontra o que nunca aparece como `<video src>` (players com MSE/`blob:`, vídeo carregado por JavaScript, iframes cujo DOM não alcançamos). Os achados vão para um repositório por aba que sobrevive à suspensão do service worker e se junta aos candidatos do DOM.
+
+Entradas no CHANGELOG (v0.1.0-rc.2):
+- Detecção por rede (media sniffing) observando requisições de mídia, sem bloquear nem alterar tráfego (SPEC-0010)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+`classifyNetworkResponse`, `NetworkStore` (sobre uma `SessionStoragePort`) e `mergeCandidates` em `src/core`; os listeners de `webRequest` e a porta de `storage.session` em `entrypoints/background`. Os listeners são registrados no topo do módulo do service worker para acordá-lo; o estado fica em `storage.session`, pois o service worker é suspenso após ~30 s ociosos.
+
+Módulos principais: `wxt.config.ts`, `.dependency-cruiser.cjs`, `src/core/**`, `entrypoints/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: reviewer-agent a410e7e5: APPROVED @ f472a01; delta 20c2a99 (IT-06) = correção exata recomendada pelo reviewer, conferida pelo Architect (diff de 1 arquivo, testes verdes).
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado respostas de rede de cada cenário do Mapa (tabela), quando `classifyNetworkResponse` é chamado, então devolve o `kind`/tamanho esper… | PASS | `tests/unit/network-classify.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado um `NetworkStore` sobre uma porta em memória, quando 60 candidatos e duplicatas são adicionados e `clear` é chamado, então guarda no… | PASS | `tests/unit/network-store.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado listas de DOM e de rede com URLs repetidas (inclusive só com fragmento diferente), quando `mergeCandidates` é chamado, então não há… | PASS | `tests/unit/network-store.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Com o background real e `fakeBrowser`, eventos `webRequest.onResponseStarted` de MP4, HLS e imagem resultam em `detect` listando só MP4 e… | PASS | `tests/integration/network-detect.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Com o repositório em `storage.session` do fake, recriar o background (simula suspensão do service worker) mantém a lista de rede da aba. | PASS | `tests/integration/network-detect.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-03 | Um `onBeforeRequest` de `main_frame` limpa a lista da aba; | PASS | `tests/integration/network-detect.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-04 | Com `pnpm build` real, ambos os manifestos têm exatamente as permissões `activeTab, scripting, downloads, storage, webRequest`, e a polít… | PASS | `tests/integration/build-artifacts.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Com o logger real, o diagnóstico depois de eventos de rede com `?token=...` não contém `token=`; | PASS | `tests/integration/network-detect.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-06 | Sem `browser.webRequest` (API ausente) ou com `addListener` lançando, o background não quebra, continua detectando pelo DOM e registra no… | PASS | `tests/integration/network-detect.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Contrato de `VideoCandidate` v3 (consumido pela SPEC-0011): o validador aceita `kind ∈ {file,hls,dash}` e `source ∈ {dom,network}` e reje… | PASS | `tests/integration/candidate-contract-v3.test.ts` — G5 77dabb0; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Numa página cujo `<video>` usa `blob:` (MediaSource) e cujo script faz `fetch` de um MP4 do servidor de fixtures, o popup lista o MP4 de… | PASS | `e2e/journeys/network-sniffing.spec.ts` — G5 77dabb0 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Quando a página requisita uma playlist `.m3u8` do fixture, o popup a lista com o selo "HLS" e `badge-unsupported`, sem botão de download. | PASS | `e2e/journeys/network-sniffing.spec.ts` — G5 77dabb0 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-03 | Depois de navegar a aba para outra página, a lista não contém mais os itens da anterior. | PASS | `e2e/journeys/network-sniffing.spec.ts` — G5 77dabb0 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0010`. -->

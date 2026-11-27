@@ -171,28 +171,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Núcleo de frames**
-- [ ] Red: escrever UT-01, UT-02, UT-03, UT-04, CT-01 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (`src/core`: findCrossOriginFrames, mergeFrameSnapshots, computeBlockedOrigins, requestAccess, contrato v2)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, UT-04, CT-01 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (`src/core`: findCrossOriginFrames, mergeFrameSnapshots, computeBlockedOrigins, requestAccess, contrato v2)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Background e manifestos por flavor**
-- [ ] Red: escrever IT-01, IT-02, IT-05, IT-06 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (allFrames, PermissionsPort, manifestos local/public)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-01, IT-02, IT-05, IT-06 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (allFrames, PermissionsPort, manifestos local/public)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Popup e jornada E2E**
-- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (bloco de acesso e harness com iframe/origens)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0009:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (bloco de acesso e harness com iframe/origens)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
@@ -205,8 +205,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent a339d9fd: APPROVED @ 3673832 (0 blocker/major, 6 minor; padrão com porta verificado no Chromium real; mutações de allFrames/blockedOrigins/log detectadas) — 3673832 | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 178 ms); test exit 0 (Duration  22.78s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.68s (tests 85%, transform 11%, setup 2%, import 2%)); test_e2e exit 0 (28 passed (28.5s)); arch_test exit 0 (✔ no dependency violations found (23 modules, 42 dependencies cruised)); security_scan exit 0 ([90m3:24PM[0m [32mINF[0m [1mno leaks found[0m) — a2a8a7b | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.2, release.yml run 37081174307 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -217,36 +217,52 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+A extensão passa a olhar **todos os frames** da aba, não só o documento principal. Vídeos dentro de iframes (inclusive de outro domínio, como em plataformas de curso) aparecem na lista. No build `local` o acesso é amplo (`host_permissions`); no build `public` a extensão descobre quais origens de iframe estão **bloqueadas** e o popup pede ao usuário, com um clique, o acesso a essas origens (`optional_host_permissions`), repetindo a detecção em seguida (ADR-0012).
+
+Entradas no CHANGELOG (v0.1.0-rc.2):
+- Detecção em iframes e acesso por site: permissão opcional pedida no popup no build `public` (SPEC-0009, ADR-0012)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+a lógica de frames (extração de origens, mescla por frame, cálculo de origens bloqueadas, pedido de acesso) vive em `src/core` com portas (`ScriptingPort.collectVideos(tabId)` passa a devolver `FrameSnapshot[]`; nova `PermissionsPort { contains(origins), request(origins) }`); as implementações sobre `browser.*` ficam em `entrypoints/`. O popup chama `browser.permissions.request` no próprio contexto da página do popup (exigência de gesto do usuário) através do helper de core `requestAccess`.
+
+Módulos principais: `wxt.config.ts`, `.dependency-cruiser.cjs`, `src/core/**`, `src/providers/generic/**`, `entrypoints/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: reviewer-agent a339d9fd: APPROVED @ 3673832 (0 blocker/major, 6 minor; padrão com porta verificado no Chromium real; mutações de allFrames/blockedOrigins/log detectadas).
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado uma lista de `<iframe src>` (https externo, http com porta, mesma origem, relativo, `about:blank`, `data:`, `javascript:`, vazio) e… | PASS | `tests/unit/collect-videos.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado snapshots de três frames (principal, mesma origem, outra origem) com uma URL repetida, quando `mergeFrameSnapshots` é chamado, então… | PASS | `tests/unit/frames.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado origens vistas, a origem da página e um conjunto de origens concedidas, quando `computeBlockedOrigins` é chamado, então devolve só a… | PASS | `tests/unit/frames.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado uma `PermissionsPort` fake que concede, nega ou lança, quando `requestAccess` é chamado, então devolve `granted: true`, `granted: fa… | PASS | `tests/unit/access.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Com o background real, `detect` com resultados de `executeScript` de vários frames devolve candidatos de todos; | PASS | `tests/integration/detect-frames.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Com o background real e `permissions.contains` simulada, `detect` devolve `access.blockedOrigins` com as origens sem permissão e `[]` qua… | PASS | `tests/integration/detect-frames.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Com `pnpm build` real, o manifesto `local` tem `host_permissions` `http://*/*` e `https://*/*` e nenhuma `optional_host_permissions`; | PASS | `tests/integration/build-artifacts.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-06 | Com o logger real, o diagnóstico de um `detect` com iframes contém apenas origens (sem caminho nem query) e `correlationId`. | PASS | `tests/integration/detect-frames.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Contrato da resposta de `detect` v2 e de `VideoCandidate` (consumido pela SPEC-0010): o validador aceita `{ ok:true, candidates:[com fram… | PASS | `tests/integration/detect-contract.test.ts` — G5 a2a8a7b; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Build `local`: numa página em `127.0.0.1` com iframe de `localhost` que contém um `<video>` MP4, o popup lista o vídeo e o download salva… | PASS | `e2e/journeys/iframe-video.spec.ts` — G5 a2a8a7b (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Build `public` (cópia só com `127.0.0.1`): a mesma página mostra o bloco "acesso necessário" com a origem `localhost` e nenhum candidato… | PASS | `e2e/journeys/iframe-video.spec.ts` — G5 a2a8a7b (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-03 | Build `public` com a origem do iframe liberada na cópia de teste (simula a concessão): o vídeo do iframe aparece e baixa. | PASS | `e2e/journeys/iframe-video.spec.ts` — G5 a2a8a7b (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0009`. -->

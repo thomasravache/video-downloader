@@ -154,19 +154,19 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
 **Fase 1: Agrupamento e seletor**
-- [ ] Red: UT-01..UT-05, CT-01, IT-01, IT-02 com a tag `SPEC-0015:<ID>`
-- [ ] Green: `groupCandidates`, `mediaResources`, buscas condicionadas, popup (`related-sources`, `audio-select`), i18n pt_BR/en
-- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+- [x] Red: UT-01..UT-05, CT-01, IT-01, IT-02 com a tag `SPEC-0015:<ID>`
+- [x] Green: `groupCandidates`, `mediaResources`, buscas condicionadas, popup (`related-sources`, `audio-select`), i18n pt_BR/en
+- [x] Refactor e validar: build + suíte + arquitetura (G2/G3)
 
 **Fase 2: Jornada E2E**
-- [ ] Red: E2E-01 e E2E-02 falhando pelo motivo certo
-- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake
+- [x] Red: E2E-01 e E2E-02 falhando pelo motivo certo
+- [x] Green: jornada completa nos dois flavors, 3 execuções sem flake
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -180,8 +180,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs de foco, mesma origem e extras criptografado/ao vivo corrigidos (7d24206..87454d2); demais MINOR aceitos — 87454d2 | 2026-10-03 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 345 ms); test exit 0 (Duration  51.32s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (at least ~381ms faster with isolate: false — reuses workers across files instead of one pe); test_e2e exit 0 (64 passed (1.3m)); arch_test exit 0 (✔ no dependency violations found (52 modules, 111 dependencies cruised)); security_scan exit 0 ([90m2:45AM[0m [32mINF[0m [1mno leaks found[0m) — f0073ff | 2026-10-03 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-03 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.3, release.yml run 37101154187 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -193,36 +193,50 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Numa aula de curso o popup lista hoje até 11 cartões para o mesmo vídeo: a playlist master, as playlists de cada qualidade e do áudio, e os arquivos `.mp4` soltos que essas playlists usam. Depois da SPEC-0014 o cartão master já baixa vídeo com áudio; esta spec deixa **esse cartão em destaque** e **recolhe** os redundantes numa seção "Outras fontes (N)" (sem apagá-los: continuam baixáveis como alternativa), e acrescenta um **seletor de áudio** quando a master tem mais de um idioma.
+
+Entradas no CHANGELOG (v0.1.0-rc.3):
+- Popup com um cartão por vídeo: fontes redundantes ficam recolhidas em "Outras fontes (N)" e, havendo mais de um idioma, um seletor de áudio; o MP4 mantém o idioma da faixa escolhida (SPEC-0015)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+(1) `groupCandidates(list)` devolve `{ primary, related[] }[]` preservando a ordem do primeiro elemento de cada grupo; (2) o resolve da master ganha `mediaResources` (origem+caminho dos arquivos de mídia citados nas playlists de variante/áudio buscadas), com as buscas extras feitas **só** se houver na aba candidatos `file`/`hls` não-master da mesma origem; (3) `view.ts` renderiza `related` dentro de um `<details>` "Outras fontes (N)" fechado por padrão.
+
+Módulos principais: `src/core/**`, `entrypoints/offscreen/merge.ts`, `entrypoints/popup/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs de foco, mesma origem e extras criptografado/ao vivo corrigidos (7d24206..87454d2); demais MINOR aceitos.
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado uma master resolvida com variantes `…_1080p.m3u8`/`…_480p.m3u8`, áudio `…_en_192k.m3u8` e `mediaResources` com os três `.mp4`, e a l… | PASS | `tests/unit/candidates-group.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado listas sem master resolvida ou com cartões de outra origem/caminho, quando `groupCandidates` roda, então todos viram grupos de um el… | PASS | `tests/unit/candidates-group.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado duas masters que citam o mesmo arquivo, quando agrupadas, então o arquivo aparece só no grupo da primeira. | PASS | `tests/unit/candidates-group.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado playlists com `…/arq.mp4?token=x&expires=1#f` repetidas e mais de 32 recursos, quando `mediaResources` é derivado, então contém orig… | PASS | `tests/unit/hls-media-resources.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-05 | Dado um grupo de áudio com 2 faixas (uma default), 1 faixa, e variantes com grupos diferentes, quando as opções do seletor são calculadas… | PASS | `tests/unit/popup-audio-options.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Dado uma master com 3 variantes e 2 áudios, quando o resolve roda numa aba sem candidatos relacionáveis, então não há busca extra; | PASS | `tests/integration/hls-related-extras.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Dado playlists e mídias com `?token=…`, quando o resolve conclui, então `mediaResources`, diagnósticos e erros não contêm o token. | PASS | `tests/integration/hls-related-privacy.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Dado `HlsInfo` da SPEC-0014@1 sem `mediaResources` e mensagens `download` sem `audioIndex`, quando validados, então continuam aceitos. | PASS | `tests/unit/hls-resources-contract.test.ts` — G5 f0073ff; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Dado a página de fixture com master, variantes, áudio e os `.mp4` soltos observados na rede [jornada: baixar-hls], quando o popup abre, e… | PASS | `e2e/journeys/hls-related-sources.spec.ts` — G5 f0073ff (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Dado uma master com áudio en e pt, quando o usuário escolhe "pt" no seletor "Áudio" e baixa, então o MP4 salvo tem a trilha de áudio com… | PASS | `e2e/fixtures/pages/hls-course-master.html` — G5 f0073ff (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PR #15. Staging (pré-release): GitHub prerelease `v0.1.0-rc.3` pelo `release.yml` (run 37101154187: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0015`. -->

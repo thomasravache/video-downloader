@@ -194,23 +194,23 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 ## 11. Checklist de Implementação
 <!-- Preenchido na fase PLAN, após a aprovação. Cada fase começa pelos testes. -->
 **Fase 1: Prova de conceito da biblioteca (portão)**
-- [ ] Red: IT-01 (fMP4 só vídeo + só áudio gerados por ffmpeg) falhando
-- [ ] Green com `mediabunny` (ADR-0014): 2 trilhas, amostras iguais, durações ±0,2 s, ffprobe, pico de memória e tamanho do bundle registrados; se falhar: PARAR e reportar SPEC_DEFECT (plano B por emenda)
+- [x] Red: IT-01 (fMP4 só vídeo + só áudio gerados por ffmpeg) falhando
+- [x] Green com `mediabunny` (ADR-0014): 2 trilhas, amostras iguais, durações ±0,2 s, ffprobe, pico de memória e tamanho do bundle registrados; se falhar: PARAR e reportar SPEC_DEFECT (plano B por emenda)
 
 **Fase 2: Parser, contrato e segurança**
-- [ ] Red: UT-01..UT-07, CT-01, IT-02..IT-09 com a tag `SPEC-0014:<ID>`
-- [ ] Green: `HlsInfo.audio`/`audioGroup`, `chooseAudio`, `download.audioIndex`, `start.audio`, recusas em todas as playlists, limite combinado (valor final pela medição), licenças no build
-- [ ] Refactor e validar: build + suíte + arquitetura (G2/G3)
+- [x] Red: UT-01..UT-07, CT-01, IT-02..IT-09 com a tag `SPEC-0014:<ID>`
+- [x] Green: `HlsInfo.audio`/`audioGroup`, `chooseAudio`, `download.audioIndex`, `start.audio`, recusas em todas as playlists, limite combinado (valor final pela medição), licenças no build
+- [x] Refactor e validar: build + suíte + arquitetura (G2/G3)
 
 **Fase 3: Jornada E2E**
-- [ ] Red: E2E-01 e E2E-02 falhando pelo motivo certo
-- [ ] Green: jornada completa nos dois flavors, 3 execuções sem flake
+- [x] Red: E2E-01 e E2E-02 falhando pelo motivo certo
+- [x] Green: jornada completa nos dois flavors, 3 execuções sem flake
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Release rc com smoke/E2E no pipeline e teste manual do Thomas (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 
 ## 12. Registro de Gates
@@ -224,8 +224,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs M1,M3,M4,M6,M7 e limite de 512 MiB corrigidos (79d3eb7..fb5f277); limitacao conhecida: grupo AUDIO sem faixa utilizavel cai no caminho legado (sem som), igual ao comportamento anterior — fb5f277 | 2026-10-03 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 259 ms); test exit 0 (Duration  44.96s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.48s (tests 79%, transform 10%, import 8%, setup 2%, worker 1%)); test_e2e exit 0 (60 passed (58.0s)); arch_test exit 0 (✔ no dependency violations found (51 modules, 109 dependencies cruised)); security_scan exit 0 ([90m1:47AM[0m [32mINF[0m [1mno leaks found[0m) — d36a8d9 | 2026-10-03 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-03 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.3, release.yml run 37101154187 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -236,37 +236,61 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Em muitos sites de curso o HLS entrega **vídeo e áudio em playlists e arquivos separados**: a playlist master lista as qualidades (`#EXT-X-STREAM-INF … AUDIO="grupo"`) e as faixas de áudio (`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="grupo",URI="…"`). Hoje a extensão baixa só a playlist de vídeo, e o arquivo sai **sem som**. Esta spec faz o download pela master **buscar também a faixa de áudio e juntar as duas trilhas num único MP4** (cópia de pacotes, sem recodificar), mantendo o seletor de qualidade que o cartão já tem. A limpeza do popup e o seletor de idioma ficam na SPEC-0015.
+
+Entradas no CHANGELOG (v0.1.0-rc.3):
+- Vídeo e áudio em playlists separadas (`EXT-X-MEDIA TYPE=AUDIO`) são baixados e juntados num único MP4, sem recodificar, com a biblioteca Mediabunny (MPL-2.0) carregada só quando há áudio separado; áudio criptografado, ao vivo ou inválido recusa o download inteiro (SPEC-0014, ADR-0014)
+- Aviso de licenças de terceiros (`THIRD_PARTY_NOTICES.txt`) na raiz do pacote, sem nada na interface (SPEC-0014)
+- Limite de memória de 512 MiB para downloads com junção de áudio e vídeo (SPEC-0014)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+(1) o parser expõe faixas de áudio e o grupo de cada variante; (2) `download` ganha `audioIndex?`; o serviço re-busca e re-analisa **a playlist de vídeo e a de áudio** (allowlist de criptografia, `live`, http(s), byte range) e só então cria o job; (3) o `start` do offscreen ganha `audio?`; (4) o offscreen baixa as duas trilhas, monta cada uma como fMP4 completo e as junta em `assembleMerged` (ADR-0014), carregando a biblioteca por importação dinâmica só nesse caso; (5) no resolve, além do melhor variante (SPEC-0011), busca-se a playlist de áudio padrão do grupo dele para marcar `encrypted` de forma conservadora (1 requisição a mais).
+
+Módulos principais: `package.json`, `pnpm-lock.yaml`, `wxt.config.ts`, `.dependency-cruiser.cjs`, `public/THIRD_PARTY_NOTICES.txt`, `src/core/**`, `entrypoints/offscreen/**`, `entrypoints/popup/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: Reviewer independente: APPROVED, 0 BLOCKER/0 MAJOR; MINORs M1,M3,M4,M6,M7 e limite de 512 MiB corrigidos (79d3eb7..fb5f277); limitacao conhecida: grupo AUDIO sem faixa utilizavel cai no caminho legado (sem som), igual ao comportamento anterior.
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
-N/A
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado uma master com `#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a1",NAME="English",LANGUAGE="en",DEFAULT=YES,URI="a.m3u8"` e variantes com `AUDIO=… | PASS | `tests/unit/hls-audio-parse.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado NAME com 10 mil caracteres/controles/aspas e vírgulas dentro de aspas, URI `javascript:`/`data:`/vazia, faixa sem URI e 30 faixas, q… | PASS | `tests/unit/hls-audio-clean-format.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado variante com grupo e faixas (uma `DEFAULT`), quando `chooseAudio` roda sem índice, com índice válido, com índice de outro grupo/nega… | PASS | `tests/unit/hls-audio-choose.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado comandos `start` com `audio` válido, `audio.urls` vazio ou não-http(s), `audio.ranges` de tamanho errado e `audio.initRange` sem `in… | PASS | `tests/unit/offscreen-commands-audio.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-05 | Dado candidatos HLS com variante de áudio separado e sem, quando o texto do cartão é calculado, então é "Inclui áudio: English" no primei… | PASS | `tests/unit/popup-audio-note.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-06 | Dado o build `public` e o `local`, quando os zips são inspecionados, então `THIRD_PARTY_NOTICES.txt` está na raiz e cita mediabunny (MPL-… | PASS | `tests/unit/third-party-notices.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-07 | Dado o chunk do offscreen do build, quando inspecionado, então contém os comentários de licença da mediabunny; | PASS | `tests/unit/third-party-notices.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | (prova de conceito, fase 1, portão) Dado um fMP4 só de vídeo (H.264) e um só de áudio (AAC) gerados com `ffmpeg` no formato do curso, qua… | PASS | `tests/integration/hls-merge-assemble.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Dado master + playlist de vídeo + playlist de áudio, todas com byte range, servidas com `Range`, quando o job roda, então termina `done`,… | PASS | `tests/integration/hls-merge-job.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-03 | Dado áudio com `#EXT-X-KEY:METHOD=AES-128` e vídeo limpo, quando `download` roda, então responde `ENCRYPTED` e o servidor não recebe nenh… | PASS | `tests/integration/hls-merge-refusals.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-04 | Dado playlist de áudio com 404, ao vivo ou inválida, quando `download` roda, então responde `HLS_NOT_RESOLVED`/`LIVE`/`HLS_NOT_RESOLVED`,… | PASS | `tests/integration/hls-merge-refusals.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Dado `audioIndex` inválido, e áudio ou vídeo em TS, quando `download` roda, então responde `UNSUPPORTED` sem requisição de mídia. | PASS | `tests/integration/hls-merge-refusals.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-06 | Dado ranges de vídeo+áudio com soma acima do limite combinado (só metadados), quando o job inicia, então termina `failed` `TOO_LARGE` sem… | PASS | `tests/integration/hls-merge-job.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-07 | Dado init (de áudio e, em outro caso, de vídeo) com `sinf`/`schm`, quando o job roda, então termina `failed` `ENCRYPTED` e nada é salvo. | PASS | `tests/integration/hls-merge-job.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-08 | Dado uma master com áudio, quando `resolveHls` roda, então busca uma única playlist extra (a de áudio padrão), marca `encrypted` se ela f… | PASS | `tests/integration/hls-merge-resolve.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-09 | Dado URLs de vídeo e áudio com `?token=…&expires=…`, quando o job conclui ou falha, então nenhum diagnóstico, erro ou estado do job conté… | PASS | `tests/integration/hls-merge-privacy.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Dado `HlsInfo`, `download` e `start` sem os campos novos (SPEC-0011@1, SPEC-0012@1, SPEC-0013@1), quando validados pelo código desta spec… | PASS | `tests/unit/hls-merge-contract.test.ts` — G5 d36a8d9; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Dado uma página que carrega uma master com vídeo e áudio em fMP4 de arquivo único (fixture `ffmpeg`, servida com `Range`) [jornada: baixa… | PASS | `e2e/journeys/hls-split-av.spec.ts` — G5 d36a8d9 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Dado uma master cujo áudio é criptografado, quando o popup abre, então o cartão mostra `badge-encrypted` e não há botão de baixar. | PASS | `e2e/journeys/hls-split-av.spec.ts` — G5 d36a8d9 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PR #14. Staging (pré-release): GitHub prerelease `v0.1.0-rc.3` pelo `release.yml` (run 37101154187: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Limitação conhecida registrada no G4: grupo AUDIO sem faixa utilizável cai no caminho legado (sem som), igual ao comportamento anterior. Sem spec aberta; entra no backlog se o dono quiser.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0014`. -->

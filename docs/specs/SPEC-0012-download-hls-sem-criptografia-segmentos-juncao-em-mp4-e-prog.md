@@ -172,34 +172,34 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Núcleo do download**
-- [ ] Red: escrever UT-01, UT-02, UT-03, UT-04, CT-01 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (agendador, progresso, estados de job, nome do arquivo)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, UT-04, CT-01 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (agendador, progresso, estados de job, nome do arquivo)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: Montagem e offscreen**
-- [ ] Red: escrever UT-05, IT-01, IT-03, IT-04 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (mux.js 6.3.0 no offscreen, blob URL, limites)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-05, IT-01, IT-03, IT-04 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (mux.js 6.3.0 no offscreen, blob URL, limites)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Jobs no background**
-- [ ] Red: escrever IT-02, IT-05 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (download/job/cancel, storage.session)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-02, IT-05 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (download/job/cancel, storage.session)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 4: Jornada E2E**
-- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (popup com progresso e cancelamento)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0012:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (popup com progresso e cancelamento)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
@@ -212,8 +212,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: Reviewer independente (2 rodadas): APPROVED, 0 BLOCKER/0 MAJOR, 3 MINOR nao bloqueantes (saving->ASSEMBLY_FAILED, tolerancia onChanged, getContexts Chrome>=116) — 13fa46b | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 221 ms); test exit 0 (Duration  35.37s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  3.39s (tests 73%, transform 16%, import 8%, setup 3%, worker 1%)); test_e2e exit 0 (48 passed (51.0s)); arch_test exit 0 (✔ no dependency violations found (46 modules, 97 dependencies cruised)); security_scan exit 0 ([90m8:57PM[0m [32mINF[0m [1mno leaks found[0m) — ee018c5 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.2, release.yml run 37081174307 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -224,36 +224,55 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+O usuário escolhe a qualidade de um vídeo HLS sem criptografia, clica em **Baixar**, acompanha o progresso (com cancelamento) e recebe um **arquivo MP4 reproduzível**. O trabalho acontece num *offscreen document*: busca os segmentos em paralelo com retentativas, junta (TS→MP4 com `mux.js`, ou concatena fMP4) e entrega o arquivo ao `chrome.downloads` por uma blob URL.
+
+Entradas no CHANGELOG (v0.1.0-rc.2):
+- Download de HLS sem criptografia: busca dos segmentos, junção em MP4 e barra de progresso com cancelamento; playlists ao vivo, criptografadas ou com byte range são recusadas (SPEC-0012, ADR-0013)
+- Chrome mínimo 116 (`minimum_chrome_version`) por causa do documento offscreen (SPEC-0012)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+lógica pura em `src/core/hls-download` (agendador, progresso, estado de jobs, nome do arquivo, escolha de montagem) com portas para `fetch`, relógio e montador; `mux.js` e `URL.createObjectURL` apenas em `entrypoints/offscreen`; o background orquestra jobs e fala com o offscreen por `runtime.sendMessage` (alvo `offscreen`); estado dos jobs em `storage.session` para sobreviver à suspensão do service worker.
+
+Módulos principais: `package.json`, `pnpm-lock.yaml`, `wxt.config.ts`, `.dependency-cruiser.cjs`, `src/core/**`, `entrypoints/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: Reviewer independente (2 rodadas): APPROVED, 0 BLOCKER/0 MAJOR, 3 MINOR nao bloqueantes (saving->ASSEMBLY_FAILED, tolerancia onChanged, getContexts Chrome>=116).
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado um `fetch` fake que falha N vezes por segmento, quando `runSegments` roda com concorrência 4 e 3 retentativas, então a ordem é prese… | PASS | `tests/unit/hls-scheduler.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado conclusões de segmentos fora de ordem e tamanhos desconhecidos, quando o cálculo de progresso roda, então `percent` é monotônico e `… | PASS | `tests/unit/hls-progress.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado título com caracteres proibidos/longo e um rótulo, quando `toFilename` é chamado, então devolve `<título> - <rótulo>.mp4` sanitizado… | PASS | `tests/unit/hls-filename.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado a máquina de estados de job, quando ocorrem cancelamento no meio, erro definitivo e excesso do limite de 1,5 GiB, então os estados f… | PASS | `tests/unit/hls-job-state.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-05 | Dado segmentos TS reais da fixture, quando `assembleTs` (mux.js) roda, então o resultado começa com `ftyp`, contém `moov` e `mdat` e tem… | PASS | `e2e/fixtures/generate-video.sh` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Com o servidor de fixtures real e o montador real (Node), baixar o HLS TS e o fMP4 produz MP4 válido (caixas `ftyp/moov/mdat` e duração). | PASS | `tests/integration/hls-assemble.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Com o background real, `fakeBrowser` e um offscreen simulado, `download` cria o job, `job` mostra progresso até `done` e `downloads.downl… | PASS | `tests/integration/build-artifacts.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-03 | Com o background real, `download` de candidato `encrypted` → `ENCRYPTED`, `live` → `LIVE`, e nenhuma requisição de segmento é feita; | PASS | `tests/integration/hls-job-refusals.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-04 | Cancelar durante o download interrompe novas requisições ao servidor de fixtures em < 1 s e revoga a blob URL. | PASS | `tests/integration/hls-job-cancel.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Com o logger real, o diagnóstico de um job com URLs `?token=...` não contém `token=`; | PASS | `tests/integration/hls-job-hardening.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Contrato `JobState` e das mensagens `download/job/cancel` (usado pelo popup): o validador aceita estados e erros válidos e rejeita `perce… | PASS | `tests/integration/hls-job-contract.test.ts` — G5 ee018c5; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Numa página que carrega o HLS de fixture (2 qualidades), o usuário escolhe a qualidade, clica em Baixar, vê a barra de progresso chegar a… | PASS | `e2e/journeys/hls-download.spec.ts` — G5 ee018c5 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | O usuário cancela um download em andamento (servidor de fixtures com atraso por segmento): o progresso para, aparece "cancelado" e nenhum… | PASS | `e2e/journeys/hls-download.spec.ts` — G5 ee018c5 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-03 | Com HLS criptografado (fixture com `AES-128`), o popup mostra `badge-encrypted` e nenhum botão de download; | PASS | `e2e/journeys/hls-download.spec.ts` — G5 ee018c5 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0012`. -->

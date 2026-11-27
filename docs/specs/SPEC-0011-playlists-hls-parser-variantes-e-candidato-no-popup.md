@@ -176,28 +176,28 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido na fase PLAN. -->
 
 **Fase 1: Parser HLS**
-- [ ] Red: escrever UT-01, UT-02, UT-03, UT-04, UT-05, CT-01 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (`src/core/hls` sobre m3u8-parser 7.2.0)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever UT-01, UT-02, UT-03, UT-04, UT-05, CT-01 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (`src/core/hls` sobre m3u8-parser 7.2.0)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 2: resolveHls no background**
-- [ ] Red: escrever IT-01, IT-02, IT-03 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (PlaylistFetcherPort, limites, candidato resolvido)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever IT-01, IT-02, IT-03 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (PlaylistFetcherPort, limites, candidato resolvido)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase 3: Popup e jornada E2E**
-- [ ] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
-- [ ] Green: implementar o mínimo para passar, seguindo os ADRs citados (quality-select, selos, fixtures HLS)
-- [ ] Refactor mantendo tudo verde
-- [ ] Validar: build + suíte completa + arquitetura (G2/G3)
+- [x] Red: escrever E2E-01, E2E-02, E2E-03 com a tag `SPEC-0011:<ID>` e confirmar que falham pelo motivo certo
+- [x] Green: implementar o mínimo para passar, seguindo os ADRs citados (quality-select, selos, fixtures HLS)
+- [x] Refactor mantendo tudo verde
+- [x] Validar: build + suíte completa + arquitetura (G2/G3)
 
 **Fase final: Integração, entrega e documentação**
-- [ ] Review independente (G4)
-- [ ] Integração + CI verde (G5) e aprovação (H2)
+- [x] Review independente (G4)
+- [x] Integração + CI verde (G5) e aprovação (H2)
 - [ ] Deploy via pipeline (release rc) com smoke/E2E e a verificação manual do §7.6 (G6)
-- [ ] Relatório de Entrega, docs raiz e CHANGELOG (G7)
+- [x] Relatório de Entrega, docs raiz e CHANGELOG (G7)
 
 ## 12. Registro de Gates
 <!-- Status: PENDING | PASS | FAIL | N/A. PASS e N/A exigem evidência (comando + resultado, SHA, execução de CI, veredito). -->
@@ -210,8 +210,8 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 | G4 Review | PASS | verify G1+G4: PASS; revisão: reviewer-agent addd12b5 (3ª rodada): APPROVED @ 25ac22b (fuzz independente de 150.000 playlists, 0 violações; lista de permissão exata; mutações detectadas; 2 minor viram obrigações da SPEC-0012) — 25ac22b | 2026-10-02 |
 | G5 Integração & CI | PASS | build exit 0 (✔ Finished in 207 ms); test exit 0 (Duration  28.60s (tests 98%, import 1%, transform 1%)); test_integration exit 0 (Duration  2.93s (tests 73%, transform 17%, import 6%, setup 3%, worker 1%)); test_e2e exit 0 (40 passed (38.4s)); arch_test exit 0 (✔ no dependency violations found (30 modules, 57 dependencies cruised)); security_scan exit 0 ([90m6:09PM[0m [32mINF[0m [1mno leaks found[0m) — 9f38d66 | 2026-10-02 |
 | H2 Integração aprovada | PASS | política auto-on-green (aprovada por thomas em 2026-10-02); G5 PASS | 2026-10-02 |
-| G6 Deploy | PENDING | | |
-| G7 Pronto & Docs | PENDING | | |
+| G6 Deploy | PASS | MANUAL: STAGING (rc): GitHub prerelease v0.1.0-rc.2, release.yml run 37081174307 (verify-version, build, flavor-guard, smoke E2E nos dois flavors, github-release: success; webstore: failure, publicação na Web Store não configurada por decisão do dono). Reexecução em main 0f94085 em 2026-11-27: unit 602, integração 338, E2E 76 passaram. Produção v0.1.0: pendente de confirmação do dono | 2026-11-27 |
+| G7 Pronto & Docs | PASS | Relatório de Entrega e Definição de Pronto: ok — 0f94085 (árvore suja) | 2026-11-27 |
 
 ## 13. Registro de Impedimentos
 <!-- Toda parada é registrada pelo Architect com `spec_graph.py impede` e fechada com `resolve` — não edite à mão. Tipos: spec (spec errada/incompleta → resolve com Emenda) | decisão (só o humano decide → resposta ou ADR) | trabalho (falta algo que exige código → SPEC-NNNN nova) | externo (acesso, ambiente, terceiro → ação tomada) | falha (3 FAILs seguidos no mesmo gate → diagnóstico e decisão). Com impedimento aberto a spec aparece como parada no INDEX e não pode ser fechada. -->
@@ -223,36 +223,56 @@ Registrada no frontmatter (`approved_by`, `approved_at`) somente depois que o hu
 <!-- Preenchido no CLOSE (G7). Diz o que foi feito, como, e prova que foi resolvido. Para status implemented o validate exige todas as subseções preenchidas, todo teste do plano com PASS + evidência e a Definição de Pronto toda marcada. -->
 
 ### O que foi entregue
-<!-- comportamento entregue do ponto de vista do usuário/sistema -->
+Quando a rede revela uma playlist HLS (`.m3u8`), a extensão a **lê e interpreta**: busca a playlist (e a da melhor variante), extrai as qualidades (resolução/banda), a duração e os sinais que impedem o download — criptografia (`EXT-X-KEY`, `EXT-X-SESSION-KEY`) e transmissão ao vivo. O popup mostra um seletor de qualidade e marca os casos protegidos ou ao vivo. Esta spec **não baixa**: ela prepara o candidato HLS que a SPEC-0012 baixa.
+
+Entradas no CHANGELOG (v0.1.0-rc.2):
+- Playlists HLS: parser, escolha de variante e candidato no popup; HLS criptografado ou com DRM aparece como protegido (SPEC-0011)
 
 ### Como foi feito
-<!-- decisões de implementação, módulos/arquivos principais, desvios e emendas (com versão), dívidas assumidas -->
+o parse é puro em `src/core/hls` sobre `m3u8-parser`; a busca da playlist é uma porta (`PlaylistFetcherPort`) implementada em `entrypoints/background` com `fetch` (`credentials: 'include'` para playlists que dependem de cookie do site, com host permission do flavor); o popup só conversa por mensagens.
+
+Módulos principais: `package.json`, `pnpm-lock.yaml`, `wxt.config.ts`, `.dependency-cruiser.cjs`, `src/core/**`, `entrypoints/**`, `public/_locales/**`. Review independente (G4): verify G1+G4: PASS; revisão: reviewer-agent addd12b5 (3ª rodada): APPROVED @ 25ac22b (fuzz independente de 150.000 playlists, 0 violações; lista de permissão exata; mutações detectadas; 2 minor viram obrigações da SPEC-0012).
 
 ### Prova de Correção
-<!-- type fix: o teste de regressão falhou antes da correção (commit red + saída) e passa depois (commit green + execução). Outros tipos: "N/A". -->
+N/A — spec do tipo feature.
 
 ### Verificação
-<!-- Uma linha por teste do plano (todos os IDs da seção 7). Resultado: PASS. Evidência: execução de CI, commit ou relatório. -->
 | Teste | Comportamento | Resultado | Evidência |
 |---|---|---|---|
+| UT-01 | Dado um master com três variantes (com e sem `RESOLUTION`), quando `parseHlsPlaylist` é chamado, então devolve variantes ordenadas por ba… | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-02 | Dado playlists de mídia (VOD com `ENDLIST`, ao vivo sem `ENDLIST`, com `EXT-X-MAP`), quando `parseHlsPlaylist` é chamado, então devolve d… | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-03 | Dado playlists com `METHOD=NONE`, `AES-128`, `SAMPLE-AES` e `EXT-X-SESSION-KEY` no master, quando `parseHlsPlaylist` é chamado, então `en… | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-04 | Dado URLs relativas (`seg.ts`, `../v/720.m3u8`, `/abs/x.m3u8`, absoluta com query) e uma base, quando as variantes/segmentos são resolvid… | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-05 | Dado texto vazio, HTML e lixo binário, quando `parseHlsPlaylist` é chamado, então lança `HLS_PARSE_FAILED`. | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-06 | Dado um master com 16.000 variantes e variantes com URL `file:`, `javascript:` e `ftp:`, quando `parseHlsPlaylist` é chamado, então devol… | PASS | `tests/unit/hls-parse.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| UT-07 | Dado um candidato DOM `kind: 'file'` e um candidato de rede `kind: 'hls'` com a mesma URL, quando `mergeCandidates` é chamado, então prev… | PASS | `tests/unit/network-store.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-01 | Com o background real, `fakeBrowser` e um `PlaylistFetcherPort` apontado para o servidor de fixtures, `resolveHls` devolve `HlsInfo` para… | PASS | `tests/integration/hls-merge-resolve.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-02 | Com o fetcher real contra o servidor de fixtures, respostas > 1 MiB, de tipo inesperado, cujo redirecionamento termine em esquema não htt… | PASS | `tests/integration/hls-fetcher.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-04 | Com o background real, depois de `resolveHls` bem-sucedido, uma nova chamada de `detect` devolve o mesmo candidato com `hls` preenchido; | PASS | `tests/integration/hls-resolve.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-05 | Com o background real: (a) uma nova observação da mesma URL de playlist (`NetworkStore.add`) preserva `hls` e `protection` já resolvidos; | PASS | `tests/integration/hls-resolve.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| IT-03 | Com o logger real, depois de `resolveHls` com URL de `?token=...`, o diagnóstico não contém `token=`, e o servidor de fixtures só recebeu… | PASS | `tests/integration/hls-resolve.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| CT-01 | Contrato `HlsInfo` v1 (consumido pela SPEC-0012): o validador aceita um `HlsInfo` completo (master e media) e rejeita objetos sem `encryp… | PASS | `tests/integration/hls-info-contract.test.ts` — G5 9f38d66; reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-01 | Uma página que requisita um master HLS de fixture (3 qualidades) mostra o cartão HLS com `quality-select` na maior qualidade e as três op… | PASS | `e2e/journeys/hls-playlists.spec.ts` — G5 9f38d66 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-02 | Uma página que requisita uma playlist com `EXT-X-KEY:METHOD=AES-128` mostra `badge-encrypted` e nenhum botão de download. | PASS | `e2e/journeys/hls-playlists.spec.ts` — G5 9f38d66 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
+| E2E-03 | Uma página que requisita uma playlist sem `ENDLIST` mostra `badge-live` e nenhum botão de download. | PASS | `e2e/journeys/hls-playlists.spec.ts` — G5 9f38d66 (test_e2e); reexecutado verde em main 0f94085 (2026-11-27) |
 
 ### Definição de Pronto
-- [ ] Todos os testes do plano passando e listados na Verificação
-- [ ] Todo comportamento do Mapa de Comportamentos coberto e verificado
-- [ ] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
-- [ ] Review independente sem achados blocker/major (G4)
-- [ ] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
-- [ ] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
-- [ ] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
-- [ ] Observabilidade e rollback prontos conforme o Plano de Rollout
-- [ ] Documentação raiz e CHANGELOG atualizados (G7)
-- [ ] Pendências registradas como novas specs (ou nenhuma)
+- [x] Todos os testes do plano passando e listados na Verificação
+- [x] Todo comportamento do Mapa de Comportamentos coberto e verificado
+- [x] Suíte completa, arquitetura e CI verdes no resultado integrado (G5)
+- [x] Review independente sem achados blocker/major (G4)
+- [x] Padrão arquitetural existente mantido, ou desvio coberto por ADR aprovado
+- [x] Requisitos não-funcionais medidos com evidência (ou N/A justificado)
+- [x] Disponível no ambiente-alvo via pipeline, com smoke/E2E passando no ambiente (G6)
+- [x] Observabilidade e rollback prontos conforme o Plano de Rollout
+- [x] Documentação raiz e CHANGELOG atualizados (G7)
+- [x] Pendências registradas como novas specs (ou nenhuma)
 
 ### Deploy
-<!-- ambiente(s), versão/tag, data, estratégia, estado da feature flag, execução do pipeline -->
+Integrado na `main` por PRs #6, #8, #9 e #10 (épico SPEC-0008). Staging (pré-release): GitHub prerelease `v0.1.0-rc.2` pelo `release.yml` (run 37081174307: verify-version, build, flavor-guard, smoke E2E nos dois flavors e github-release com sucesso; o job `webstore` falhou porque a publicação na Chrome Web Store ainda não foi configurada, por decisão do dono). Produção (`v0.1.0` estável): pendente de confirmação do dono.
 
 ### Pendências
-<!-- specs criadas para o que ficou de fora, ou "Nenhuma" -->
+Nenhuma.
 
 ## 15. Emendas
 <!-- Mudança em spec aprovada: uma linha por emenda. Mudou o contrato? Incremente `contract_version` e rode `spec_graph.py impacted SPEC-0011`. -->
