@@ -81,3 +81,18 @@ export async function expectPortugueseText(
 }
 
 export type { ChromeInWorker };
+
+/** SPEC-0024: quantas detecções o background já começou (`detect.start` no diagnóstico), pedido pelo popup. */
+export async function detectStarts(popup: Page): Promise<number> {
+  return popup.evaluate(async () => {
+    const chromeApi = (
+      globalThis as unknown as {
+        chrome: { runtime: { sendMessage(m: unknown): Promise<unknown> } };
+      }
+    ).chrome;
+    const response = (await chromeApi.runtime.sendMessage({ type: 'diagnostics' })) as {
+      entries?: { event?: string }[];
+    };
+    return (response.entries ?? []).filter((entry) => entry.event === 'detect.start').length;
+  });
+}

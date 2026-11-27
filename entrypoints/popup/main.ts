@@ -4,13 +4,16 @@ import type {
   DiagnosticsResponse,
   DownloadResponse,
   JobResponse,
+  NetworkRevisionResponse,
   ResolveHlsResponse,
   VideoCandidate,
 } from '../../src/core/contracts';
 import { requestAccess } from '../../src/core/access';
 import { groupCandidates, hideRedundantCandidates } from '../../src/core/candidates';
 import type { PermissionsPort } from '../../src/core/access';
+import { createDiagnostics } from '../../src/core/diagnostics';
 import { validateJobResponse } from '../../src/core/hls-download';
+import { createRedetectController } from './redetect';
 import {
   applyGroups,
   candidateLabel,
@@ -21,6 +24,7 @@ import {
   renderHlsResult,
   setStatus,
   showAccessDenied,
+  showDetectFailed,
   showMessage,
 } from './view';
 import type { HlsContext, ViewText } from './view';
@@ -75,6 +79,13 @@ const content = document.getElementById('content');
 const access = document.getElementById('access');
 const footerStatus = document.getElementById('footer-status');
 const copyButton = document.getElementById('copy-diagnostics');
+const redetectButton = document.getElementById('redetect');
+/** Diagnóstico do próprio popup (`popup.detect_failed`): o background pode nem estar respondendo. */
+const popupDiagnostics = createDiagnostics();
+/** Candidatos desenhados agora (reagrupamento após o resolve e cartões de job preservados). */
+let shown = new Map<string, VideoCandidate>();
+/** Candidatos com job de download HLS em andamento: a re-detecção nunca os redesenha (SPEC-0024). */
+const running = new Set<string>();
 
 document.documentElement.lang = browser.i18n.getUILanguage();
 if (title) {
@@ -82,6 +93,9 @@ if (title) {
 }
 if (copyButton) {
   copyButton.textContent = t('buttonCopyDiagnostics');
+}
+if (redetectButton) {
+  redetectButton.textContent = t('buttonRedetect');
 }
 
 async function targetTabId(): Promise<number | undefined> {
@@ -151,6 +165,7 @@ function startHls(
   for (const select of selects) {
     select.disabled = true;
   }
+  running.add(candidateId);
 
   void (async () => {
     try {
@@ -184,6 +199,7 @@ function startHls(
     } catch {
       view.fail(t('errorGeneric'));
     } finally {
+      running.delete(candidateId);
       for (const select of selects) {
         select.disabled = false;
       }
@@ -227,7 +243,7 @@ function grantAccess(origins: string[], button: HTMLButtonElement): void {
   // Chamada direta no handler do clique: preserva o gesto do usuário.
   void requestAccess(permissions, origins).then(({ granted }) => {
     if (granted) {
-      void detect();
+      void redetect.redetect();
     } else {
       button.disabled = false;
       showAccessDenied(access, text.accessDenied);
@@ -237,7 +253,6 @@ function grantAccess(origins: string[], button: HTMLButtonElement): void {
 
 /** Uma mensagem `resolveHls` por cartão HLS ainda sem `hls`; cada falha fica no próprio cartão. */
 function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]): void {
-  const current = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   for (const candidate of candidates) {
     if (candidate.kind !== 'hls' || candidate.hls || candidate.protection === 'drm') {
       continue;
@@ -250,65 +265,123 @@ function resolvePlaylists(container: HTMLElement, candidates: VideoCandidate[]):
       .catch(() => undefined)
       .then((response) => {
         renderHlsResult(container, candidate.id, response, text, hlsContext(candidate));
-        if (response?.ok === true) {
+        if (response?.ok === true && shown.has(candidate.id)) {
           // SPEC-0015: a master resolvida passa a reivindicar variantes/arquivos; reagrupa (só move cartões).
-          current.set(candidate.id, { ...candidate, hls: response.hls });
-          applyGroups(container, groupCandidates([...current.values()]), text);
+          shown.set(candidate.id, { ...candidate, hls: response.hls });
+          applyGroups(container, groupCandidates([...shown.values()]), text);
         }
       });
   }
 }
 
-async function detect(): Promise<void> {
+/** `detect` da aba alvo; rejeita quando o background não responde (o controlador trata). */
+async function requestDetect(): Promise<DetectResponse | undefined> {
+  content?.setAttribute('aria-busy', 'true');
+  const tabId = await targetTabId();
+  return tabId === undefined
+    ? undefined
+    : browser.runtime.sendMessage<unknown, DetectResponse | undefined>({ type: 'detect', tabId });
+}
+
+async function requestRevision(): Promise<number | undefined> {
+  const tabId = await targetTabId();
+  if (tabId === undefined) {
+    return undefined;
+  }
+  const response = await browser.runtime.sendMessage<unknown, NetworkRevisionResponse | undefined>({
+    type: 'network-revision',
+    tabId,
+  });
+  return response?.ok === true ? response.revision : undefined;
+}
+
+/** Estado sem lista (vazio, restrito): não redesenha o mesmo estado (o `aria-live` não repete o aviso). */
+function showState(container: HTMLElement, message: string, testId: string): void {
+  if (container.querySelector(`:scope > [data-testid="${testId}"]`) === null) {
+    showMessage(container, message, testId);
+  }
+}
+
+let shownOrigins = '';
+
+/**
+ * Desenha a resposta de `detect`. `preserve` (SPEC-0024 D4): cartões que ficam como estão. Um cartão com job
+ * em andamento continua na tela mesmo que a nova lista não o traga.
+ */
+function renderDetect(response: DetectResponse | undefined, preserve: ReadonlySet<string>): void {
   if (!content || !access) {
     return;
   }
-  showMessage(content, t('popupSearching'), 'popup-loading');
-  const tabId = await targetTabId();
-  const response =
-    tabId === undefined
-      ? undefined
-      : await browser.runtime.sendMessage<unknown, DetectResponse | undefined>({
-          type: 'detect',
-          tabId,
-        });
   content.setAttribute('aria-busy', 'false');
+  const origins = response?.ok === true ? response.access.blockedOrigins : [];
+  if (JSON.stringify(origins) !== shownOrigins) {
+    shownOrigins = JSON.stringify(origins);
+    renderAccess(access, origins, text, (button) => {
+      grantAccess(origins, button);
+    });
+  }
 
-  renderAccess(
-    access,
-    response?.ok === true ? response.access.blockedOrigins : [],
-    text,
-    (button) => {
-      if (response?.ok === true) {
-        grantAccess(response.access.blockedOrigins, button);
-      }
-    },
-  );
+  const fresh = response?.ok === true ? response.candidates : [];
+  const ids = new Set(fresh.map((c) => c.id));
+  const jobs = [...running].flatMap((id) => {
+    const candidate = shown.get(id);
+    return candidate && !ids.has(id) ? [candidate] : [];
+  });
+  const candidates = [...fresh, ...jobs];
+  shown = new Map(candidates.map((c) => [c.id, c]));
 
-  if (response?.ok === true) {
-    if (response.candidates.length === 0 && response.access.blockedOrigins.length > 0) {
-      content.replaceChildren();
-    } else if (response.candidates.length === 0) {
-      showMessage(content, t('popupEmpty'), 'empty-state');
-    } else {
-      const groups = groupCandidates(response.candidates);
-      renderCandidates(
-        content,
-        groups,
-        text,
-        (candidate, button) => {
-          void download(candidate, button);
-        },
-        hlsContext,
-      );
-      resolvePlaylists(content, hideRedundantCandidates(response.candidates));
-    }
+  if (candidates.length > 0) {
+    const groups = groupCandidates(candidates);
+    renderCandidates(
+      content,
+      groups,
+      text,
+      (candidate, button) => {
+        void download(candidate, button);
+      },
+      hlsContext,
+      preserve,
+    );
+    resolvePlaylists(
+      content,
+      hideRedundantCandidates(candidates).filter((c) => !preserve.has(c.id)),
+    );
+  } else if (response?.ok === true && origins.length > 0) {
+    content.replaceChildren();
+  } else if (response?.ok === true) {
+    showState(content, t('popupEmpty'), 'empty-state');
   } else if (response?.error === 'RESTRICTED_PAGE') {
-    showMessage(content, t('popupRestricted'), 'restricted-state');
+    showState(content, t('popupRestricted'), 'restricted-state');
   } else {
-    showMessage(content, t('popupDetectFailed'), 'detect-failed');
+    showFailed(() => {
+      void redetect.redetect();
+    });
   }
 }
+
+/** D2: `detect` falhou. Com um job em andamento o cartão fica e o aviso vai para o rodapé. */
+function showFailed(retry: () => void): void {
+  if (!content) {
+    return;
+  }
+  content.setAttribute('aria-busy', 'false');
+  if (running.size > 0 && footerStatus) {
+    setStatus(footerStatus, t('popupDetectFailed'), true);
+    return;
+  }
+  shown = new Map();
+  showDetectFailed(content, t('popupDetectFailed'), t('buttonDetectRetry'), retry);
+}
+
+const redetect = createRedetectController({
+  detect: requestDetect,
+  revision: requestRevision,
+  view: { render: renderDetect, showFailed },
+  busy: () => running,
+  log: (event, fields) => {
+    popupDiagnostics.log('warn', event, popupDiagnostics.newCorrelationId(), fields);
+  },
+});
 
 async function copyDiagnostics(): Promise<void> {
   if (!footerStatus) {
@@ -321,7 +394,10 @@ async function copyDiagnostics(): Promise<void> {
     if (response?.ok !== true) {
       throw new Error('diagnostics');
     }
-    await navigator.clipboard.writeText(JSON.stringify(response.entries, null, 2));
+    const popupEntries = popupDiagnostics.snapshot().filter((entry) => entry.event !== 'counters');
+    await navigator.clipboard.writeText(
+      JSON.stringify([...response.entries, ...popupEntries], null, 2),
+    );
     setStatus(footerStatus, t('statusDiagnosticsCopied'), false);
   } catch {
     setStatus(footerStatus, t('statusDiagnosticsFailed'), true);
@@ -331,4 +407,13 @@ async function copyDiagnostics(): Promise<void> {
 copyButton?.addEventListener('click', () => {
   void copyDiagnostics();
 });
-void detect();
+redetectButton?.addEventListener('click', () => {
+  void redetect.redetect();
+});
+if (content) {
+  showMessage(content, t('popupSearching'), 'popup-loading');
+}
+window.addEventListener('pagehide', () => {
+  redetect.stop();
+});
+void redetect.start();

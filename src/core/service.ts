@@ -7,6 +7,7 @@ import type {
   DiagnosticsResponse,
   DownloadResponse,
   JobResponse,
+  NetworkRevisionResponse,
   ResolveHlsResponse,
   Provider,
   VideoCandidate,
@@ -25,7 +26,7 @@ import {
 import type { EncryptionPlan, JobManager, JobPlan, MediaSegments } from './hls-download';
 import { computeBlockedOrigins, originOf } from './frames';
 import { validateMessage } from './messages';
-import { classifyNetworkResponse, mergeCandidates } from './network';
+import { attributeTabs, classifyMedia, isManifestSegment, mergeCandidates } from './network';
 import type { NetworkResponse, NetworkStore } from './network';
 import { createContextScope, hostOf, initiatorOriginOf, statusOf } from './request-context';
 import type { ContextScope } from './request-context';
@@ -48,7 +49,8 @@ export type ServiceResponse =
   | DiagnosticsResponse
   | ResolveHlsResponse
   | JobResponse
-  | CancelResponse;
+  | CancelResponse
+  | NetworkRevisionResponse;
 
 export interface ServiceDeps {
   extensionId: string;
@@ -77,10 +79,20 @@ export interface Service {
   handle(message: unknown, sender: { id?: string }): Promise<ServiceResponse>;
   /** `tabs.onRemoved`: descarta o estado da aba. */
   onTabRemoved(tabId: number): void;
-  /** `webRequest.onResponseStarted`: classifica e, se aceita, grava na lista da aba (SPEC-0010). */
-  onNetworkResponse(response: NetworkResponse): Promise<void>;
-  /** Navegação do frame principal ou aba fechada: descarta a lista de rede da aba. */
+  /**
+   * `webRequest.onResponseStarted`: classifica e, se aceita, grava na lista da aba (SPEC-0010).
+   * SPEC-0024 (D8): uma resposta sem aba (`tabId = -1`) é atribuída pelo `initiator` (`attributeTabs`) às
+   * abas de `openTabs` ou, sem ele, às de `TabsPort.openTabs`. D10: aba, título e lista só são lidos depois
+   * da classificação. Resolve com as abas cuja lista ganhou o candidato.
+   */
+  onNetworkResponse(
+    response: NetworkResponse,
+    openTabs?: readonly { id: number; url?: string }[],
+  ): Promise<number[]>;
+  /** Navegação do frame principal: descarta a lista de rede da aba (a revisão cresce). */
   clearNetwork(tabId: number): Promise<void>;
+  /** Aba fechada: descarta a lista de rede e a revisão da aba (SPEC-0024). */
+  forgetNetwork(tabId: number): Promise<void>;
   /** Mensagem `{target:'background'}` do offscreen (SPEC-0012); `false` quando ignorada. */
   onOffscreenMessage(message: unknown, sender: { id?: string; url?: string }): Promise<boolean>;
   /** `downloads.onChanged` (SPEC-0012): conclui ou falha o job em `saving`. */
@@ -198,11 +210,6 @@ export function createService(deps: ServiceDeps): Service {
       }
     }
 
-    if (failures > 0 && failures === matching.length) {
-      diagnostics.log('warn', 'detect.restricted', correlationId, { tabId });
-      return { ok: false, error: 'RESTRICTED_PAGE' };
-    }
-
     const networkCandidates = await (deps.network?.forTab(tabId) ?? Promise.resolve([])).catch(
       (error: unknown) => {
         diagnostics.log('warn', 'detect.network_failed', correlationId, {
@@ -212,6 +219,11 @@ export function createService(deps: ServiceDeps): Service {
         return [] as VideoCandidate[];
       },
     );
+    // D1: a falha do DOM só vira página restrita quando a rede da aba também não viu nada.
+    if (failures > 0 && failures === matching.length && networkCandidates.length === 0) {
+      diagnostics.log('warn', 'detect.restricted', correlationId, { tabId });
+      return { ok: false, error: 'RESTRICTED_PAGE' };
+    }
     const candidates = mergeCandidates(
       [...found.values()],
       networkCandidates.map((c) => ({ ...c, pageUrl, frameUrl: pageUrl })),
@@ -763,6 +775,31 @@ export function createService(deps: ServiceDeps): Service {
     return { ok: true, hls };
   }
 
+  /**
+   * Abas que recebem uma resposta de rede: a própria aba ou, sem aba (`tabId = -1`, service worker do site),
+   * as abas abertas da origem do `initiator` (D8). O diagnóstico guarda só a contagem (ADR-0009).
+   */
+  async function targetTabs(
+    response: NetworkResponse,
+    openTabs: readonly { id: number; url?: string }[] | undefined,
+  ): Promise<number[]> {
+    if (response.tabId >= 0) {
+      return [response.tabId];
+    }
+    const origin = initiatorOriginOf(response.initiator);
+    if (origin === undefined) {
+      return [];
+    }
+    const tabs = openTabs ?? (await deps.tabs.openTabs?.(origin).catch(() => [])) ?? [];
+    const attributed = attributeTabs(origin, tabs);
+    if (attributed.length > 0) {
+      diagnostics.log('info', 'network.sw_attributed', diagnostics.newCorrelationId(), {
+        tabs: attributed.length,
+      });
+    }
+    return attributed;
+  }
+
   /** Resoluções simultâneas do mesmo candidato compartilham uma única busca. */
   const resolving = new Map<string, Promise<ResolveHlsResponse>>();
   function resolveHls(candidateId: string, fallbackId: string): Promise<ResolveHlsResponse> {
@@ -808,6 +845,12 @@ export function createService(deps: ServiceDeps): Service {
           return (await jobs?.cancel(valid.jobId))
             ? { ok: true }
             : { ok: false, error: 'JOB_NOT_FOUND' };
+        case 'network-revision': {
+          const revision = await (deps.network?.revision(valid.tabId) ?? Promise.resolve(0)).catch(
+            () => 0,
+          );
+          return { ok: true, revision };
+        }
       }
     },
     onOffscreenMessage: (message, sender) =>
@@ -815,14 +858,16 @@ export function createService(deps: ServiceDeps): Service {
     async onDownloadChanged(delta) {
       await jobs?.onDownloadChanged(delta);
     },
-    async onNetworkResponse(response) {
-      if (!deps.network) {
-        return;
+    async onNetworkResponse(response, openTabs) {
+      const network = deps.network;
+      if (!network) {
+        return [];
       }
-      const classification = classifyNetworkResponse(response);
-      if (!classification) {
+      const classification = classifyMedia(response);
+      const targets = classification ? await targetTabs(response, openTabs) : [];
+      if (!classification || targets.length === 0) {
         diagnostics.countNetwork('discarded');
-        return;
+        return [];
       }
       const { kind, mimeType, sizeBytes } = classification;
       const initiatorOrigin = initiatorOriginOf(response.initiator);
@@ -832,34 +877,55 @@ export function createService(deps: ServiceDeps): Service {
         kind,
         mediaUrl: stripQuery(response.url),
       });
-      try {
-        await deps.network.add(response.tabId, {
-          id: candidateId(response.tabId, response.url),
-          providerId: 'network',
-          tabId: response.tabId,
-          pageUrl: '',
-          mediaUrl: response.url,
-          ...(response.tabTitle ? { title: response.tabTitle } : {}),
-          ...(mimeType !== undefined && { mimeType }),
-          ...(sizeBytes !== undefined && { sizeBytes }),
-          protection: 'none',
-          support: kind === 'file' ? 'downloadable' : 'unsupported-stream',
-          frameId: response.frameId,
-          frameUrl: '',
-          kind,
-          source: 'network',
-          ...(initiatorOrigin !== undefined && { initiatorOrigin }),
-        });
-      } catch (error) {
-        diagnostics.log('warn', 'network.store_failed', diagnostics.newCorrelationId(), {
-          tabId: response.tabId,
-          reason: reasonOf(error),
-        });
+      const stored: number[] = [];
+      for (const tabId of targets) {
+        try {
+          const candidate: VideoCandidate = {
+            id: candidateId(tabId, response.url),
+            providerId: 'network',
+            tabId,
+            pageUrl: '',
+            mediaUrl: response.url,
+            ...(mimeType !== undefined && { mimeType }),
+            ...(sizeBytes !== undefined && { sizeBytes }),
+            protection: 'none',
+            support: kind === 'file' ? 'downloadable' : 'unsupported-stream',
+            frameId: Math.max(response.frameId, 0),
+            frameUrl: '',
+            kind,
+            source: 'network',
+            ...(initiatorOrigin !== undefined && { initiatorOrigin }),
+          };
+          // D5: segmento fMP4 servido como .mp4 na pasta de um manifesto da aba não vira cartão.
+          if (kind === 'file' && isManifestSegment(candidate, await network.forTab(tabId))) {
+            continue;
+          }
+          const title =
+            response.tabTitle ?? (await deps.tabs.getTitle?.(tabId).catch(() => undefined));
+          await network.add(tabId, { ...candidate, ...(title ? { title } : {}) });
+          stored.push(tabId);
+        } catch (error) {
+          diagnostics.log('warn', 'network.store_failed', diagnostics.newCorrelationId(), {
+            tabId,
+            reason: reasonOf(error),
+          });
+        }
       }
+      return stored;
     },
     async clearNetwork(tabId) {
       try {
         await deps.network?.clear(tabId);
+      } catch (error) {
+        diagnostics.log('warn', 'network.clear_failed', diagnostics.newCorrelationId(), {
+          tabId,
+          reason: reasonOf(error),
+        });
+      }
+    },
+    async forgetNetwork(tabId) {
+      try {
+        await deps.network?.forget(tabId);
       } catch (error) {
         diagnostics.log('warn', 'network.clear_failed', diagnostics.newCorrelationId(), {
           tabId,

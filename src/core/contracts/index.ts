@@ -98,13 +98,19 @@ export type DiagnosticsMessage = { type: 'diagnostics' };
 export type ResolveHlsMessage = { type: 'resolveHls'; candidateId: string };
 export type JobMessage = { type: 'job'; jobId: string };
 export type CancelMessage = { type: 'cancel'; jobId: string };
+/** SPEC-0024: revisão da lista de rede da aba (o popup consulta a cada 1 s). */
+export type NetworkRevisionMessage = { type: 'network-revision'; tabId: number };
 export type Message =
   | DetectMessage
   | DownloadMessage
   | DiagnosticsMessage
   | ResolveHlsMessage
   | JobMessage
-  | CancelMessage;
+  | CancelMessage
+  | NetworkRevisionMessage;
+
+export type NetworkRevisionResponse =
+  { ok: true; revision: number } | { ok: false; error: 'INVALID_MESSAGE' };
 
 export interface LogEntry {
   ts: string;

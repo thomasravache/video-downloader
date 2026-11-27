@@ -70,6 +70,22 @@ export function showMessage(container: HTMLElement, message: string, testId: str
   container.replaceChildren(paragraph);
 }
 
+/** SPEC-0024 (D2): `detect` falhou: mensagem de erro e o botão "Tentar de novo" (`detect-retry`). */
+export function showDetectFailed(
+  container: HTMLElement,
+  message: string,
+  retryLabel: string,
+  onRetry: () => void,
+): void {
+  const paragraph = element('p', 'message', message);
+  paragraph.dataset['testid'] = 'detect-failed';
+  const retry = element('button', 'button', retryLabel);
+  retry.type = 'button';
+  retry.dataset['testid'] = 'detect-retry';
+  retry.addEventListener('click', onRetry);
+  container.replaceChildren(paragraph, retry);
+}
+
 export function setStatus(node: HTMLElement, message: string, isError: boolean): void {
   node.textContent = message;
   node.classList.toggle('status-error', isError);
@@ -473,24 +489,44 @@ function renderCard(
   return item;
 }
 
+/**
+ * Desenha a lista. SPEC-0024 (D4): os cartões de `keep` já na tela são reaproveitados no lugar (seleção de
+ * qualidade/áudio, estado do resolve e job em andamento intactos); os demais são refeitos e os que saíram da
+ * lista são removidos.
+ */
 export function renderCandidates(
   container: HTMLElement,
   groups: CandidateGroup[],
   text: ViewText,
   onDownload: (candidate: VideoCandidate, button: HTMLButtonElement) => void,
   hlsContext: (candidate: VideoCandidate) => HlsContext,
+  keep: ReadonlySet<string> = new Set(),
 ): void {
-  const list = element('ul', 'list');
-  list.dataset['testid'] = 'candidate-list';
-  list.setAttribute('aria-label', text.listLabel);
-  list.append(
-    ...groups.flatMap((group) =>
-      [group.primary, ...group.related].map((candidate) =>
+  let list = container.querySelector<HTMLElement>(':scope > [data-testid="candidate-list"]');
+  if (!list) {
+    list = element('ul', 'list');
+    list.dataset['testid'] = 'candidate-list';
+    list.setAttribute('aria-label', text.listLabel);
+    container.replaceChildren(list);
+  }
+  const existing = new Map<string, HTMLElement>();
+  for (const node of container.querySelectorAll<HTMLElement>('li[data-candidate-id]')) {
+    existing.set(node.dataset['candidateId'] ?? '', node);
+  }
+  const cards = groups.flatMap((group) =>
+    [group.primary, ...group.related].map(
+      (candidate) =>
+        (keep.has(candidate.id) ? existing.get(candidate.id) : undefined) ??
         renderCard(candidate, text, onDownload, hlsContext),
-      ),
     ),
   );
-  container.replaceChildren(list);
+  const wanted = new Set(cards);
+  for (const node of existing.values()) {
+    if (!wanted.has(node)) {
+      node.remove();
+    }
+  }
+  list.append(...cards.filter((card) => card.parentElement === null));
   applyGroups(container, groups, text);
 }
 

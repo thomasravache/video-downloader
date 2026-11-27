@@ -75,7 +75,15 @@ function capturedEvent(): CapturedEvent & Record<string, unknown> {
     hasListener: (callback: Registration['callback']) =>
       registrations.some((r) => r.callback === callback),
     async emit(details: Record<string, unknown>) {
-      await Promise.all(registrations.map((r) => r.callback(details)));
+      // Como o Chrome: um listener registrado com `types` só recebe eventos desses tipos (SPEC-0024).
+      const type = details['type'];
+      const matching = registrations.filter(
+        (r) =>
+          r.filter?.types === undefined ||
+          typeof type !== 'string' ||
+          r.filter.types.includes(type),
+      );
+      await Promise.all(matching.map((r) => r.callback(details)));
       // Dá tempo a gravações assíncronas disparadas sem await pelo listener.
       await new Promise((resolve) => setTimeout(resolve, 20));
     },
@@ -92,6 +100,8 @@ export interface ResponseDetails {
   headers?: Record<string, string>;
   /** SPEC-0016: `details.initiator` do `webRequest` (origem do frame que fez a requisição). */
   initiator?: string;
+  /** SPEC-0024: `details.type` (padrão 'xmlhttprequest'). */
+  type?: string;
 }
 
 export interface NetworkHarness {
@@ -101,6 +111,15 @@ export interface NetworkHarness {
   respond(details: ResponseDetails): Promise<void>;
   /** Dispara `onBeforeRequest` de uma navegação do frame principal da aba. */
   navigate(tabId: number, url: string): Promise<void>;
+  /**
+   * SPEC-0024: dispara `onResponseStarted` da resposta do frame principal da aba (`type: 'main_frame'`,
+   * `frameId: 0`), com o status e os cabeçalhos dados (padrão: 200 `text/html`).
+   */
+  mainFrameResponse(
+    tabId: number,
+    url: string,
+    options?: { statusCode?: number; headers?: Record<string, string> },
+  ): Promise<void>;
 }
 
 function installWebRequestStub(): { responseStarted: CapturedEvent; beforeRequest: CapturedEvent } {
@@ -349,6 +368,7 @@ export function startBackground(options: StartOptions = {}): BackgroundHarness {
       frameId = 0,
       headers = {},
       initiator,
+      type = 'xmlhttprequest',
     }) {
       await stub.responseStarted.emit({
         ...(initiator !== undefined && { initiator }),
@@ -357,10 +377,20 @@ export function startBackground(options: StartOptions = {}): BackgroundHarness {
         statusCode,
         method,
         frameId,
-        type: 'xmlhttprequest',
+        type,
         requestId: String(Math.random()),
         timeStamp: Date.now(),
         responseHeaders: Object.entries(headers).map(([name, value]) => ({ name, value })),
+      });
+    },
+    async mainFrameResponse(tabId, url, { statusCode = 200, headers } = {}) {
+      await network.respond({
+        url,
+        tabId,
+        statusCode,
+        frameId: 0,
+        type: 'main_frame',
+        headers: headers ?? { 'Content-Type': 'text/html; charset=utf-8' },
       });
     },
     async navigate(tabId, url) {
