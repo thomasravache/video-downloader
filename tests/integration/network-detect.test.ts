@@ -4,6 +4,8 @@
  *      webRequest.onResponseStarted.addListener(cb, { urls: ['http://*\/*', 'https://*\/*'] }, ['responseHeaders'])
  *      webRequest.onBeforeRequest.addListener(cb, { urls: [...], types: ['main_frame'] })
  *      tabs.onRemoved (já existente) também descarta a lista de rede da aba;
+ *    SPEC-0024 (D7): a lista da aba é apagada no `onResponseStarted` de `main_frame` que troca o documento,
+ *    não mais no `onBeforeRequest` (que continua registrado só para o indicador da toolbar, SPEC-0022);
  *    o harness (tests/integration/support/background.ts) captura esses listeners e os chama.
  *  - cada resposta aceita por `classifyNetworkResponse` (src/core/network.ts) é gravada em
  *    storage.session na chave 'vd:net:<tabId>' (NetworkStore sobre a SessionStoragePort);
@@ -192,7 +194,7 @@ describe('detecção por rede: webRequest -> detect/download', () => {
     expect((bg.download.mock.calls[0]?.[0] as { url: string }).url).toBe(MP4);
   });
 
-  it('SPEC-0010:IT-03 onBeforeRequest de main_frame limpa a lista só da aba que navegou', async () => {
+  it('SPEC-0010:IT-03 a resposta de main_frame que troca o documento limpa a lista só da aba que navegou (regra D7 da SPEC-0024)', async () => {
     const tabA = await bg.newTab(PAGE);
     const tabB = await bg.newTab('https://other.example.test/');
     await bg.network.respond({ url: MP4, tabId: tabA, headers: MP4_HEADERS });
@@ -200,6 +202,7 @@ describe('detecção por rede: webRequest -> detect/download', () => {
     expect(await detectTab(tabA)).toHaveLength(1);
 
     await bg.network.navigate(tabA, 'https://site.example.test/outra');
+    await bg.network.mainFrameResponse(tabA, 'https://site.example.test/outra');
 
     expect(await detectTab(tabA)).toEqual([]);
     expect((await detectTab(tabB)).map((c) => c.mediaUrl)).toEqual([`${MP4}?b`]);
@@ -317,6 +320,7 @@ describe('detecção por rede: webRequest indisponível e navegação sem aba (E
     const remove = vi.spyOn(fakeBrowser.storage.session, 'remove');
     const set = vi.spyOn(fakeBrowser.storage.session, 'set');
     await bg.network.navigate(-1, 'https://site.example.test/outra');
+    await bg.network.mainFrameResponse(-1, 'https://site.example.test/outra');
 
     expect(JSON.stringify([...remove.mock.calls, ...set.mock.calls])).not.toContain('vd:net:-1');
     const all = await fakeBrowser.storage.session.get(null);
@@ -324,11 +328,12 @@ describe('detecção por rede: webRequest indisponível e navegação sem aba (E
     expect((await detectTab(tabId)).map((c) => c.mediaUrl)).toEqual([MP4]);
   });
 
-  it('SPEC-0010:IT-06 (guarda) main_frame com tabId >= 0 continua limpando a lista daquela aba', async () => {
+  it('SPEC-0010:IT-06 (guarda) main_frame com tabId >= 0 continua limpando a lista daquela aba (na resposta que troca o documento, D7 da SPEC-0024)', async () => {
     const tabId = await bg.newTab(PAGE);
     await bg.network.respond({ url: MP4, tabId, headers: MP4_HEADERS });
 
     await bg.network.navigate(tabId, 'https://site.example.test/outra');
+    await bg.network.mainFrameResponse(tabId, 'https://site.example.test/outra');
 
     expect(await fakeBrowser.storage.session.get(`vd:net:${String(tabId)}`)).toEqual({});
     expect(await detectTab(tabId)).toEqual([]);
