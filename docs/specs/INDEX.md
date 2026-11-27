@@ -5,14 +5,8 @@
 ## Saúde
 
 - Validação (G0): **0 erro(s), 24 aviso(s)** — rode `spec_graph.py validate`
-- Specs: proposed 1, approved 2, implemented 19
-- Impedimentos: **1 aberto(s)**, 8 resolvido(s)
-
-## Impedimentos Abertos
-
-| Spec | ID | Tipo | Fase/Gate | Responsável | Aberto em | Idade | Descrição |
-|---|---|---|---|---|---|---|---|
-| SPEC-0024 | IMP-01 | decisão | G1 | Thomas Ravache | 2026-11-27 | 0d | next não despacha: touches em comum com SPEC-0009..0015, que seguem in-progress com G5 PASS e G7 pendente há 56 dias (código já na main) |
+- Specs: proposed 1, approved 1, in-progress 1, implemented 19
+- Impedimentos: **0 aberto(s)**, 9 resolvido(s)
 
 ## Cobertura de Pilares
 
@@ -43,13 +37,13 @@ Perfil: **padrao**
 
 ## Plano de Execução
 
-**Em andamento:** —  
+**Em andamento:** SPEC-0024  
 **Paradas por impedimento:** —  
 **Próximo lote:** —
 
 | Onda | Spec | Título | Tier/Tam. | Status | Prontidão | Observação |
 |---|---|---|---|---|---|---|
-| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | approved | ⛔ impedimento IMP-01 (decisão → Thomas Ravache, 0d) |  |
+| 1 | SPEC-0024 | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full/M | in-progress | 🔄 em andamento |  |
 | 1 | SPEC-0007 | Endurecer seleção de flavor e tipar FLAVOR | lite/S | proposed | ⏳ aguardando aprovação (H1) |  |
 | 2 | SPEC-0025 | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full/S | approved | ⛔ aguarda implementação de SPEC-0024 |  |
 
@@ -72,7 +66,7 @@ flowchart LR
     S0007["SPEC-0007<br/>Endurecer seleção de flavor e tipar FLA…"]:::proposed
   end
   subgraph E0023["SPEC-0023 · Estabilizar detecção de vídeos e indicador da toolbar"]
-    S0024["SPEC-0024<br/>Detecção estável entre contas e páginas…"]:::approved
+    S0024["SPEC-0024<br/>Detecção estável entre contas e páginas…"]:::inprogress
     S0025["SPEC-0025<br/>Indicador da toolbar confiável: ícones …"]:::approved
   end
   S0002 --> S0007
@@ -111,7 +105,7 @@ flowchart LR
 | [SPEC-0021](SPEC-0021-transmux-de-audio-hls-packed-aac-com-id3-e-normalizacao-de-t.md) | Transmux de audio HLS packed AAC com ID3 e normalizacao de track_id | full | fix | implemented | 2026-10-07 | — | SPEC-0020 | SPEC-0014@1, SPEC-0018@1, SPEC-0019@1, SPEC-0020@1 |
 | [SPEC-0022](SPEC-0022-rebranding-clipdrop-com-nova-ui-dark-e-indicador-dinamico-na.md) | Rebranding ClipDrop com nova UI dark e indicador dinamico na toolbar | full | feature | implemented | 2026-10-08 | — | — | — |
 | [SPEC-0023](SPEC-0023-estabilizar-deteccao-de-videos-e-indicador-da-toolbar.md) | Estabilizar detecção de vídeos e indicador da toolbar | epic | feature | approved | 2026-11-26 | — | — | — |
-| [SPEC-0024](SPEC-0024-deteccao-estavel-entre-contas-e-paginas-falha-parcial-re-det.md) | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full | fix | approved | 2026-11-26 | SPEC-0023 | — | — |
+| [SPEC-0024](SPEC-0024-deteccao-estavel-entre-contas-e-paginas-falha-parcial-re-det.md) | Detecção estável entre contas e páginas: falha parcial, re-detecção, rede e service worker | full | fix | in-progress | 2026-11-26 | SPEC-0023 | — | — |
 | [SPEC-0025](SPEC-0025-indicador-da-toolbar-confiavel-icones-no-manifesto-estado-pa.md) | Indicador da toolbar confiável: ícones no manifesto, estado padrão e contagem única | full | fix | approved | 2026-11-26 | SPEC-0023 | SPEC-0024 | — |
 
 ## ADRs
